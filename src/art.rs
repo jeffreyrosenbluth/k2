@@ -209,8 +209,8 @@ fn constant(r: f32) -> impl Fn(Point) -> f32 {
     move |_| r / 2.0
 }
 
-pub fn print(controls: &Controls, scale: f32) {
-    let canvas = draw(controls, scale);
+pub async fn print(controls: Controls, scale: f32) {
+    let canvas = draw(&controls, scale);
     let name = format!("./output/{}.png", "image");
     canvas.save_png(name);
 }

@@ -1,7 +1,7 @@
 use iced::{
-    theme::Theme,
+    theme,
     widget::{button, column, image, pick_list, row, slider, text, toggler, Container},
-    Alignment, Element, Length, Sandbox, Settings,
+    Alignment, Application, Command, Element, Length, Settings, Theme,
 };
 use rand::prelude::*;
 
@@ -39,20 +39,25 @@ pub enum Message {
     LenDirMessage(Dir),
     CapMessage(Cap),
     RandMessage,
+    ExportCompleteMessage(()),
 }
 
-impl Sandbox for Xtrusion {
+impl Application for Xtrusion {
     type Message = Message;
+    type Theme = Theme;
+    type Executor = iced::executor::Default;
+    type Flags = ();
 
-    fn new() -> Self {
-        Self::new()
+    fn new(_flags: ()) -> (Xtrusion, Command<Message>) {
+        (Self::new(), Command::none())
     }
 
     fn title(&self) -> String {
         String::from("Xtrusion")
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Command<Message> {
+        let controls = self.controls.clone();
         match message {
             Message::SpaceMessage(b) => {
                 self.controls.spaced = b;
@@ -60,7 +65,11 @@ impl Sandbox for Xtrusion {
                 self.image =
                     image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
             }
-            Message::ExportMessage => print(&self.controls, 4.8),
+            Message::ExportMessage => {
+                self.controls.exporting = true;
+                return Command::perform(print(controls, 4.8), Message::ExportCompleteMessage);
+            }
+
             Message::HueMessage(hue) => self.controls.hue = hue,
             Message::PaletteMessage(p) => self.controls.palette_num = p,
             Message::LocMessage(loc) => {
@@ -107,12 +116,14 @@ impl Sandbox for Xtrusion {
             Message::RandMessage => {
                 let mut rng = SmallRng::from_entropy();
                 self.controls = rng.gen();
-                self.controls.dirty = false;
+                // self.controls.dirty = false;
                 let canvas = draw(&self.controls, 1.0);
                 self.image =
                     image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
             }
+            Message::ExportCompleteMessage(_) => self.controls.exporting = false,
         }
+        Command::none()
     }
 
     fn view(&self) -> Element<Message> {
@@ -250,6 +261,13 @@ impl Sandbox for Xtrusion {
         .padding(20)
         .spacing(15)
         .width(Length::Units(200));
+
+        let button_style = if self.controls.exporting {
+            theme::Button::Secondary
+        } else {
+            theme::Button::Primary
+        };
+
         control_panel = control_panel.push(
             button("Random")
                 .width(Length::Units(75))
@@ -258,7 +276,8 @@ impl Sandbox for Xtrusion {
         control_panel = control_panel.push(
             button("Export")
                 .width(Length::Units(75))
-                .on_press(Message::ExportMessage),
+                .on_press(Message::ExportMessage)
+                .style(button_style),
         );
         row![
             control_panel,

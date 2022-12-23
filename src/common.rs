@@ -22,7 +22,7 @@ pub struct Controls {
     pub len_dir: Option<Dir>,
     pub len_freq: f32,
     pub cap: Option<Cap>,
-    pub dirty: bool,
+    pub exporting: bool,
 }
 
 impl Controls {
@@ -42,7 +42,7 @@ impl Controls {
             len_dir: Some(Dir::Circle),
             len_freq: 5.0,
             cap: Some(Cap::None),
-            dirty: false,
+            exporting: false,
         }
     }
 }
@@ -78,7 +78,7 @@ impl Distribution<Controls> for Standard {
             len_dir,
             len_freq,
             cap,
-            dirty: true,
+            exporting: false,
         }
     }
 }
