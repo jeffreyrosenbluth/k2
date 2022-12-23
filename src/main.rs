@@ -268,20 +268,18 @@ impl Application for Xtrusion {
             theme::Button::Primary
         };
 
-        control_panel = control_panel.push(
-            button("Random")
-                .width(Length::Units(75))
-                .on_press(Message::RandMessage),
-        );
-        control_panel = control_panel.push(
-            button("Export")
-                .width(Length::Units(75))
-                .on_press(Message::ExportMessage)
-                .style(button_style),
-        );
+        let rand_button = button("Random")
+            .width(Length::Units(75))
+            .on_press(Message::RandMessage);
+        let export_button = button("Export")
+            .width(Length::Units(75))
+            .on_press(Message::ExportMessage)
+            .style(button_style);
+        let image_panel = column!(img_view, row!(rand_button, export_button)).padding(20);
         row![
             control_panel,
-            column![img_view].padding(20).align_items(Alignment::Center)
+            image_panel,
+            // column![img_view].padding(20).align_items(Alignment::Center)
         ]
         .padding(20)
         .into()
