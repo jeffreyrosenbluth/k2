@@ -31,7 +31,7 @@ impl Controls {
             spaced: false,
             palette_num: 0,
             hue: 0.0,
-            location: Some(Location::Rand),
+            location: Some(Location::Halton),
             grid_sep: 50.0,
             noise_factor: 4.0,
             noise_scale: 4.0,

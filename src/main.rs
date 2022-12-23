@@ -1,6 +1,9 @@
 use iced::{
     theme,
-    widget::{button, column, image, pick_list, row, slider, text, toggler, Container},
+    widget::{
+        button, column, horizontal_space, image, pick_list, row, slider, text, toggler,
+        vertical_space, Container,
+    },
     Alignment, Application, Command, Element, Length, Settings, Theme,
 };
 use rand::prelude::*;
@@ -16,7 +19,7 @@ const TEXT_SIZE: u16 = 15;
 
 pub fn main() -> iced::Result {
     let mut settings = Settings::default();
-    settings.window.size = (1100, 1000);
+    settings.window.size = (1080, 850);
     Xtrusion::run(settings)
 }
 
@@ -128,7 +131,7 @@ impl Application for Xtrusion {
 
     fn view(&self) -> Element<Message> {
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
-        let mut control_panel = column![
+        let control_panel = column![
             Container::new(
                 toggler(
                     "Spaced".to_owned(),
@@ -205,7 +208,7 @@ impl Application for Xtrusion {
             ]
             .spacing(5),
             column![
-                text("Xtrusion Length").size(TEXT_SIZE),
+                text("Extrusion Length").size(TEXT_SIZE),
                 pick_list(
                     vec![
                         Len::Constant,
@@ -220,7 +223,7 @@ impl Application for Xtrusion {
             ]
             .spacing(5),
             column![
-                text(format!("Length Size:  {:.0}", self.controls.len_size)).size(TEXT_SIZE),
+                text(format!("Extrusion Size:  {:.0}", self.controls.len_size)).size(TEXT_SIZE),
                 slider(
                     10.0..=500.0,
                     self.controls.len_size,
@@ -231,14 +234,14 @@ impl Application for Xtrusion {
             ]
             .spacing(5),
             column![
-                text(format!("Length Freq:  {:.0}", self.controls.len_freq)).size(TEXT_SIZE),
+                text(format!("Varying Freq:  {:.0}", self.controls.len_freq)).size(TEXT_SIZE),
                 slider(1.0..=25.0, self.controls.len_freq, Message::LenFreqMessage,)
                     .step(1.0)
                     .on_release(Message::DrawMessage)
             ]
             .spacing(5),
             column![
-                text("Xtrusion Direction").size(TEXT_SIZE),
+                text("Extrusion Direction").size(TEXT_SIZE),
                 pick_list(
                     vec![Dir::Circle, Dir::Horizontal, Dir::Vertical,],
                     self.controls.len_dir,
@@ -262,27 +265,20 @@ impl Application for Xtrusion {
         .spacing(15)
         .width(Length::Units(200));
 
-        let button_style = if self.controls.exporting {
-            theme::Button::Secondary
+        let rand_button = button("Random").on_press(Message::RandMessage);
+        let export_button = if self.controls.exporting {
+            button("Export")
         } else {
-            theme::Button::Primary
+            button("Export").on_press(Message::ExportMessage)
         };
-
-        let rand_button = button("Random")
-            .width(Length::Units(75))
-            .on_press(Message::RandMessage);
-        let export_button = button("Export")
-            .width(Length::Units(75))
-            .on_press(Message::ExportMessage)
-            .style(button_style);
-        let image_panel = column!(img_view, row!(rand_button, export_button)).padding(20);
-        row![
-            control_panel,
-            image_panel,
-            // column![img_view].padding(20).align_items(Alignment::Center)
-        ]
+        let image_panel = column!(
+            img_view,
+            vertical_space(Length::Units(25)),
+            row!(rand_button, export_button).spacing(100)
+        )
         .padding(20)
-        .into()
+        .align_items(Alignment::Center);
+        row![control_panel, image_panel,].padding(20).into()
     }
 
     fn theme(&self) -> Theme {
