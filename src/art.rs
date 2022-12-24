@@ -10,15 +10,16 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     let bg = BG::new(canvas.width, canvas.height);
     bg.canvas_bg(&mut canvas);
     let max_length = 250;
-    let nf = Fbm::<Perlin>::default().set_octaves(controls.octaves as usize);
+    let fbm = Fbm::<Perlin>::default().set_octaves(controls.octaves as usize);
+    let cyl = Cylinders::default();
     let opts = NoiseOpts::with_wh(canvas.width(), canvas.height())
         .scales(controls.noise_scale)
         .factor(controls.noise_factor);
     let mut flow = Field {
         noise_function: if controls.curl {
-            Box::new(Curl::new(nf))
+            Box::new(cyl)
         } else {
-            Box::new(nf)
+            Box::new(fbm)
         },
         noise_opts: opts,
         step_size: step,
