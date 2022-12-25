@@ -1,9 +1,5 @@
 use iced::{
-    theme,
-    widget::{
-        button, column, horizontal_space, image, pick_list, row, slider, text, toggler,
-        vertical_space, Container,
-    },
+    widget::{button, column, image, pick_list, row, text, toggler, vertical_space, Container},
     Alignment, Application, Command, Element, Length, Settings, Theme,
 };
 use rand::prelude::*;
@@ -11,15 +7,17 @@ use rand::prelude::*;
 mod art;
 mod common;
 mod field;
+mod gui;
 
 use crate::art::*;
 use crate::common::*;
+use crate::gui::*;
 
 const TEXT_SIZE: u16 = 15;
 
 pub fn main() -> iced::Result {
     let mut settings = Settings::default();
-    settings.window.size = (1080, 850);
+    settings.window.size = (1080, 900);
     Xtrusion::run(settings)
 }
 
@@ -35,7 +33,7 @@ pub enum Message {
     OctavesMessage(u8),
     FactorMessage(f32),
     ScaleMessage(f32),
-    CurlMessage(bool),
+    NoiseMessage(NoiseFunction),
     LenMessage(Len),
     LenSizeMessage(f32),
     LenFreqMessage(f32),
@@ -90,8 +88,8 @@ impl Application for Xtrusion {
             Message::OctavesMessage(o) => self.controls.octaves = o,
             Message::FactorMessage(f) => self.controls.noise_factor = f,
             Message::ScaleMessage(s) => self.controls.noise_scale = s,
-            Message::CurlMessage(b) => {
-                self.controls.curl = b;
+            Message::NoiseMessage(n) => {
+                self.controls.noise_function = Some(n);
                 let canvas = draw(&self.controls, 1.0);
                 self.image =
                     image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
@@ -140,10 +138,24 @@ impl Application for Xtrusion {
                 )
                 .text_size(TEXT_SIZE)
             ),
-            Container::new(
-                toggler("Curl".to_owned(), self.controls.curl, Message::CurlMessage,)
-                    .text_size(TEXT_SIZE)
-            ),
+            column![
+                text("Noise Function").size(TEXT_SIZE),
+                pick_list(
+                    vec![
+                        NoiseFunction::Fbm,
+                        NoiseFunction::Billow,
+                        NoiseFunction::Ridged,
+                        NoiseFunction::Value,
+                        NoiseFunction::Checkerboard,
+                        NoiseFunction::Cylinders,
+                        NoiseFunction::Worley,
+                    ],
+                    self.controls.noise_function,
+                    Message::NoiseMessage
+                )
+                .text_size(TEXT_SIZE),
+            ]
+            .spacing(5),
             column![
                 text("Location").size(TEXT_SIZE),
                 pick_list(
@@ -161,52 +173,54 @@ impl Application for Xtrusion {
                 .text_size(TEXT_SIZE),
             ]
             .spacing(5),
-            column![
-                text(format!("Palette:  {:.0}", self.controls.palette_num)).size(TEXT_SIZE),
-                slider(0..=9, self.controls.palette_num, Message::PaletteMessage)
-                    .on_release(Message::DrawMessage),
-            ]
-            .spacing(5),
-            column![
-                text(format!("Hue:  {:.0}", self.controls.hue)).size(TEXT_SIZE),
-                slider(0.0..=360.0, self.controls.hue, Message::HueMessage)
-                    .on_release(Message::DrawMessage),
-            ]
-            .spacing(5),
-            column![
-                text(format!("Grid Spacing:  {:.0}", self.controls.grid_sep)).size(TEXT_SIZE),
-                slider(
-                    25.0..=100.0,
-                    self.controls.grid_sep,
-                    Message::GridSepMessage
-                )
-                .on_release(Message::DrawMessage),
-            ]
-            .spacing(5),
-            column![
-                text(format!("Octaves:  {:.0}", self.controls.octaves)).size(TEXT_SIZE),
-                slider(1..=8, self.controls.octaves, Message::OctavesMessage)
-                    .on_release(Message::DrawMessage),
-            ]
-            .spacing(5),
-            column![
-                text(format!("Noise Scale:  {:.1}", self.controls.noise_scale)).size(TEXT_SIZE),
-                slider(0.5..=50.0, self.controls.noise_scale, Message::ScaleMessage)
-                    .step(0.5)
-                    .on_release(Message::DrawMessage),
-            ]
-            .spacing(5),
-            column![
-                text(format!("Noise Factor:  {:.1}", self.controls.noise_factor)).size(TEXT_SIZE),
-                slider(
-                    0.5..=25.0,
-                    self.controls.noise_factor,
-                    Message::FactorMessage,
-                )
-                .on_release(Message::DrawMessage)
-                .step(0.5),
-            ]
-            .spacing(5),
+            wslider(
+                "Palette".to_string(),
+                Message::PaletteMessage,
+                Message::DrawMessage,
+                0..=9,
+                self.controls.palette_num,
+                1
+            ),
+            wslider(
+                "Hue".to_string(),
+                Message::HueMessage,
+                Message::DrawMessage,
+                0.0..=360.0,
+                self.controls.hue,
+                1.0
+            ),
+            wslider(
+                "Grid Spacing".to_string(),
+                Message::GridSepMessage,
+                Message::DrawMessage,
+                25.0..=100.0,
+                self.controls.grid_sep,
+                1.0
+            ),
+            wslider(
+                "Octaves".to_string(),
+                Message::OctavesMessage,
+                Message::DrawMessage,
+                1..=8,
+                self.controls.octaves,
+                1
+            ),
+            wslider(
+                "Noise Scale".to_string(),
+                Message::ScaleMessage,
+                Message::DrawMessage,
+                0.5..=25.0,
+                self.controls.noise_scale,
+                0.5
+            ),
+            wslider(
+                "Noise Factor".to_string(),
+                Message::FactorMessage,
+                Message::DrawMessage,
+                0.5..=25.0,
+                self.controls.noise_factor,
+                0.5
+            ),
             column![
                 text("Extrusion Length").size(TEXT_SIZE),
                 pick_list(
@@ -222,24 +236,22 @@ impl Application for Xtrusion {
                 .text_size(TEXT_SIZE),
             ]
             .spacing(5),
-            column![
-                text(format!("Extrusion Size:  {:.0}", self.controls.len_size)).size(TEXT_SIZE),
-                slider(
-                    10.0..=500.0,
-                    self.controls.len_size,
-                    Message::LenSizeMessage,
-                )
-                .on_release(Message::DrawMessage)
-                .step(1.0),
-            ]
-            .spacing(5),
-            column![
-                text(format!("Varying Freq:  {:.0}", self.controls.len_freq)).size(TEXT_SIZE),
-                slider(1.0..=25.0, self.controls.len_freq, Message::LenFreqMessage,)
-                    .step(1.0)
-                    .on_release(Message::DrawMessage)
-            ]
-            .spacing(5),
+            wslider(
+                "Extrusion Size".to_string(),
+                Message::LenSizeMessage,
+                Message::DrawMessage,
+                75.0..=350.0,
+                self.controls.len_size,
+                1.0
+            ),
+            wslider(
+                "Varying Freq".to_string(),
+                Message::LenFreqMessage,
+                Message::DrawMessage,
+                1.0..=20.0,
+                self.controls.len_freq,
+                1.0
+            ),
             column![
                 text("Extrusion Direction").size(TEXT_SIZE),
                 pick_list(

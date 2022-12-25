@@ -10,16 +10,36 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     let bg = BG::new(canvas.width, canvas.height);
     bg.canvas_bg(&mut canvas);
     let max_length = 250;
-    let fbm = Fbm::<Perlin>::default().set_octaves(controls.octaves as usize);
-    let cyl = Cylinders::default();
     let opts = NoiseOpts::with_wh(canvas.width(), canvas.height())
         .scales(controls.noise_scale)
         .factor(controls.noise_factor);
     let mut flow = Field {
-        noise_function: if controls.curl {
-            Box::new(cyl)
-        } else {
-            Box::new(fbm)
+        noise_function: match controls.noise_function.unwrap() {
+            NoiseFunction::Fbm => {
+                Box::new(Fbm::<Perlin>::default().set_octaves(controls.octaves as usize))
+            }
+            NoiseFunction::Billow => {
+                Box::new(Billow::<Perlin>::default().set_octaves(controls.octaves as usize))
+            }
+            NoiseFunction::Ridged => {
+                Box::new(RidgedMulti::<Perlin>::default().set_octaves(controls.octaves as usize))
+            }
+            NoiseFunction::Value => Box::new(Value::default()),
+            NoiseFunction::Worley => {
+                if controls.octaves % 2 == 0 {
+                    Box::new(Worley::default().set_return_type(ReturnType::Distance))
+                } else {
+                    Box::new(Worley::default())
+                }
+            }
+            NoiseFunction::Checkerboard => {
+                Box::new(Checkerboard::default().set_size(controls.octaves as usize))
+            }
+            NoiseFunction::Cylinders => Box::new(
+                TranslatePoint::new(Cylinders::default().set_frequency(controls.octaves as f64))
+                    .set_x_translation(canvas.width as f64 / 2.0)
+                    .set_y_translation(canvas.height as f64 / 2.0),
+            ),
         },
         noise_opts: opts,
         step_size: step,
@@ -99,6 +119,51 @@ impl std::fmt::Display for Cap {
                 Cap::None => "None",
                 Cap::Light => "Light",
                 Cap::Dark => "Dark",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NoiseFunction {
+    Fbm,
+    Billow,
+    Ridged,
+    Value,
+    Checkerboard,
+    Cylinders,
+    Worley,
+}
+
+impl Distribution<NoiseFunction> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> NoiseFunction {
+        let index: u8 = rng.gen_range(0..7);
+        match index {
+            0 => NoiseFunction::Fbm,
+            1 => NoiseFunction::Checkerboard,
+            2 => NoiseFunction::Cylinders,
+            3 => NoiseFunction::Billow,
+            4 => NoiseFunction::Value,
+            5 => NoiseFunction::Ridged,
+            6 => NoiseFunction::Worley,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl std::fmt::Display for NoiseFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                NoiseFunction::Fbm => "Fbm",
+                NoiseFunction::Billow => "Billow",
+                NoiseFunction::Ridged => "Ridged",
+                NoiseFunction::Checkerboard => "Checkerboard",
+                NoiseFunction::Cylinders => "Cylinders",
+                NoiseFunction::Value => "Value",
+                NoiseFunction::Worley => "Worley",
             }
         )
     }

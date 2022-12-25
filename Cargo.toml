@@ -9,3 +9,4 @@ edition = "2021"
 iced = {version = "0.6.0", features = ["image", "tokio"]}
 wassily = { path = "/Users/jeffreyrosenbluth/Develop/wassily" }
 rand = {version = "0.8.5", features = ["small_rng"]}
+num-traits = "0.2.15"

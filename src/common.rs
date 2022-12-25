@@ -1,4 +1,4 @@
-use crate::art::{draw, Cap, Dir, Len, Location};
+use crate::art::{draw, Cap, Dir, Len, Location, NoiseFunction};
 use iced::widget::image;
 use rand::distributions::Standard;
 use rand::prelude::*;
@@ -16,7 +16,7 @@ pub struct Controls {
     pub noise_factor: f32,
     pub noise_scale: f32,
     pub octaves: u8,
-    pub curl: bool,
+    pub noise_function: Option<NoiseFunction>,
     pub len_type: Option<Len>,
     pub len_size: f32,
     pub len_dir: Option<Dir>,
@@ -36,7 +36,7 @@ impl Controls {
             noise_factor: 4.0,
             noise_scale: 4.0,
             octaves: 1,
-            curl: false,
+            noise_function: Some(NoiseFunction::Fbm),
             len_type: Some(Len::Contracting),
             len_size: 150.0,
             len_dir: Some(Dir::Circle),
@@ -53,11 +53,20 @@ impl Distribution<Controls> for Standard {
         let hue = rng.gen_range(0.0..360.0);
         let palette_num = rng.gen_range(0..10);
         let location: Option<Location> = Some(rng.gen());
-        let grid_sep = rng.gen_range(25.0..100.0);
-        let noise_factor = rng.gen_range(1.0..7.0);
+        let grid_sep = rng.gen_range(40.0..90.0);
+        let noise_function: Option<NoiseFunction> = Some(rng.gen());
+        let max_factor = match noise_function.unwrap() {
+            NoiseFunction::Fbm => 7.0,
+            NoiseFunction::Billow => 7.0,
+            NoiseFunction::Ridged => 7.0,
+            NoiseFunction::Value => 7.0,
+            NoiseFunction::Checkerboard => 2.0,
+            NoiseFunction::Cylinders => 2.0,
+            NoiseFunction::Worley => 7.0,
+        };
+        let noise_factor = rng.gen_range(1.0..max_factor);
         let noise_scale = rng.gen_range(1.0..7.0);
         let octaves = rng.gen_range(1..8);
-        let curl = false;
         let len_type: Option<Len> = Some(rng.gen());
         let len_size = rng.gen_range(100.0..325.0);
         let len_dir: Option<Dir> = Some(rng.gen());
@@ -72,7 +81,7 @@ impl Distribution<Controls> for Standard {
             noise_factor,
             noise_scale,
             octaves,
-            curl,
+            noise_function,
             len_type,
             len_size,
             len_dir,
