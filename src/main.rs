@@ -138,9 +138,7 @@ impl Application for Xtrusion {
                 )
                 .text_size(TEXT_SIZE)
             ),
-            column![
-                text("Noise Function").size(TEXT_SIZE),
-                pick_list(
+            wpick_list("Noise Function".to_string(),
                     vec![
                         NoiseFunction::Fbm,
                         NoiseFunction::Billow,
@@ -150,15 +148,10 @@ impl Application for Xtrusion {
                         NoiseFunction::Cylinders,
                         NoiseFunction::Worley,
                     ],
-                    self.controls.noise_function,
-                    Message::NoiseMessage
-                )
-                .text_size(TEXT_SIZE),
-            ]
-            .spacing(5),
-            column![
-                text("Location").size(TEXT_SIZE),
-                pick_list(
+                    self.controls.noise_function.unwrap(),
+                    Message::NoiseMessage),
+            wpick_list(
+                "Location".to_string(),
                     vec![
                         Location::Grid,
                         Location::Rand,
@@ -167,12 +160,8 @@ impl Application for Xtrusion {
                         Location::Circle,
                         Location::Trig,
                     ],
-                    self.controls.location,
-                    Message::LocMessage
-                )
-                .text_size(TEXT_SIZE),
-            ]
-            .spacing(5),
+                    self.controls.location.unwrap(),
+                    Message::LocMessage),
             wslider(
                 "Palette".to_string(),
                 Message::PaletteMessage,
@@ -221,21 +210,16 @@ impl Application for Xtrusion {
                 self.controls.noise_factor,
                 0.5
             ),
-            column![
-                text("Extrusion Length").size(TEXT_SIZE),
-                pick_list(
+            wpick_list(
+                "Extrusion Length".to_string(),
                     vec![
                         Len::Constant,
                         Len::Expanding,
                         Len::Contracting,
                         Len::Varying,
                     ],
-                    self.controls.len_type,
-                    Message::LenMessage
-                )
-                .text_size(TEXT_SIZE),
-            ]
-            .spacing(5),
+                    self.controls.len_type.unwrap(),
+                    Message::LenMessage),
             wslider(
                 "Extrusion Size".to_string(),
                 Message::LenSizeMessage,
@@ -252,27 +236,18 @@ impl Application for Xtrusion {
                 self.controls.len_freq,
                 1.0
             ),
-            column![
-                text("Extrusion Direction").size(TEXT_SIZE),
-                pick_list(
+            wpick_list(
+                "Extrusion Direction".to_string(),
                     vec![Dir::Circle, Dir::Horizontal, Dir::Vertical,],
-                    self.controls.len_dir,
-                    Message::LenDirMessage
-                )
-                .text_size(TEXT_SIZE),
-            ]
-            .spacing(5),
-            column![
-                text("Highlight").size(TEXT_SIZE),
-                pick_list(
+                    self.controls.len_dir.unwrap(),
+                    Message::LenDirMessage),
+            wpick_list(
+                "Highlight".to_string(),
                     vec![Cap::None, Cap::Light, Cap::Dark],
-                    self.controls.cap,
+                    self.controls.cap.unwrap(),
                     Message::CapMessage
                 )
-                .text_size(TEXT_SIZE),
-            ]
-            .spacing(5),
-        ]
+         ]
         .padding(20)
         .spacing(15)
         .width(Length::Units(200));

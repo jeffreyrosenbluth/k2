@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use iced::{
-    widget::{column, row, slider, text, Column},
+    widget::{column, row, slider, text, Column, pick_list},
     Alignment, Color, Length,
 };
 
@@ -43,3 +43,20 @@ where
     ]
     .spacing(5)
 }
+
+pub fn wpick_list<T, M>(
+    title: String,
+    choices: Vec<T>,
+    value: T,
+    message: impl Fn(T) -> M + 'static,
+    ) -> Column<'static, M>
+    where
+T: 'static + Copy + std::fmt::Display + Clone + Eq,
+M: 'static,
+{
+    column![
+    text(title).size(15),
+    pick_list(choices, Some(value), message).text_size(15),
+    ]
+    .spacing(5)
+    }
