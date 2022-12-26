@@ -23,6 +23,7 @@ pub struct Controls {
     pub len_freq: f32,
     pub cap: Option<Cap>,
     pub exporting: bool,
+    pub worley_dist: bool,
 }
 
 impl Controls {
@@ -43,6 +44,7 @@ impl Controls {
             len_freq: 5.0,
             cap: Some(Cap::None),
             exporting: false,
+            worley_dist: false,
         }
     }
 }
@@ -50,6 +52,7 @@ impl Controls {
 impl Distribution<Controls> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Controls {
         let spaced = rng.gen_bool(0.25);
+        let worley_dist = rng.gen_bool(0.5);
         let hue = rng.gen_range(0.0..360.0);
         let palette_num = rng.gen_range(0..10);
         let location: Option<Location> = Some(rng.gen());
@@ -88,6 +91,7 @@ impl Distribution<Controls> for Standard {
             len_freq,
             cap,
             exporting: false,
+            worley_dist,
         }
     }
 }

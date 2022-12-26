@@ -26,7 +26,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
             }
             NoiseFunction::Value => Box::new(Value::default()),
             NoiseFunction::Worley => {
-                if controls.octaves % 2 == 0 {
+                if controls.worley_dist {
                     Box::new(Worley::default().set_return_type(ReturnType::Distance))
                 } else {
                     Box::new(Worley::default())
@@ -268,11 +268,11 @@ fn contracting(w: f32, h: f32, r: f32, dir: Dir) -> impl Fn(Point) -> f32 {
 }
 
 fn varying(w: f32, h: f32, r: f32, dir: Dir, freq: f32) -> impl Fn(Point) -> f32 {
-    move |p| ((freq * TAU * indep(p, w, h, dir)).sin() + 1.25) * 0.25 * r
+    move |p| ((freq * TAU * indep(p, w, h, dir)).sin() + 1.0) * 0.25 * r
 }
 
 fn constant(r: f32) -> impl Fn(Point) -> f32 {
-    move |_| r / 2.0
+    move |_| r * 0.5
 }
 
 pub async fn print(controls: Controls, scale: f32) {

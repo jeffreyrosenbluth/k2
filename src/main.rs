@@ -41,6 +41,7 @@ pub enum Message {
     CapMessage(Cap),
     RandMessage,
     ExportCompleteMessage(()),
+    WorleyDistMessage(bool),
 }
 
 impl Application for Xtrusion {
@@ -123,94 +124,121 @@ impl Application for Xtrusion {
                     image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
             }
             Message::ExportCompleteMessage(_) => self.controls.exporting = false,
+            Message::WorleyDistMessage(b) => {
+                self.controls.worley_dist = b;
+                let canvas = draw(&self.controls, 1.0);
+                self.image =
+                    image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
+            }
         }
         Command::none()
     }
 
     fn view(&self) -> Element<Message> {
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
-        let control_panel = column![
-            Container::new(
+        let mut control_panel = column![];
+            control_panel = control_panel.push(Container::new(
                 toggler(
                     "Spaced".to_owned(),
                     self.controls.spaced,
                     Message::SpaceMessage
                 )
                 .text_size(TEXT_SIZE)
-            ),
-            wpick_list("Noise Function".to_string(),
-                    vec![
-                        NoiseFunction::Fbm,
-                        NoiseFunction::Billow,
-                        NoiseFunction::Ridged,
-                        NoiseFunction::Value,
-                        NoiseFunction::Checkerboard,
-                        NoiseFunction::Cylinders,
-                        NoiseFunction::Worley,
-                    ],
-                    self.controls.noise_function.unwrap(),
-                    Message::NoiseMessage),
-            wpick_list(
-                "Location".to_string(),
-                    vec![
-                        Location::Grid,
-                        Location::Rand,
-                        Location::Halton,
-                        Location::Poisson,
-                        Location::Circle,
-                        Location::Trig,
-                    ],
-                    self.controls.location.unwrap(),
-                    Message::LocMessage),
-            wslider(
-                "Palette".to_string(),
-                Message::PaletteMessage,
+            )
+        )
+        .push(wpick_list("Noise Function".to_string(),
+            vec![
+                NoiseFunction::Fbm,
+                NoiseFunction::Billow,
+                NoiseFunction::Ridged,
+                NoiseFunction::Value,
+                NoiseFunction::Checkerboard,
+                NoiseFunction::Cylinders,
+                NoiseFunction::Worley,
+            ],
+            self.controls.noise_function,
+            Message::NoiseMessage
+            )
+        );
+        if self.controls.noise_function == Some(NoiseFunction::Worley) {
+            control_panel = control_panel.push(Container::new(
+                toggler(
+                    "Distance Function".to_owned(),
+                    self.controls.worley_dist,
+                    Message::WorleyDistMessage
+                ).text_size(TEXT_SIZE)
+            )
+        )
+        } else {
+            control_panel = control_panel.push(wslider(
+                "Octaves".to_string(),
+                Message::OctavesMessage,
                 Message::DrawMessage,
-                0..=9,
-                self.controls.palette_num,
-                1
-            ),
-            wslider(
+                1..=8,
+                self.controls.octaves,
+                1)
+            )
+        };
+        control_panel= control_panel.push(wslider(
+            "Noise Scale".to_string(),
+            Message::ScaleMessage,
+            Message::DrawMessage,
+            0.5..=25.0,
+            self.controls.noise_scale,
+            0.5
+            )
+        )
+       .push(wslider(
+            "Noise Factor".to_string(),
+            Message::FactorMessage,
+            Message::DrawMessage,
+            0.5..=25.0,
+            self.controls.noise_factor,
+            0.5
+            )
+        )
+       .push(wpick_list(
+            "Location".to_string(),
+            vec![
+                Location::Grid,
+                Location::Rand,
+                Location::Halton,
+                Location::Poisson,
+                Location::Circle,
+                Location::Trig,
+            ],
+            self.controls.location,
+            Message::LocMessage
+            )
+       )
+       .push(wslider(
+            "Palette".to_string(),
+            Message::PaletteMessage,
+            Message::DrawMessage,
+            0..=9,
+            self.controls.palette_num,
+            1
+            )
+        )
+            .push(wslider(
                 "Hue".to_string(),
                 Message::HueMessage,
                 Message::DrawMessage,
                 0.0..=360.0,
                 self.controls.hue,
                 1.0
-            ),
-            wslider(
+            )
+        )
+            .push(wslider(
                 "Grid Spacing".to_string(),
                 Message::GridSepMessage,
                 Message::DrawMessage,
                 25.0..=100.0,
                 self.controls.grid_sep,
                 1.0
-            ),
-            wslider(
-                "Octaves".to_string(),
-                Message::OctavesMessage,
-                Message::DrawMessage,
-                1..=8,
-                self.controls.octaves,
-                1
-            ),
-            wslider(
-                "Noise Scale".to_string(),
-                Message::ScaleMessage,
-                Message::DrawMessage,
-                0.5..=25.0,
-                self.controls.noise_scale,
-                0.5
-            ),
-            wslider(
-                "Noise Factor".to_string(),
-                Message::FactorMessage,
-                Message::DrawMessage,
-                0.5..=25.0,
-                self.controls.noise_factor,
-                0.5
-            ),
-            wpick_list(
+            )
+        )
+            .push(wpick_list(
                 "Extrusion Length".to_string(),
                     vec![
                         Len::Constant,
@@ -218,36 +246,36 @@ impl Application for Xtrusion {
                         Len::Contracting,
                         Len::Varying,
                     ],
-                    self.controls.len_type.unwrap(),
-                    Message::LenMessage),
-            wslider(
+                    self.controls.len_type,
+                    Message::LenMessage))
+            .push(wslider(
                 "Extrusion Size".to_string(),
                 Message::LenSizeMessage,
                 Message::DrawMessage,
                 75.0..=350.0,
                 self.controls.len_size,
                 1.0
-            ),
-            wslider(
+            ))
+            .push(wslider(
                 "Varying Freq".to_string(),
                 Message::LenFreqMessage,
                 Message::DrawMessage,
                 1.0..=20.0,
                 self.controls.len_freq,
                 1.0
-            ),
-            wpick_list(
+            ))
+            .push(wpick_list(
                 "Extrusion Direction".to_string(),
                     vec![Dir::Circle, Dir::Horizontal, Dir::Vertical,],
-                    self.controls.len_dir.unwrap(),
-                    Message::LenDirMessage),
-            wpick_list(
+                    self.controls.len_dir,
+                    Message::LenDirMessage))
+            .push(wpick_list(
                 "Highlight".to_string(),
                     vec![Cap::None, Cap::Light, Cap::Dark],
-                    self.controls.cap.unwrap(),
+                    self.controls.cap,
                     Message::CapMessage
-                )
-         ]
+                ))
+        
         .padding(20)
         .spacing(15)
         .width(Length::Units(200));
