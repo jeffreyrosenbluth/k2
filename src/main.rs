@@ -106,7 +106,11 @@ impl Application for Xtrusion {
             }
             Message::RandMessage => {
                 let mut rng = SmallRng::from_entropy();
+                let w = self.controls.export_width.clone();
+                let h = self.controls.export_height.clone();
                 self.controls = rng.gen();
+                self.controls.export_width = w;
+                self.controls.export_height = h;
                 self.draw();
             }
             Message::ExportCompleteMessage(_) => self.controls.exporting = false,
