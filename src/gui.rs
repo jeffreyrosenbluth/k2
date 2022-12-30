@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use iced::{
-    widget::{column, row, slider, text, Column, pick_list},
+    widget::{column, pick_list, row, slider, text, Column},
     Alignment, Color, Length,
 };
 
@@ -36,7 +36,7 @@ where
             slider(range, value, message)
                 .on_release(release)
                 .step(step)
-                .width(Length::Units(130)),
+                .width(Length::Units(150)),
             text(n).size(15).style(Color::from_rgb8(0x5E, 0x7C, 0xE2))
         ]
         .align_items(Alignment::Center)
@@ -55,8 +55,10 @@ where
     M: 'static,
 {
     column![
-    text(title).size(15),
-    pick_list(choices, value, message).text_size(15),
+        text(title).size(15),
+        pick_list(choices, value, message)
+            .text_size(15)
+            .width(Length::Units(175)),
     ]
     .spacing(5)
 }

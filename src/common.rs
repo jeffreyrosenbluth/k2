@@ -3,8 +3,8 @@ use iced::widget::image;
 use rand::distributions::Standard;
 use rand::prelude::*;
 
-pub const WIDTH: u32 = 800;
-pub const HEIGHT: u32 = 450;
+pub const WIDTH: u32 = 600;
+pub const HEIGHT: u32 = 600;
 
 #[derive(Clone)]
 pub struct Controls {
@@ -24,6 +24,8 @@ pub struct Controls {
     pub cap: Option<Cap>,
     pub exporting: bool,
     pub worley_dist: bool,
+    pub export_width: String,
+    pub export_height: String,
 }
 
 impl Controls {
@@ -45,6 +47,8 @@ impl Controls {
             cap: Some(Cap::None),
             exporting: false,
             worley_dist: false,
+            export_width: String::new(),
+            export_height: String::new(),
         }
     }
 }
@@ -92,6 +96,8 @@ impl Distribution<Controls> for Standard {
             cap,
             exporting: false,
             worley_dist,
+            export_width: String::new(),
+            export_height: String::new(),
         }
     }
 }
@@ -108,5 +114,15 @@ impl Xtrusion {
             controls: Controls::new(),
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
         }
+    }
+
+    pub fn draw(&mut self) {
+        let controls = Controls {
+            export_width: String::new(),
+            export_height: String::new(),
+            ..self.controls
+        };
+        let canvas = draw(&controls, 1.0);
+        self.image = image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
     }
 }

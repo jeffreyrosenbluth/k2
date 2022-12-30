@@ -5,6 +5,14 @@ use crate::field::*;
 
 pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     let mut canvas = Canvas::with_scale(WIDTH, HEIGHT, scale);
+    if let Ok(w) = controls.export_width.parse::<u32>() {
+        if let Ok(h) = controls.export_height.parse::<u32>() {
+            let aspect_ratio = h as f32 / w as f32;
+            let h = aspect_ratio * WIDTH as f32;
+            let scale = w as f32 / WIDTH as f32;
+            canvas = Canvas::with_scale(WIDTH, h as u32, scale)
+        }
+    };
     let step = if controls.spaced { 3.0 } else { 1.0 };
     canvas.fill(*WHITE);
     let bg = BG::new(canvas.width, canvas.height);
