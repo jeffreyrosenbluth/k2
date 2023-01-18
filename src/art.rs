@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use wassily::prelude::*;
 
 use crate::common::{Controls, HEIGHT, WIDTH};
@@ -9,8 +11,8 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         if let Ok(h) = controls.export_height.parse::<u32>() {
             let aspect_ratio = h as f32 / w as f32;
             let h = aspect_ratio * WIDTH as f32;
-            let scale = w as f32 / WIDTH as f32;
-            canvas = Canvas::with_scale(WIDTH, h as u32, scale)
+            let s = w as f32 / WIDTH as f32;
+            canvas = Canvas::with_scale(WIDTH, h as u32, s)
         }
     };
     let step = if controls.spaced { 3.0 } else { 1.0 };
@@ -23,21 +25,27 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         .factor(controls.noise_factor);
     let mut flow = Field {
         noise_function: match controls.noise_function.unwrap() {
-            NoiseFunction::Fbm => {
-                Box::new(Fbm::<Perlin>::default().set_octaves(controls.octaves as usize))
-            }
-            NoiseFunction::Billow => {
-                Box::new(Billow::<Perlin>::default().set_octaves(controls.octaves as usize))
-            }
-            NoiseFunction::Ridged => {
-                Box::new(RidgedMulti::<Perlin>::default().set_octaves(controls.octaves as usize))
-            }
-            NoiseFunction::Value => Box::new(Value::default()),
+            NoiseFunction::Fbm => Box::new(
+                Fbm::<Perlin>::default()
+                    .set_octaves(controls.octaves as usize)
+                    .set_persistence(controls.persistence as f64),
+            ),
+            NoiseFunction::Billow => Box::new(
+                Billow::<Perlin>::default()
+                    .set_octaves(controls.octaves as usize)
+                    .set_persistence(controls.persistence as f64),
+            ),
+            NoiseFunction::Ridged => Box::new(
+                RidgedMulti::<Perlin>::default()
+                    .set_octaves(controls.octaves as usize)
+                    .set_persistence(controls.persistence as f64),
+            ),
+            NoiseFunction::Value => Box::<Value>::default(),
             NoiseFunction::Worley => {
                 if controls.worley_dist {
                     Box::new(Worley::default().set_return_type(ReturnType::Distance))
                 } else {
-                    Box::new(Worley::default())
+                    Box::<Worley>::default()
                 }
             }
             NoiseFunction::Checkerboard => {
@@ -61,7 +69,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
             .unwrap()
             .starts(canvas.w_f32(), canvas.h_f32(), controls.grid_sep);
     let mut palette = Palette::new(expand_palette(color_palette(controls.palette_num)));
-    palette.rotate_hue(controls.hue);
+    palette.rotate_hue(controls.hue as f32);
     let len_fn = controls.len_type.unwrap().calc(
         canvas.w_f32(),
         canvas.h_f32(),
@@ -179,7 +187,7 @@ impl std::fmt::Display for NoiseFunction {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Dir {
-    Circle,
+    Both,
     Horizontal,
     Vertical,
 }
@@ -188,7 +196,7 @@ impl Distribution<Dir> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Dir {
         let index: u8 = rng.gen_range(0..3);
         match index {
-            0 => Dir::Circle,
+            0 => Dir::Both,
             1 => Dir::Horizontal,
             2 => Dir::Vertical,
             _ => unreachable!(),
@@ -202,7 +210,7 @@ impl std::fmt::Display for Dir {
             f,
             "{}",
             match self {
-                Dir::Circle => "Circle",
+                Dir::Both => "Both",
                 Dir::Horizontal => "Horizontal",
                 Dir::Vertical => "Vertical",
             }
@@ -214,7 +222,7 @@ fn indep(p: Point, w: f32, h: f32, dir: Dir) -> f32 {
     let cx = (p.x - w / 2.0).abs();
     let cy = (p.y - h / 2.0).abs();
     match dir {
-        Dir::Circle => (cx * cx / (w * w) + cy * cy / (h * h)).sqrt(),
+        Dir::Both => (cx * cx / (w * w) + cy * cy / (h * h)).sqrt(),
         Dir::Horizontal => cx / w,
         Dir::Vertical => cy / h,
     }
@@ -226,6 +234,7 @@ pub enum Len {
     Contracting,
     Constant,
     Varying,
+    Noisy,
 }
 
 impl std::fmt::Display for Len {
@@ -238,6 +247,7 @@ impl std::fmt::Display for Len {
                 Len::Expanding => "Expanding",
                 Len::Contracting => "Contracting",
                 Len::Varying => "Varying",
+                Len::Noisy => "Noisy",
             }
         )
     }
@@ -245,12 +255,13 @@ impl std::fmt::Display for Len {
 
 impl Distribution<Len> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Len {
-        let index: u8 = rng.gen_range(0..4);
+        let index: u8 = rng.gen_range(0..5);
         match index {
             0 => Len::Constant,
             1 => Len::Expanding,
             2 => Len::Contracting,
             3 => Len::Varying,
+            4 => Len::Noisy,
             _ => unreachable!(),
         }
     }
@@ -263,6 +274,7 @@ impl Len {
             Len::Contracting => Box::new(contracting(w, h, r, dir)),
             Len::Varying => Box::new(varying(w, h, r, dir, freq)),
             Len::Constant => Box::new(constant(r)),
+            Len::Noisy => Box::new(noisy(w, h, r)),
         }
     }
 }
@@ -277,6 +289,15 @@ fn contracting(w: f32, h: f32, r: f32, dir: Dir) -> impl Fn(Point) -> f32 {
 
 fn varying(w: f32, h: f32, r: f32, dir: Dir, freq: f32) -> impl Fn(Point) -> f32 {
     move |p| ((freq * TAU * indep(p, w, h, dir)).sin() + 1.0) * 0.25 * r
+}
+
+fn noisy(w: f32, h: f32, r: f32) -> impl Fn(Point) -> f32 {
+    move |p| {
+        let opts = NoiseOpts::with_wh(w, h).scales(16.0);
+        let nf = Perlin::default().set_seed(1);
+        let k = noise2d_01(nf, &opts, p.x, p.y);
+        k * r
+    }
 }
 
 fn constant(r: f32) -> impl Fn(Point) -> f32 {
@@ -296,7 +317,7 @@ pub enum Location {
     Halton,
     Poisson,
     Circle,
-    Trig,
+    Lissajous,
 }
 
 impl Location {
@@ -331,7 +352,8 @@ impl Location {
             Location::Circle => {
                 let cx = w / 2.0;
                 let cy = h / 2.0;
-                let radii = vec![w / 6.0, w / 3.5, w / 2.5];
+                let r = w.max(h);
+                let radii = vec![r / 6.0, r / 3.5, r / 2.5];
                 for r in radii {
                     let delta = 0.5 * sep / r;
                     let mut theta = 0.0;
@@ -341,16 +363,15 @@ impl Location {
                     }
                 }
             }
-            Location::Trig => {
+            Location::Lissajous => {
                 let n = (w * h) / (sep * sep);
-                let p1 = if rng.gen_bool(0.5) { 3 } else { 1 };
-                let p2 = if rng.gen_bool(0.5) { 3 } else { 1 };
-                let f1 = rng.gen_range(1.0..=13.0);
-                let f2 = rng.gen_range(1.0..=13.0);
+                let cx = w / 2.0;
+                let cy = h / 2.0;
                 for i in 0..n as u32 {
-                    let x = (w / 3.0) * (f1 * TAU * i as f32 / n as f32).sin().powi(p1);
-                    let y = (h / 3.0) * (f2 * TAU * i as f32 / n as f32).sin().powi(p2);
-                    pts.push(pt(x + w / 2.0, y + h / 2.0));
+                    let t = i as f32 * 2.0 * PI / n;
+                    let x = 0.9 * w * (1.0 * t + PI / 2.0).sin();
+                    let y = 0.9 * h * (3.0 * t).sin();
+                    pts.push(pt(x / 2.0 + cx, y / 2.0 + cy));
                 }
             }
         }
@@ -369,7 +390,7 @@ impl std::fmt::Display for Location {
                 Location::Halton => "Halton",
                 Location::Poisson => "Poisson",
                 Location::Circle => "Circle",
-                Location::Trig => "Trig",
+                Location::Lissajous => "Lissajous",
             }
         )
     }
@@ -384,7 +405,7 @@ impl Distribution<Location> for Standard {
             2 => Location::Halton,
             3 => Location::Poisson,
             4 => Location::Circle,
-            5 => Location::Trig,
+            5 => Location::Lissajous,
             _ => unreachable!(),
         }
     }
@@ -475,7 +496,7 @@ fn expand_palette(palette: Vec<Color>) -> Vec<Color> {
             result.push(c);
         }
     }
-    return result;
+    result
 }
 
 //   function saturate(c, s)
@@ -498,7 +519,7 @@ fn color_palette(index: u8) -> Vec<Color> {
         3 => hex_to_color(vec![0x283618, 0xBC6C25]),
         4 => hex_to_color(vec![0xA3B18A, 0x588157, 0x3A5A40, 0x344E41]),
         5 => hex_to_color(vec![0xB7A635, 0x4E1406, 0x704514]),
-        6 => hex_to_color(vec![0x621708, 0x941B0C, 0xBc3908, 0xF6AA1C]),
+        6 => hex_to_color(vec![0x621708, 0x941B0C, 0xBC3908, 0xF6AA1C]),
         7 => hex_to_color(vec![0xD9798B, 0x8C4962, 0x59364A, 0x594832]),
         8 => hex_to_color(vec![0xBF2642, 0x731F2E, 0x400C16]),
         _ => hex_to_color(vec![0x000000, 0xFFFFFF]),

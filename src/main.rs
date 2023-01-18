@@ -23,28 +23,29 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    SpaceMessage(bool),
-    PaletteMessage(u8),
-    HueMessage(f32),
-    ExportMessage,
-    DrawMessage,
-    LocMessage(Location),
-    GridSepMessage(f32),
-    OctavesMessage(u8),
-    FactorMessage(f32),
-    ScaleMessage(f32),
-    NoiseMessage(NoiseFunction),
-    LenMessage(Len),
-    LenSizeMessage(f32),
-    LenFreqMessage(f32),
-    LenDirMessage(Dir),
-    CapMessage(Cap),
-    RandMessage,
-    ExportCompleteMessage(()),
-    WorleyDistMessage(bool),
-    ExportWidthMessage(String),
-    ExportHeightMessage(String),
-    NullMessage,
+    Space(bool),
+    Palette(u8),
+    Hue(u16),
+    Export,
+    Draw,
+    Location(Location),
+    GridSep(f32),
+    Octaves(u8),
+    Factor(f32),
+    Scale(f32),
+    Persistence(f32),
+    Noise(NoiseFunction),
+    Length(Len),
+    LengthSize(f32),
+    LengthFreq(f32),
+    LengthDir(Dir),
+    Cap(Cap),
+    Randomize,
+    ExportComplete(()),
+    WorleyDistance(bool),
+    ExportWidth(String),
+    ExportHeight(String),
+    Null,
 }
 
 impl Application for Xtrusion {
@@ -64,47 +65,48 @@ impl Application for Xtrusion {
     fn update(&mut self, message: Message) -> Command<Message> {
         let controls = self.controls.clone();
         match message {
-            Message::SpaceMessage(b) => {
+            Message::Space(b) => {
                 self.controls.spaced = b;
                 self.draw();
             }
-            Message::ExportMessage => {
+            Message::Export => {
                 self.controls.exporting = true;
-                return Command::perform(print(controls, 4.8), Message::ExportCompleteMessage);
+                return Command::perform(print(controls, 1.0), Message::ExportComplete);
             }
 
-            Message::HueMessage(hue) => self.controls.hue = hue,
-            Message::PaletteMessage(p) => self.controls.palette_num = p,
-            Message::LocMessage(loc) => {
+            Message::Hue(hue) => self.controls.hue = hue,
+            Message::Palette(p) => self.controls.palette_num = p,
+            Message::Location(loc) => {
                 self.controls.location = Some(loc);
                 self.draw();
             }
-            Message::GridSepMessage(s) => self.controls.grid_sep = s,
-            Message::DrawMessage => {
+            Message::GridSep(s) => self.controls.grid_sep = s,
+            Message::Draw => {
                 self.draw();
             }
-            Message::OctavesMessage(o) => self.controls.octaves = o,
-            Message::FactorMessage(f) => self.controls.noise_factor = f,
-            Message::ScaleMessage(s) => self.controls.noise_scale = s,
-            Message::NoiseMessage(n) => {
+            Message::Octaves(o) => self.controls.octaves = o,
+            Message::Persistence(p) => self.controls.persistence = p,
+            Message::Factor(f) => self.controls.noise_factor = f,
+            Message::Scale(s) => self.controls.noise_scale = s,
+            Message::Noise(n) => {
                 self.controls.noise_function = Some(n);
                 self.draw();
             }
-            Message::LenMessage(l) => {
+            Message::Length(l) => {
                 self.controls.len_type = Some(l);
                 self.draw();
             }
-            Message::LenSizeMessage(s) => self.controls.len_size = s,
-            Message::LenFreqMessage(f) => self.controls.len_freq = f,
-            Message::LenDirMessage(d) => {
+            Message::LengthSize(s) => self.controls.len_size = s,
+            Message::LengthFreq(f) => self.controls.len_freq = f,
+            Message::LengthDir(d) => {
                 self.controls.len_dir = Some(d);
                 self.draw();
             }
-            Message::CapMessage(c) => {
+            Message::Cap(c) => {
                 self.controls.cap = Some(c);
                 self.draw();
             }
-            Message::RandMessage => {
+            Message::Randomize => {
                 let mut rng = SmallRng::from_entropy();
                 let w = self.controls.export_width.clone();
                 let h = self.controls.export_height.clone();
@@ -113,14 +115,14 @@ impl Application for Xtrusion {
                 self.controls.export_height = h;
                 self.draw();
             }
-            Message::ExportCompleteMessage(_) => self.controls.exporting = false,
-            Message::WorleyDistMessage(b) => {
+            Message::ExportComplete(_) => self.controls.exporting = false,
+            Message::WorleyDistance(b) => {
                 self.controls.worley_dist = b;
                 self.draw();
             }
-            Message::ExportWidthMessage(w) => self.controls.export_width = w,
-            Message::ExportHeightMessage(h) => self.controls.export_height = h,
-            Message::NullMessage => {}
+            Message::ExportWidth(w) => self.controls.export_width = w,
+            Message::ExportHeight(h) => self.controls.export_height = h,
+            Message::Null => {}
         }
         Command::none()
     }
@@ -130,148 +132,198 @@ impl Application for Xtrusion {
         let mut control_panel = column![];
         control_panel = control_panel
             .push(Container::new(
-                toggler(
-                    "Spaced".to_owned(),
-                    self.controls.spaced,
-                    Message::SpaceMessage,
-                )
-                .text_size(TEXT_SIZE),
+                toggler("Spaced".to_owned(), self.controls.spaced, Message::Space)
+                    .text_size(TEXT_SIZE),
             ))
-            .push(wpick_list(
-                "Noise Function".to_string(),
-                vec![
-                    NoiseFunction::Fbm,
-                    NoiseFunction::Billow,
-                    NoiseFunction::Ridged,
-                    NoiseFunction::Value,
-                    NoiseFunction::Checkerboard,
-                    NoiseFunction::Cylinders,
-                    NoiseFunction::Worley,
-                ],
-                self.controls.noise_function,
-                Message::NoiseMessage,
-            ));
+            .push(
+                PickListBuilder::new(
+                    "Noise Function".to_string(),
+                    vec![
+                        NoiseFunction::Fbm,
+                        NoiseFunction::Billow,
+                        NoiseFunction::Ridged,
+                        NoiseFunction::Value,
+                        NoiseFunction::Checkerboard,
+                        NoiseFunction::Cylinders,
+                        NoiseFunction::Worley,
+                    ],
+                    self.controls.noise_function,
+                    Message::Noise,
+                )
+                .build(),
+            );
         if self.controls.noise_function == Some(NoiseFunction::Worley) {
             control_panel = control_panel.push(Container::new(
                 toggler(
                     "Distance Function".to_owned(),
                     self.controls.worley_dist,
-                    Message::WorleyDistMessage,
+                    Message::WorleyDistance,
                 )
                 .text_size(TEXT_SIZE),
             ))
         } else {
-            control_panel = control_panel.push(wslider(
-                "Octaves".to_string(),
-                Message::OctavesMessage,
-                Message::DrawMessage,
-                1..=8,
-                self.controls.octaves,
-                1,
-            ))
+            control_panel = control_panel.push(
+                SliderBuilder::new(
+                    "Octaves".to_string(),
+                    Message::Octaves,
+                    Message::Draw,
+                    self.controls.octaves,
+                )
+                .range(1..=8)
+                .decimals(0)
+                .build(),
+            )
         };
         control_panel = control_panel
-            .push(wslider(
-                "Noise Scale".to_string(),
-                Message::ScaleMessage,
-                Message::DrawMessage,
-                0.5..=25.0,
-                self.controls.noise_scale,
-                0.5,
-            ))
-            .push(wslider(
-                "Noise Factor".to_string(),
-                Message::FactorMessage,
-                Message::DrawMessage,
-                0.5..=25.0,
-                self.controls.noise_factor,
-                0.5,
-            ))
-            .push(wpick_list(
-                "Location".to_string(),
-                vec![
-                    Location::Grid,
-                    Location::Rand,
-                    Location::Halton,
-                    Location::Poisson,
-                    Location::Circle,
-                    Location::Trig,
-                ],
-                self.controls.location,
-                Message::LocMessage,
-            ))
-            .push(wslider(
-                "Palette".to_string(),
-                Message::PaletteMessage,
-                Message::DrawMessage,
-                0..=9,
-                self.controls.palette_num,
-                1,
-            ))
-            .push(wslider(
-                "Hue".to_string(),
-                Message::HueMessage,
-                Message::DrawMessage,
-                0.0..=360.0,
-                self.controls.hue,
-                1.0,
-            ))
-            .push(wslider(
-                "Grid Spacing".to_string(),
-                Message::GridSepMessage,
-                Message::DrawMessage,
-                25.0..=100.0,
-                self.controls.grid_sep,
-                1.0,
-            ))
-            .push(wpick_list(
-                "Extrusion Length".to_string(),
-                vec![
-                    Len::Constant,
-                    Len::Expanding,
-                    Len::Contracting,
-                    Len::Varying,
-                ],
-                self.controls.len_type,
-                Message::LenMessage,
-            ))
-            .push(wslider(
-                "Extrusion Size".to_string(),
-                Message::LenSizeMessage,
-                Message::DrawMessage,
-                75.0..=350.0,
-                self.controls.len_size,
-                1.0,
-            ))
-            .push(wslider(
-                "Varying Freq".to_string(),
-                Message::LenFreqMessage,
-                Message::DrawMessage,
-                1.0..=20.0,
-                self.controls.len_freq,
-                1.0,
-            ))
-            .push(wpick_list(
-                "Extrusion Direction".to_string(),
-                vec![Dir::Circle, Dir::Horizontal, Dir::Vertical],
-                self.controls.len_dir,
-                Message::LenDirMessage,
-            ))
-            .push(wpick_list(
-                "Highlight".to_string(),
-                vec![Cap::None, Cap::Light, Cap::Dark],
-                self.controls.cap,
-                Message::CapMessage,
-            ))
+            .push(
+                SliderBuilder::new(
+                    "Noise Scale".to_string(),
+                    Message::Scale,
+                    Message::Draw,
+                    self.controls.noise_scale,
+                )
+                .range(0.5..=20.0)
+                .step(0.5)
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Noise Factor".to_string(),
+                    Message::Factor,
+                    Message::Draw,
+                    self.controls.noise_factor,
+                )
+                .range(0.5..=20.0)
+                .step(0.5)
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Persistence".to_string(),
+                    Message::Persistence,
+                    Message::Draw,
+                    self.controls.persistence,
+                )
+                .range(0.05..=0.95)
+                .step(0.05)
+                .decimals(2)
+                .build(),
+            )
+            .push(
+                PickListBuilder::new(
+                    "Location".to_string(),
+                    vec![
+                        Location::Grid,
+                        Location::Rand,
+                        Location::Halton,
+                        Location::Poisson,
+                        Location::Circle,
+                        Location::Lissajous,
+                    ],
+                    self.controls.location,
+                    Message::Location,
+                )
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Palette".to_string(),
+                    Message::Palette,
+                    Message::Draw,
+                    self.controls.palette_num,
+                )
+                .range(0..=9)
+                .step(1)
+                .decimals(0)
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Hue".to_string(),
+                    Message::Hue,
+                    Message::Draw,
+                    self.controls.hue,
+                )
+                .range(0..=360)
+                .step(5)
+                .decimals(0)
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Grid Spacing".to_string(),
+                    Message::GridSep,
+                    Message::Draw,
+                    self.controls.grid_sep,
+                )
+                .range(25.0..=100.0)
+                .decimals(0)
+                .build(),
+            )
+            .push(
+                PickListBuilder::new(
+                    "Extrusion Length".to_string(),
+                    vec![
+                        Len::Constant,
+                        Len::Expanding,
+                        Len::Contracting,
+                        Len::Varying,
+                        Len::Noisy,
+                    ],
+                    self.controls.len_type,
+                    Message::Length,
+                )
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Extrusion Size".to_string(),
+                    Message::LengthSize,
+                    Message::Draw,
+                    self.controls.len_size,
+                )
+                .range(75.0..=350.0)
+                .decimals(0)
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Varying Freq".to_string(),
+                    Message::LengthFreq,
+                    Message::Draw,
+                    self.controls.len_freq,
+                )
+                .range(1.0..=20.0)
+                .decimals(0)
+                .build(),
+            )
+            .push(
+                PickListBuilder::new(
+                    "Extrusion Direction".to_string(),
+                    vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
+                    self.controls.len_dir,
+                    Message::LengthDir,
+                )
+                .build(),
+            )
+            .push(
+                PickListBuilder::new(
+                    "Highlight".to_string(),
+                    vec![Cap::None, Cap::Light, Cap::Dark],
+                    self.controls.cap,
+                    Message::Cap,
+                )
+                .build(),
+            )
             .padding(20)
             .spacing(15)
             .width(Length::Units(250));
 
-        let rand_button = button("Random").on_press(Message::RandMessage);
+        let rand_button = button("Random").on_press(Message::Randomize);
         let export_button = if self.controls.exporting {
             button("Export")
         } else {
-            button("Export").on_press(Message::ExportMessage)
+            button("Export").on_press(Message::Export)
         };
         let image_panel = column!(
             vertical_space(Length::Units(25)),
@@ -281,13 +333,13 @@ impl Application for Xtrusion {
             text_input(
                 "Export Width",
                 &self.controls.export_width,
-                Message::ExportWidthMessage
+                Message::ExportWidth
             )
             .width(Length::Units(200)),
             text_input(
                 "Export Height",
                 &self.controls.export_height,
-                Message::ExportHeightMessage
+                Message::ExportHeight
             )
             .width(Length::Units(200)),
         )

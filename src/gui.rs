@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::ops::RangeInclusive;
 
 use iced::{
@@ -28,7 +29,7 @@ where
     let n = if step >= T::one() {
         format!("{:5.0}", value)
     } else {
-        format!("{:5.1}", value)
+        format!("{:5.2}", value)
     };
     column![
         text(title).size(15),
@@ -44,21 +45,156 @@ where
     .spacing(5)
 }
 
-pub fn wpick_list<T, M>(
-    title: String,
+pub struct SliderBuilder<T, M, F>
+where
+    F: Clone,
+    M: Fn(T) -> F + Clone,
+{
+    label: String,
+    value: T,
+    message: M,
+    release: F,
+    range: RangeInclusive<T>,
+    step: T,
+    text_size: u16,
+    width: u16,
+    spacing: u16,
+    decimals: u8,
+}
+
+impl<'a, T, M, F> SliderBuilder<T, M, F>
+where
+    T: 'a
+        + Copy
+        + From<u8>
+        + std::cmp::PartialOrd
+        + num_traits::One
+        + num_traits::Zero
+        + std::fmt::Display
+        + num_traits::FromPrimitive,
+    F: 'a + Clone,
+    M: 'a + Fn(T) -> F + Clone,
+    f64: From<T>,
+{
+    pub fn new(label: String, message: M, release: F, value: T) -> Self {
+        Self {
+            label,
+            value,
+            message,
+            release,
+            range: T::zero()..=T::one(),
+            step: T::one(),
+            text_size: 15,
+            width: 150,
+            spacing: 5,
+            decimals: 1,
+        }
+    }
+
+    pub fn step(self, step: T) -> Self {
+        SliderBuilder { step, ..self }
+    }
+
+    pub fn range(self, range: RangeInclusive<T>) -> Self {
+        SliderBuilder { range, ..self }
+    }
+
+    pub fn text_size(self, size: u16) -> Self {
+        SliderBuilder {
+            text_size: size,
+            ..self
+        }
+    }
+
+    pub fn width(self, width: u16) -> Self {
+        SliderBuilder { width, ..self }
+    }
+
+    pub fn spacing(self, spacing: u16) -> Self {
+        SliderBuilder { spacing, ..self }
+    }
+
+    pub fn decimals(self, decimals: u8) -> Self {
+        SliderBuilder { decimals, ..self }
+    }
+
+    pub fn build(self) -> Column<'a, F> {
+        let n = match self.decimals {
+            0 => format!("{:7.0}", self.value),
+            1 => format!("{:7.1}", self.value),
+            _ => format!("{:7.2}", self.value),
+        };
+        column![
+            text(self.label).size(self.text_size),
+            row![
+                slider(self.range, self.value, self.message)
+                    .on_release(self.release)
+                    .step(self.step)
+                    .width(Length::Units(self.width)),
+                text(n)
+                    .size(self.text_size)
+                    .style(Color::from_rgb8(0x5E, 0x7C, 0xE2))
+            ]
+            .align_items(Alignment::Center)
+        ]
+        .spacing(self.spacing)
+    }
+}
+
+pub struct PickListBuilder<T, M, F>
+where
+    T: 'static + Copy + std::fmt::Display + Clone + Eq,
+    F: Fn(T) -> M,
+{
+    label: String,
     choices: Vec<T>,
     value: Option<T>,
-    message: impl Fn(T) -> M + 'static,
-) -> Column<'static, M>
+    message: F,
+    text_size: u16,
+    width: u16,
+    spacing: u16,
+}
+
+impl<T, M, F> PickListBuilder<T, M, F>
 where
     T: 'static + Copy + std::fmt::Display + Clone + Eq,
     M: 'static,
+    F: Fn(T) -> M + 'static,
 {
-    column![
-        text(title).size(15),
-        pick_list(choices, value, message)
-            .text_size(15)
-            .width(Length::Units(175)),
-    ]
-    .spacing(5)
+    pub fn new(label: String, choices: Vec<T>, value: Option<T>, message: F) -> Self {
+        Self {
+            label,
+            choices,
+            value,
+            message,
+            text_size: 15,
+            width: 175,
+            spacing: 5,
+        }
+    }
+
+    pub fn build(self) -> Column<'static, M> {
+        column![
+            text(self.label).size(self.text_size),
+            pick_list(self.choices, self.value, self.message)
+                .text_size(self.text_size)
+                .width(Length::Units(self.width)),
+        ]
+        .spacing(self.spacing)
+    }
+
+    pub fn text_size(self, size: u16) -> Self {
+        PickListBuilder {
+            text_size: size,
+            ..self
+        }
+    }
+
+    pub fn width(self, width: u16) -> Self {
+        PickListBuilder { width, ..self }
+    }
+
+    pub fn spacing(self, spacing: u16) -> Self {
+        PickListBuilder { spacing, ..self }
+    }
 }

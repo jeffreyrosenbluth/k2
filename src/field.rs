@@ -12,7 +12,7 @@ impl Vertex {
         Vertex { x, y, theta }
     }
 
-    pub fn to_point(&self) -> Point {
+    pub fn to_point(self) -> Point {
         pt(self.x, self.y)
     }
 }

@@ -6,16 +6,25 @@ use rand::prelude::*;
 pub const WIDTH: u32 = 600;
 pub const HEIGHT: u32 = 600;
 
+pub fn uniform_sum<R: Rng + ?Sized>(rng: &mut R, n: u32) -> f32 {
+    let mut sum = 0.0;
+    for _ in 0..n {
+        sum += rng.gen::<f32>();
+    }
+    sum / n as f32
+}
+
 #[derive(Clone)]
 pub struct Controls {
     pub spaced: bool,
-    pub hue: f32,
+    pub hue: u16,
     pub palette_num: u8,
     pub location: Option<Location>,
     pub grid_sep: f32,
     pub noise_factor: f32,
     pub noise_scale: f32,
     pub octaves: u8,
+    pub persistence: f32,
     pub noise_function: Option<NoiseFunction>,
     pub len_type: Option<Len>,
     pub len_size: f32,
@@ -33,16 +42,17 @@ impl Controls {
         Self {
             spaced: false,
             palette_num: 0,
-            hue: 0.0,
+            hue: 0,
             location: Some(Location::Halton),
             grid_sep: 50.0,
             noise_factor: 4.0,
             noise_scale: 4.0,
             octaves: 1,
+            persistence: 0.5,
             noise_function: Some(NoiseFunction::Fbm),
             len_type: Some(Len::Contracting),
             len_size: 150.0,
-            len_dir: Some(Dir::Circle),
+            len_dir: Some(Dir::Both),
             len_freq: 5.0,
             cap: Some(Cap::None),
             exporting: false,
@@ -53,11 +63,17 @@ impl Controls {
     }
 }
 
+impl Default for Controls {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Distribution<Controls> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Controls {
         let spaced = rng.gen_bool(0.25);
         let worley_dist = rng.gen_bool(0.5);
-        let hue = rng.gen_range(0.0..360.0);
+        let hue = rng.gen_range(0..360);
         let palette_num = rng.gen_range(0..10);
         let location: Option<Location> = Some(rng.gen());
         let grid_sep = rng.gen_range(40.0..90.0);
@@ -74,10 +90,11 @@ impl Distribution<Controls> for Standard {
         let noise_factor = rng.gen_range(1.0..max_factor);
         let noise_scale = rng.gen_range(1.0..7.0);
         let octaves = rng.gen_range(1..8);
+        let persistence = uniform_sum(rng, 4);
         let len_type: Option<Len> = Some(rng.gen());
         let len_size = rng.gen_range(100.0..325.0);
         let len_dir: Option<Dir> = Some(rng.gen());
-        let len_freq = rng.gen_range(1.0..10.0);
+        let len_freq = rng.gen_range(1.0..20.0);
         let cap: Option<Cap> = Some(rng.gen());
         Controls {
             spaced,
@@ -88,6 +105,7 @@ impl Distribution<Controls> for Standard {
             noise_factor,
             noise_scale,
             octaves,
+            persistence,
             noise_function,
             len_type,
             len_size,
