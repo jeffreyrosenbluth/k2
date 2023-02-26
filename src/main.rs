@@ -5,25 +5,36 @@ use iced::{
 use rand::prelude::*;
 
 mod art;
+mod color;
 mod common;
 mod field;
+mod gradient;
 mod gui;
+mod length;
+mod location;
+mod noise;
 
 use crate::art::*;
 use crate::common::*;
+use crate::gradient::GradStyle;
 use crate::gui::*;
+use crate::length::{Dir, Len};
+use crate::location::Location;
+use crate::noise::NoiseFunction;
 
 const TEXT_SIZE: u16 = 15;
 
 pub fn main() -> iced::Result {
     let mut settings = Settings::default();
-    settings.window.size = (900, 900);
+    settings.window.size = (1300, 1350);
     Xtrusion::run(settings)
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Space(bool),
+    HiRes(bool),
+    Space(f32),
+    MaxLength(u32),
     Palette(u8),
     Hue(u16),
     Export,
@@ -35,14 +46,15 @@ pub enum Message {
     Scale(f32),
     Persistence(f32),
     Noise(NoiseFunction),
+    Speed(f32),
     Length(Len),
     LengthSize(f32),
-    LengthFreq(f32),
     LengthDir(Dir),
-    Cap(Cap),
+    Grad(GradStyle),
     Randomize,
     ExportComplete(()),
     WorleyDistance(bool),
+    StrokeWidth(f32),
     ExportWidth(String),
     ExportHeight(String),
     Null,
@@ -65,10 +77,21 @@ impl Application for Xtrusion {
     fn update(&mut self, message: Message) -> Command<Message> {
         let controls = self.controls.clone();
         match message {
-            Message::Space(b) => {
-                self.controls.spaced = b;
+            Message::HiRes(b) => {
+                self.controls.hi_res = b;
+                if b {
+                    self.controls.spacing /= 4.0;
+                    self.controls.max_length *= 4;
+                    self.controls.stroke_width /= 4.0;
+                } else {
+                    self.controls.spacing *= 4.0;
+                    self.controls.max_length /= 4;
+                    self.controls.stroke_width *= 4.0;
+                }
                 self.draw();
             }
+            Message::Space(b) => self.controls.spacing = b,
+            Message::MaxLength(l) => self.controls.max_length = l,
             Message::Export => {
                 self.controls.exporting = true;
                 return Command::perform(print(controls, 1.0), Message::ExportComplete);
@@ -92,18 +115,18 @@ impl Application for Xtrusion {
                 self.controls.noise_function = Some(n);
                 self.draw();
             }
+            Message::Speed(s) => self.controls.speed = s,
             Message::Length(l) => {
                 self.controls.len_type = Some(l);
                 self.draw();
             }
             Message::LengthSize(s) => self.controls.len_size = s,
-            Message::LengthFreq(f) => self.controls.len_freq = f,
             Message::LengthDir(d) => {
                 self.controls.len_dir = Some(d);
                 self.draw();
             }
-            Message::Cap(c) => {
-                self.controls.cap = Some(c);
+            Message::Grad(c) => {
+                self.controls.grad_style = Some(c);
                 self.draw();
             }
             Message::Randomize => {
@@ -120,6 +143,7 @@ impl Application for Xtrusion {
                 self.controls.worley_dist = b;
                 self.draw();
             }
+            Message::StrokeWidth(w) => self.controls.stroke_width = w,
             Message::ExportWidth(w) => self.controls.export_width = w,
             Message::ExportHeight(h) => self.controls.export_height = h,
             Message::Null => {}
@@ -132,9 +156,30 @@ impl Application for Xtrusion {
         let mut control_panel = column![];
         control_panel = control_panel
             .push(Container::new(
-                toggler("Spaced".to_owned(), self.controls.spaced, Message::Space)
+                toggler("Hi Res".to_owned(), self.controls.hi_res, Message::HiRes)
                     .text_size(TEXT_SIZE),
             ))
+            .push(
+                SliderBuilder::new(
+                    "Spacing".to_string(),
+                    Message::Space,
+                    Message::Draw,
+                    self.controls.spacing,
+                )
+                .range(1.0..=50.0)
+                .decimals(0)
+                .build(),
+            )
+            .push(
+                SliderBuilder::new(
+                    "Max Length".to_string(),
+                    Message::MaxLength,
+                    Message::Draw,
+                    self.controls.max_length,
+                )
+                .range(10..=350)
+                .build(),
+            )
             .push(
                 PickListBuilder::new(
                     "Noise Function".to_string(),
@@ -146,6 +191,7 @@ impl Application for Xtrusion {
                         NoiseFunction::Checkerboard,
                         NoiseFunction::Cylinders,
                         NoiseFunction::Worley,
+                        NoiseFunction::Curl,
                     ],
                     self.controls.noise_function,
                     Message::Noise,
@@ -155,7 +201,7 @@ impl Application for Xtrusion {
         if self.controls.noise_function == Some(NoiseFunction::Worley) {
             control_panel = control_panel.push(Container::new(
                 toggler(
-                    "Distance Function".to_owned(),
+                    "Distance Function".to_string(),
                     self.controls.worley_dist,
                     Message::WorleyDistance,
                 )
@@ -210,6 +256,18 @@ impl Application for Xtrusion {
                 .build(),
             )
             .push(
+                SliderBuilder::new(
+                    "Speed".to_string(),
+                    Message::Speed,
+                    Message::Draw,
+                    self.controls.speed,
+                )
+                .range(0.01..=1.00)
+                .step(0.01)
+                .decimals(2)
+                .build(),
+            )
+            .push(
                 PickListBuilder::new(
                     "Location".to_string(),
                     vec![
@@ -232,7 +290,7 @@ impl Application for Xtrusion {
                     Message::Draw,
                     self.controls.palette_num,
                 )
-                .range(0..=9)
+                .range(0..=11)
                 .step(1)
                 .decimals(0)
                 .build(),
@@ -282,19 +340,20 @@ impl Application for Xtrusion {
                     Message::Draw,
                     self.controls.len_size,
                 )
-                .range(75.0..=350.0)
+                .range(5.0..=350.0)
                 .decimals(0)
                 .build(),
             )
             .push(
                 SliderBuilder::new(
-                    "Varying Freq".to_string(),
-                    Message::LengthFreq,
+                    "Stroke Width".to_string(),
+                    Message::StrokeWidth,
                     Message::Draw,
-                    self.controls.len_freq,
+                    self.controls.stroke_width,
                 )
-                .range(1.0..=20.0)
-                .decimals(0)
+                .range(0.5..=25.0)
+                .step(0.5)
+                .decimals(1)
                 .build(),
             )
             .push(
@@ -309,9 +368,14 @@ impl Application for Xtrusion {
             .push(
                 PickListBuilder::new(
                     "Highlight".to_string(),
-                    vec![Cap::None, Cap::Light, Cap::Dark],
-                    self.controls.cap,
-                    Message::Cap,
+                    vec![
+                        GradStyle::None,
+                        GradStyle::Light,
+                        GradStyle::Dark,
+                        GradStyle::Fiber,
+                    ],
+                    self.controls.grad_style,
+                    Message::Grad,
                 )
                 .build(),
             )

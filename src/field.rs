@@ -24,6 +24,7 @@ pub struct Field {
     pub width: u32,
     pub height: u32,
     pub max_length: u32,
+    pub speed: f32,
 }
 
 impl Field {
@@ -40,7 +41,8 @@ impl Field {
             v = *vertices.last().unwrap();
             x1 = v.x + self.step_size * v.theta.cos();
             y1 = v.y + self.step_size * v.theta.sin();
-            theta = noise2d(&self.noise_function, &self.noise_opts, x1, y1) * PI;
+            theta = (1.0 - self.speed) * theta
+                + self.speed * noise2d(&self.noise_function, &self.noise_opts, x1, y1) * PI;
             v1 = Vertex::new(x1, y1, theta);
             vertices.push(v1);
         }

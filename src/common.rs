@@ -1,10 +1,14 @@
-use crate::art::{draw, Cap, Dir, Len, Location, NoiseFunction};
+use crate::art::draw;
+use crate::gradient::GradStyle;
+use crate::length::{Dir, Len};
+use crate::location::Location;
+use crate::noise::NoiseFunction;
 use iced::widget::image;
 use rand::distributions::Standard;
 use rand::prelude::*;
 
-pub const WIDTH: u32 = 600;
-pub const HEIGHT: u32 = 600;
+pub const WIDTH: u32 = 1000;
+pub const HEIGHT: u32 = 1000;
 
 pub fn uniform_sum<R: Rng + ?Sized>(rng: &mut R, n: u32) -> f32 {
     let mut sum = 0.0;
@@ -16,7 +20,9 @@ pub fn uniform_sum<R: Rng + ?Sized>(rng: &mut R, n: u32) -> f32 {
 
 #[derive(Clone)]
 pub struct Controls {
-    pub spaced: bool,
+    pub hi_res: bool,
+    pub spacing: f32,
+    pub max_length: u32,
     pub hue: u16,
     pub palette_num: u8,
     pub location: Option<Location>,
@@ -26,13 +32,14 @@ pub struct Controls {
     pub octaves: u8,
     pub persistence: f32,
     pub noise_function: Option<NoiseFunction>,
+    pub speed: f32,
     pub len_type: Option<Len>,
     pub len_size: f32,
     pub len_dir: Option<Dir>,
-    pub len_freq: f32,
-    pub cap: Option<Cap>,
+    pub grad_style: Option<GradStyle>,
     pub exporting: bool,
     pub worley_dist: bool,
+    pub stroke_width: f32,
     pub export_width: String,
     pub export_height: String,
 }
@@ -40,7 +47,9 @@ pub struct Controls {
 impl Controls {
     pub fn new() -> Self {
         Self {
-            spaced: false,
+            hi_res: false,
+            spacing: 4.0,
+            max_length: 50,
             palette_num: 0,
             hue: 0,
             location: Some(Location::Halton),
@@ -50,13 +59,14 @@ impl Controls {
             octaves: 1,
             persistence: 0.5,
             noise_function: Some(NoiseFunction::Fbm),
+            speed: 1.0,
             len_type: Some(Len::Contracting),
-            len_size: 150.0,
+            len_size: 200.0,
             len_dir: Some(Dir::Both),
-            len_freq: 5.0,
-            cap: Some(Cap::None),
+            grad_style: Some(GradStyle::None),
             exporting: false,
             worley_dist: false,
+            stroke_width: 6.0,
             export_width: String::new(),
             export_height: String::new(),
         }
@@ -71,10 +81,10 @@ impl Default for Controls {
 
 impl Distribution<Controls> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Controls {
-        let spaced = rng.gen_bool(0.25);
+        // let spacing = 20.0;
+        // let max_length = rng.gen_range(150..350);
         let worley_dist = rng.gen_bool(0.5);
-        let hue = rng.gen_range(0..360);
-        let palette_num = rng.gen_range(0..10);
+        let palette_num = rng.gen_range(0..12);
         let location: Option<Location> = Some(rng.gen());
         let grid_sep = rng.gen_range(40.0..90.0);
         let noise_function: Option<NoiseFunction> = Some(rng.gen());
@@ -86,36 +96,29 @@ impl Distribution<Controls> for Standard {
             NoiseFunction::Checkerboard => 2.0,
             NoiseFunction::Cylinders => 2.0,
             NoiseFunction::Worley => 7.0,
+            NoiseFunction::Curl => 7.0,
         };
         let noise_factor = rng.gen_range(1.0..max_factor);
         let noise_scale = rng.gen_range(1.0..7.0);
         let octaves = rng.gen_range(1..8);
-        let persistence = uniform_sum(rng, 4);
         let len_type: Option<Len> = Some(rng.gen());
         let len_size = rng.gen_range(100.0..325.0);
         let len_dir: Option<Dir> = Some(rng.gen());
-        let len_freq = rng.gen_range(1.0..20.0);
-        let cap: Option<Cap> = Some(rng.gen());
+        let cap: Option<GradStyle> = Some(rng.gen());
         Controls {
-            spaced,
-            hue,
             palette_num,
             location,
             grid_sep,
             noise_factor,
             noise_scale,
             octaves,
-            persistence,
             noise_function,
             len_type,
             len_size,
             len_dir,
-            len_freq,
-            cap,
-            exporting: false,
+            grad_style: cap,
             worley_dist,
-            export_width: String::new(),
-            export_height: String::new(),
+            ..Default::default()
         }
     }
 }
