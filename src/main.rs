@@ -5,6 +5,7 @@ use iced::{
 use rand::prelude::*;
 
 mod art;
+mod background;
 mod color;
 mod common;
 mod field;
@@ -26,7 +27,7 @@ const TEXT_SIZE: u16 = 15;
 
 pub fn main() -> iced::Result {
     let mut settings = Settings::default();
-    settings.window.size = (1300, 1350);
+    settings.window.size = (1300, 1300);
     Xtrusion::run(settings)
 }
 
@@ -229,7 +230,7 @@ impl Application for Xtrusion {
                     self.controls.noise_scale,
                 )
                 .range(0.5..=20.0)
-                .step(0.5)
+                .step(0.1)
                 .build(),
             )
             .push(
@@ -240,7 +241,7 @@ impl Application for Xtrusion {
                     self.controls.noise_factor,
                 )
                 .range(0.5..=20.0)
-                .step(0.5)
+                .step(0.1)
                 .build(),
             )
             .push(
@@ -290,7 +291,7 @@ impl Application for Xtrusion {
                     Message::Draw,
                     self.controls.palette_num,
                 )
-                .range(0..=11)
+                .range(0..=12)
                 .step(1)
                 .decimals(0)
                 .build(),

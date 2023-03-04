@@ -10,13 +10,13 @@ use rand::prelude::*;
 pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
 
-pub fn uniform_sum<R: Rng + ?Sized>(rng: &mut R, n: u32) -> f32 {
-    let mut sum = 0.0;
-    for _ in 0..n {
-        sum += rng.gen::<f32>();
-    }
-    sum / n as f32
-}
+// pub fn uniform_sum<R: Rng + ?Sized>(rng: &mut R, n: u32) -> f32 {
+//     let mut sum = 0.0;
+//     for _ in 0..n {
+//         sum += rng.gen::<f32>();
+//     }
+//     sum / n as f32
+// }
 
 #[derive(Clone)]
 pub struct Controls {
@@ -66,7 +66,7 @@ impl Controls {
             grad_style: Some(GradStyle::None),
             exporting: false,
             worley_dist: false,
-            stroke_width: 6.0,
+            stroke_width: 8.0,
             export_width: String::new(),
             export_height: String::new(),
         }
@@ -84,7 +84,7 @@ impl Distribution<Controls> for Standard {
         // let spacing = 20.0;
         // let max_length = rng.gen_range(150..350);
         let worley_dist = rng.gen_bool(0.5);
-        let palette_num = rng.gen_range(0..12);
+        let palette_num = rng.gen_range(0..13);
         let location: Option<Location> = Some(rng.gen());
         let grid_sep = rng.gen_range(40.0..90.0);
         let noise_function: Option<NoiseFunction> = Some(rng.gen());
