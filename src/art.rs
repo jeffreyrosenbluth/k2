@@ -88,6 +88,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     );
 
     let highlight = match controls.grad_style.unwrap() {
+        GradStyle::LightFiber => 1,
         GradStyle::Fiber => 2,
         GradStyle::Dark => 3,
         GradStyle::Light => 4,

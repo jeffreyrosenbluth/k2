@@ -6,16 +6,18 @@ pub enum GradStyle {
     Light,
     Dark,
     Fiber,
+    LightFiber,
 }
 
 impl Distribution<GradStyle> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> GradStyle {
-        let index: u8 = rng.gen_range(0..4);
+        let index: u8 = rng.gen_range(0..5);
         match index {
             0 => GradStyle::None,
             1 => GradStyle::Light,
             2 => GradStyle::Dark,
             3 => GradStyle::Fiber,
+            4 => GradStyle::LightFiber,
             _ => unreachable!(),
         }
     }
@@ -31,6 +33,7 @@ impl std::fmt::Display for GradStyle {
                 GradStyle::Light => "Light",
                 GradStyle::Dark => "Dark",
                 GradStyle::Fiber => "Fiber",
+                GradStyle::LightFiber => "LightFiber",
             }
         )
     }
@@ -40,9 +43,14 @@ pub fn paint_lg<'a>(x0: f32, y0: f32, x1: f32, y1: f32, color1: Color, caps: u8)
     let mut rng = SmallRng::from_entropy();
     let color0 = Color::from_rgba8(230, 230, 230, 255);
     let stops = match caps {
-        2 => vec![
+        1 => vec![
             GradientStop::new(0.0, *WHITE),
             GradientStop::new(rng.gen_range(0.7..1.0), color1),
+            GradientStop::new(1.0, *WHITE),
+        ],
+        2 => vec![
+            GradientStop::new(0.0, *WHITE),
+            GradientStop::new(rng.gen_range(0.7..0.9), color1),
         ],
         3 => vec![
             GradientStop::new(0.0, color0),

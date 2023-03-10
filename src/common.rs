@@ -84,7 +84,7 @@ impl Distribution<Controls> for Standard {
         // let spacing = 20.0;
         // let max_length = rng.gen_range(150..350);
         let worley_dist = rng.gen_bool(0.5);
-        let palette_num = rng.gen_range(0..13);
+        let palette_num = rng.gen_range(0..11);
         let location: Option<Location> = Some(rng.gen());
         let grid_sep = rng.gen_range(40.0..90.0);
         let noise_function: Option<NoiseFunction> = Some(rng.gen());

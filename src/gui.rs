@@ -2,7 +2,7 @@
 use std::ops::RangeInclusive;
 
 use iced::{
-    widget::{column, pick_list, row, slider, text, Column},
+    widget::{pick_list, row, slider, text, Column},
     Alignment, Color, Length,
 };
 
@@ -31,13 +31,13 @@ where
     } else {
         format!("{:5.2}", value)
     };
-    column![
+    iced::widget::column![
         text(title).size(15),
         row![
             slider(range, value, message)
                 .on_release(release)
                 .step(step)
-                .width(Length::Units(150)),
+                .width(Length::Fixed(150.0)),
             text(n).size(15).style(Color::from_rgb8(0x5E, 0x7C, 0xE2))
         ]
         .align_items(Alignment::Center)
@@ -124,13 +124,13 @@ where
             1 => format!("{:7.1}", self.value),
             _ => format!("{:7.2}", self.value),
         };
-        column![
+        iced::widget::column![
             text(self.label).size(self.text_size),
             row![
                 slider(self.range, self.value, self.message)
                     .on_release(self.release)
                     .step(self.step)
-                    .width(Length::Units(self.width)),
+                    .width(Length::Fixed(self.width as f32)),
                 text(n)
                     .size(self.text_size)
                     .style(Color::from_rgb8(0x5E, 0x7C, 0xE2))
@@ -174,11 +174,11 @@ where
     }
 
     pub fn build(self) -> Column<'static, M> {
-        column![
+        iced::widget::column![
             text(self.label).size(self.text_size),
             pick_list(self.choices, self.value, self.message)
                 .text_size(self.text_size)
-                .width(Length::Units(self.width)),
+                .width(Length::Fixed(self.width as f32)),
         ]
         .spacing(self.spacing)
     }

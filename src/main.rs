@@ -1,5 +1,5 @@
 use iced::{
-    widget::{button, column, image, row, text_input, toggler, vertical_space, Container},
+    widget::{button, image, row, text_input, toggler, vertical_space, Container},
     Alignment, Application, Command, Element, Length, Settings, Theme,
 };
 use rand::prelude::*;
@@ -154,7 +154,7 @@ impl Application for Xtrusion {
 
     fn view(&self) -> Element<Message> {
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
-        let mut control_panel = column![];
+        let mut control_panel = iced::widget::column![];
         control_panel = control_panel
             .push(Container::new(
                 toggler("Hi Res".to_owned(), self.controls.hi_res, Message::HiRes)
@@ -291,7 +291,7 @@ impl Application for Xtrusion {
                     Message::Draw,
                     self.controls.palette_num,
                 )
-                .range(0..=12)
+                .range(0..=10)
                 .step(1)
                 .decimals(0)
                 .build(),
@@ -315,7 +315,7 @@ impl Application for Xtrusion {
                     Message::Draw,
                     self.controls.grid_sep,
                 )
-                .range(25.0..=100.0)
+                .range(5.0..=100.0)
                 .decimals(0)
                 .build(),
             )
@@ -341,7 +341,7 @@ impl Application for Xtrusion {
                     Message::Draw,
                     self.controls.len_size,
                 )
-                .range(5.0..=350.0)
+                .range(1.0..=350.0)
                 .decimals(0)
                 .build(),
             )
@@ -374,6 +374,7 @@ impl Application for Xtrusion {
                         GradStyle::Light,
                         GradStyle::Dark,
                         GradStyle::Fiber,
+                        GradStyle::LightFiber,
                     ],
                     self.controls.grad_style,
                     Message::Grad,
@@ -382,7 +383,7 @@ impl Application for Xtrusion {
             )
             .padding(20)
             .spacing(15)
-            .width(Length::Units(250));
+            .width(Length::Fixed(250.0));
 
         let rand_button = button("Random").on_press(Message::Randomize);
         let export_button = if self.controls.exporting {
@@ -390,23 +391,23 @@ impl Application for Xtrusion {
         } else {
             button("Export").on_press(Message::Export)
         };
-        let image_panel = column!(
-            vertical_space(Length::Units(25)),
+        let image_panel = iced::widget::column!(
+            vertical_space(Length::Fixed(25.0)),
             img_view,
-            vertical_space(Length::Units(25)),
+            vertical_space(Length::Fixed(25.0)),
             row!(rand_button, export_button).spacing(100),
             text_input(
                 "Export Width",
                 &self.controls.export_width,
                 Message::ExportWidth
             )
-            .width(Length::Units(200)),
+            .width(Length::Fixed(200.0)),
             text_input(
                 "Export Height",
                 &self.controls.export_height,
                 Message::ExportHeight
             )
-            .width(Length::Units(200)),
+            .width(Length::Fixed(200.0)),
         )
         .spacing(20)
         .align_items(Alignment::Center);
