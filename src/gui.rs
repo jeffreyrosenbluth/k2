@@ -2,8 +2,8 @@
 use std::ops::RangeInclusive;
 
 use iced::{
-    widget::{pick_list, row, slider, text, Column},
-    Alignment, Color, Length,
+    widget::{button, pick_list, row, slider, text, Column},
+    Alignment, Color,
 };
 
 pub fn wslider<'a, M, T, F>(
@@ -37,7 +37,7 @@ where
             slider(range, value, message)
                 .on_release(release)
                 .step(step)
-                .width(Length::Fixed(150.0)),
+                .width(150),
             text(n).size(15).style(Color::from_rgb8(0x5E, 0x7C, 0xE2))
         ]
         .align_items(Alignment::Center)
@@ -54,6 +54,7 @@ where
     value: T,
     message: M,
     release: F,
+    random: Option<F>,
     range: RangeInclusive<T>,
     step: T,
     text_size: u16,
@@ -76,12 +77,13 @@ where
     M: 'a + Fn(T) -> F + Clone,
     f64: From<T>,
 {
-    pub fn new(label: String, message: M, release: F, value: T) -> Self {
+    pub fn new(label: String, message: M, release: F, random: Option<F>, value: T) -> Self {
         Self {
             label,
             value,
             message,
             release,
+            random,
             range: T::zero()..=T::one(),
             step: T::one(),
             text_size: 15,
@@ -124,13 +126,25 @@ where
             1 => format!("{:7.1}", self.value),
             _ => format!("{:7.2}", self.value),
         };
+
         iced::widget::column![
-            text(self.label).size(self.text_size),
+            match self.random {
+                Some(r) => {
+                    row![
+                        text(self.label).size(self.text_size),
+                        button(text("Rand").size(self.text_size * 5 / 8))
+                            .on_press(r)
+                            .height(self.text_size * 5 / 4)
+                    ]
+                }
+                None => row![text(self.label).size(self.text_size)],
+            }
+            .spacing(self.text_size),
             row![
                 slider(self.range, self.value, self.message)
                     .on_release(self.release)
                     .step(self.step)
-                    .width(Length::Fixed(self.width as f32)),
+                    .width(self.width),
                 text(n)
                     .size(self.text_size)
                     .style(Color::from_rgb8(0x5E, 0x7C, 0xE2))
@@ -150,6 +164,7 @@ where
     choices: Vec<T>,
     value: Option<T>,
     message: F,
+    random: M,
     text_size: u16,
     width: u16,
     spacing: u16,
@@ -158,15 +173,16 @@ where
 impl<T, M, F> PickListBuilder<T, M, F>
 where
     T: 'static + Copy + std::fmt::Display + Clone + Eq,
-    M: 'static,
+    M: 'static + Clone,
     F: Fn(T) -> M + 'static,
 {
-    pub fn new(label: String, choices: Vec<T>, value: Option<T>, message: F) -> Self {
+    pub fn new(label: String, choices: Vec<T>, value: Option<T>, message: F, random: M) -> Self {
         Self {
             label,
             choices,
             value,
             message,
+            random,
             text_size: 15,
             width: 175,
             spacing: 5,
@@ -175,10 +191,16 @@ where
 
     pub fn build(self) -> Column<'static, M> {
         iced::widget::column![
-            text(self.label).size(self.text_size),
+            row![
+                text(self.label).size(self.text_size),
+                button(text("Rand").size(self.text_size * 5 / 8))
+                    .on_press(self.random)
+                    .height(self.text_size * 5 / 4)
+            ]
+            .spacing(self.text_size),
             pick_list(self.choices, self.value, self.message)
                 .text_size(self.text_size)
-                .width(Length::Fixed(self.width as f32)),
+                .width(self.width),
         ]
         .spacing(self.spacing)
     }

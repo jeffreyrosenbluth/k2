@@ -21,8 +21,9 @@ pub const HEIGHT: u32 = 1000;
 #[derive(Clone)]
 pub struct Controls {
     pub hi_res: bool,
+    pub xtrude: bool,
     pub spacing: f32,
-    pub max_length: u32,
+    pub curve_length: u32,
     pub hue: u16,
     pub palette_num: u8,
     pub location: Option<Location>,
@@ -48,15 +49,16 @@ impl Controls {
     pub fn new() -> Self {
         Self {
             hi_res: false,
+            xtrude: true,
             spacing: 4.0,
-            max_length: 50,
-            palette_num: 0,
+            curve_length: 50,
+            palette_num: 9,
             hue: 0,
             location: Some(Location::Halton),
             grid_sep: 50.0,
-            noise_factor: 4.0,
+            noise_factor: 1.0,
             noise_scale: 4.0,
-            octaves: 1,
+            octaves: 4,
             persistence: 0.5,
             noise_function: Some(NoiseFunction::Fbm),
             speed: 1.0,
@@ -81,12 +83,9 @@ impl Default for Controls {
 
 impl Distribution<Controls> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Controls {
-        // let spacing = 20.0;
-        // let max_length = rng.gen_range(150..350);
-        let worley_dist = rng.gen_bool(0.5);
         let palette_num = rng.gen_range(0..11);
         let location: Option<Location> = Some(rng.gen());
-        let grid_sep = rng.gen_range(40.0..90.0);
+        let grid_sep = rng.gen_range(25.0..75.0);
         let noise_function: Option<NoiseFunction> = Some(rng.gen());
         let max_factor = match noise_function.unwrap() {
             NoiseFunction::Fbm => 7.0,
@@ -100,9 +99,9 @@ impl Distribution<Controls> for Standard {
         };
         let noise_factor = rng.gen_range(1.0..max_factor);
         let noise_scale = rng.gen_range(1.0..7.0);
-        let octaves = rng.gen_range(1..8);
+        let octaves = rng.gen_range(1..9);
         let len_type: Option<Len> = Some(rng.gen());
-        let len_size = rng.gen_range(100.0..325.0);
+        let len_size = rng.gen_range(50.0..300.0);
         let len_dir: Option<Dir> = Some(rng.gen());
         let cap: Option<GradStyle> = Some(rng.gen());
         Controls {
@@ -117,7 +116,6 @@ impl Distribution<Controls> for Standard {
             len_size,
             len_dir,
             grad_style: cap,
-            worley_dist,
             ..Default::default()
         }
     }
@@ -129,8 +127,8 @@ pub struct Xtrusion {
 
 impl Xtrusion {
     pub fn new() -> Self {
-        let controls = Controls::new();
-        let canvas = draw(&controls, 1.0);
+        let mut controls = Controls::new();
+        let canvas = draw(&mut controls, 1.0);
         Self {
             controls: Controls::new(),
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
@@ -138,12 +136,12 @@ impl Xtrusion {
     }
 
     pub fn draw(&mut self) {
-        let controls = Controls {
+        let mut controls = Controls {
             export_width: String::new(),
             export_height: String::new(),
             ..self.controls
         };
-        let canvas = draw(&controls, 1.0);
+        let canvas = draw(&mut controls, 1.0);
         self.image = image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
     }
 }

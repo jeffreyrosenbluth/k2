@@ -23,7 +23,7 @@ pub struct Field {
     pub step_size: f32,
     pub width: u32,
     pub height: u32,
-    pub max_length: u32,
+    pub curve_length: u32,
     pub speed: f32,
 }
 
@@ -37,7 +37,7 @@ impl Field {
         let mut x1: f32;
         let mut y1: f32;
         let mut v1: Vertex;
-        for _ in 0..self.max_length {
+        for _ in 0..self.curve_length {
             v = *vertices.last().unwrap();
             x1 = v.x + self.step_size * v.theta.cos();
             y1 = v.y + self.step_size * v.theta.sin();

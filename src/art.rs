@@ -30,19 +30,17 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             ),
             NoiseFunction::Value => Box::<Value>::default(),
             NoiseFunction::Worley => {
-                if controls.worley_dist {
-                    Box::new(Worley::default().set_return_type(ReturnType::Distance))
-                } else {
-                    Box::<Worley>::default()
-                }
+                Box::new(Worley::default().set_return_type(ReturnType::Distance))
             }
             NoiseFunction::Checkerboard => {
                 Box::new(Checkerboard::default().set_size(controls.octaves as usize))
             }
             NoiseFunction::Cylinders => Box::new(
-                TranslatePoint::new(Cylinders::default().set_frequency(controls.octaves as f64))
-                    .set_x_translation(w as f64 / 2.0)
-                    .set_y_translation(h as f64 / 2.0),
+                TranslatePoint::new(
+                    Cylinders::default().set_frequency(controls.octaves as f64 / 2.0),
+                )
+                .set_x_translation(w as f64 / 2.0)
+                .set_y_translation(h as f64 / 2.0),
             ),
             NoiseFunction::Curl => Box::new(Curl::new(Perlin::default())),
         },
@@ -50,7 +48,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
         step_size: controls.spacing,
         width: w,
         height: h,
-        max_length: controls.max_length,
+        curve_length: controls.curve_length,
         speed: controls.speed,
     }
 }
@@ -99,17 +97,27 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         let pts = flow.curve(p.x, p.y);
         let c = palette.rand_color();
 
-        for p in pts {
-            let r = len_fn(p);
-            let y0 = p.y - r;
-            let y1 = p.y + r;
-            let lg = paint_lg(p.x, y0, p.x, y1, c, highlight);
+        if !controls.xtrude {
             ShapeBuilder::new()
-                .line(pt(p.x, y0), pt(p.x, y1))
+                .points(&pts)
+                .no_fill()
+                .stroke_color(c)
                 .stroke_weight(controls.stroke_width)
-                .stroke_paint(&lg)
                 .build()
                 .draw(&mut canvas);
+        } else {
+            for p in pts {
+                let r = len_fn(p);
+                let y0 = p.y - r;
+                let y1 = p.y + r;
+                let lg = paint_lg(p.x, y0, p.x, y1, c, highlight);
+                ShapeBuilder::new()
+                    .line(pt(p.x, y0), pt(p.x, y1))
+                    .stroke_weight(controls.stroke_width)
+                    .stroke_paint(&lg)
+                    .build()
+                    .draw(&mut canvas);
+            }
         }
     }
 
