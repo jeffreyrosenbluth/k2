@@ -27,9 +27,9 @@ where
     f64: From<T>,
 {
     let n = if step >= T::one() {
-        format!("{:5.0}", value)
+        format!("{value:5.0}")
     } else {
-        format!("{:5.2}", value)
+        format!("{value:5.2}")
     };
     iced::widget::column![
         text(title).size(15),

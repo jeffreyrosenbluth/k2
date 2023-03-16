@@ -1,14 +1,15 @@
+// use wassily::prelude::distance_functions::*;
 use wassily::prelude::*;
 
 use crate::background::*;
 use crate::color::*;
-use crate::common::{Controls, HEIGHT, WIDTH};
+use crate::common::{Controls, CurveStyle, HEIGHT, WIDTH};
 use crate::field::*;
 use crate::gradient::*;
 use crate::noise::*;
 
 fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
-    let opts = NoiseOpts::with_wh(w, h)
+    let mut opts = NoiseOpts::with_wh(w, h)
         .scales(controls.noise_scale)
         .factor(controls.noise_factor);
     Field {
@@ -29,12 +30,9 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                     .set_persistence(controls.persistence as f64),
             ),
             NoiseFunction::Value => Box::<Value>::default(),
-            NoiseFunction::Worley => {
-                Box::new(Worley::default().set_return_type(ReturnType::Distance))
-            }
-            NoiseFunction::Checkerboard => {
-                Box::new(Checkerboard::default().set_size(controls.octaves as usize))
-            }
+            NoiseFunction::Worley => Box::new(
+                Worley::default().set_return_type(ReturnType::Distance), // .set_distance_function(chebyshev),
+            ),
             NoiseFunction::Cylinders => Box::new(
                 TranslatePoint::new(
                     Cylinders::default().set_frequency(controls.octaves as f64 / 2.0),
@@ -43,6 +41,30 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                 .set_y_translation(h as f64 / 2.0),
             ),
             NoiseFunction::Curl => Box::new(Curl::new(Perlin::default())),
+            NoiseFunction::Magnet => {
+                opts = NoiseOpts::default();
+                let mut rng = SmallRng::from_entropy();
+                let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
+                let w = w as f32;
+                let h = h as f32;
+                Box::new(Magnet::new(vec![
+                    pt(r1 * w, r2 * h),
+                    pt(r3 * w, r4 * h),
+                    pt(r5 * w, r6 * h),
+                ]))
+            }
+            NoiseFunction::Gravity => {
+                opts = NoiseOpts::default();
+                let mut rng = SmallRng::from_entropy();
+                let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
+                let w = w as f32;
+                let h = h as f32;
+                Box::new(Curl::new(Magnet::new(vec![
+                    pt(r1 * w, r2 * h),
+                    pt(r3 * w, r4 * h),
+                    pt(r5 * w, r6 * h),
+                ])))
+            }
         },
         noise_opts: opts,
         step_size: controls.spacing,
@@ -64,7 +86,10 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         }
     };
 
-    let bg = BG::new(canvas.width, canvas.height);
+    let bg = match controls.background.unwrap() {
+        Background::Clouds => BG::clouds(canvas.width, canvas.height),
+        Background::Grain => BG::grain(canvas.width, canvas.height),
+    };
     bg.canvas_bg(&mut canvas);
 
     let mut flow = choose_flow(controls, canvas.width(), canvas.height());
@@ -75,8 +100,9 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
             .unwrap()
             .starts(canvas.w_f32(), canvas.h_f32(), controls.grid_sep);
 
-    let mut palette = Palette::new(expand_palette(color_palette(controls.palette_num)));
-    palette.rotate_hue(controls.hue as f32);
+    let mut palette = Palette::new(color_bi(
+        Color::from_rgba(controls.color.r, controls.color.g, controls.color.b, 1.0).unwrap(),
+    ));
 
     let len_fn = controls.len_type.unwrap().calc(
         canvas.w_f32(),
@@ -85,38 +111,42 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         controls.len_dir.unwrap(),
     );
 
-    let highlight = match controls.grad_style.unwrap() {
-        GradStyle::LightFiber => 1,
-        GradStyle::Fiber => 2,
-        GradStyle::Dark => 3,
-        GradStyle::Light => 4,
-        GradStyle::None => 5,
-    };
-
     for p in starts {
         let pts = flow.curve(p.x, p.y);
         let c = palette.rand_color();
 
-        if !controls.xtrude {
-            ShapeBuilder::new()
+        match controls.curve_style.unwrap() {
+            CurveStyle::Dots => {
+                for p in pts {
+                    let r = len_fn(p) / 15.0;
+                    ShapeBuilder::new()
+                        .circle(p, r)
+                        .no_stroke()
+                        .fill_color(c)
+                        .build()
+                        .draw(&mut canvas);
+                }
+            }
+            CurveStyle::Line => ShapeBuilder::new()
                 .points(&pts)
                 .no_fill()
                 .stroke_color(c)
                 .stroke_weight(controls.stroke_width)
                 .build()
-                .draw(&mut canvas);
-        } else {
-            for p in pts {
-                let r = len_fn(p);
-                let y0 = p.y - r;
-                let y1 = p.y + r;
-                let lg = paint_lg(p.x, y0, p.x, y1, c, highlight);
-                ShapeBuilder::new()
-                    .line(pt(p.x, y0), pt(p.x, y1))
-                    .stroke_weight(controls.stroke_width)
-                    .stroke_paint(&lg)
-                    .build()
-                    .draw(&mut canvas);
+                .draw(&mut canvas),
+            CurveStyle::Extrusion => {
+                for p in pts {
+                    let r = len_fn(p);
+                    let y0 = p.y - r;
+                    let y1 = p.y + r;
+                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap());
+                    ShapeBuilder::new()
+                        .line(pt(p.x, y0), pt(p.x, y1))
+                        .stroke_weight(controls.stroke_width)
+                        .stroke_paint(&lg)
+                        .build()
+                        .draw(&mut canvas);
+                }
             }
         }
     }

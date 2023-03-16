@@ -9,3 +9,6 @@ iced = { version = "0.8.0", features = ["image", "tokio"] }
 wassily = { git = "https://github.com/jeffreyrosenbluth/wassily" }
 rand = { version = "0.8.5", features = ["small_rng"] }
 num-traits = "0.2.15"
+iced_aw = { version = "0.4.1", default-features = false, features = [
+    "color_picker",
+] }

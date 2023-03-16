@@ -1,31 +1,58 @@
 use crate::art::draw;
+use crate::background::Background;
 use crate::gradient::GradStyle;
 use crate::length::{Dir, Len};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use iced::widget::image;
+use iced::Color;
 use rand::distributions::Standard;
 use rand::prelude::*;
 
 pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
 
-// pub fn uniform_sum<R: Rng + ?Sized>(rng: &mut R, n: u32) -> f32 {
-//     let mut sum = 0.0;
-//     for _ in 0..n {
-//         sum += rng.gen::<f32>();
-//     }
-//     sum / n as f32
-// }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CurveStyle {
+    Line,
+    Dots,
+    Extrusion,
+}
+
+impl Distribution<CurveStyle> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> CurveStyle {
+        let index: u8 = rng.gen_range(0..3);
+        match index {
+            0 => CurveStyle::Line,
+            1 => CurveStyle::Dots,
+            2 => CurveStyle::Extrusion,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl std::fmt::Display for CurveStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                CurveStyle::Line => "Line",
+                CurveStyle::Dots => "Dots",
+                CurveStyle::Extrusion => "Extrusion",
+            }
+        )
+    }
+}
 
 #[derive(Clone)]
 pub struct Controls {
     pub hi_res: bool,
-    pub xtrude: bool,
+    pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
     pub curve_length: u32,
-    pub hue: u16,
-    pub palette_num: u8,
+    pub color: Color,
+    pub show_color_picker: bool,
     pub location: Option<Location>,
     pub grid_sep: f32,
     pub noise_factor: f32,
@@ -41,6 +68,7 @@ pub struct Controls {
     pub exporting: bool,
     pub worley_dist: bool,
     pub stroke_width: f32,
+    pub background: Option<Background>,
     pub export_width: String,
     pub export_height: String,
 }
@@ -49,11 +77,11 @@ impl Controls {
     pub fn new() -> Self {
         Self {
             hi_res: false,
-            xtrude: true,
+            curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
-            palette_num: 9,
-            hue: 0,
+            color: Color::from_rgb8(20, 134, 187),
+            show_color_picker: false,
             location: Some(Location::Halton),
             grid_sep: 50.0,
             noise_factor: 1.0,
@@ -69,9 +97,21 @@ impl Controls {
             exporting: false,
             worley_dist: false,
             stroke_width: 8.0,
+            background: Some(Background::Clouds),
             export_width: String::new(),
             export_height: String::new(),
         }
+    }
+
+    pub fn randomize(&mut self) {
+        let mut rng = SmallRng::from_entropy();
+        let mut rand_controls: Controls = rng.gen();
+        rand_controls.hi_res = self.hi_res;
+        rand_controls.stroke_width = self.stroke_width;
+        rand_controls.spacing = self.spacing;
+        rand_controls.curve_length = self.curve_length;
+        rand_controls.grid_sep = self.grid_sep;
+        *self = rand_controls;
     }
 }
 
@@ -83,19 +123,24 @@ impl Default for Controls {
 
 impl Distribution<Controls> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Controls {
-        let palette_num = rng.gen_range(0..11);
         let location: Option<Location> = Some(rng.gen());
         let grid_sep = rng.gen_range(25.0..75.0);
         let noise_function: Option<NoiseFunction> = Some(rng.gen());
+        let color = Color::from_rgb8(
+            rng.gen_range(0..255),
+            rng.gen_range(0..255),
+            rng.gen_range(0..255),
+        );
         let max_factor = match noise_function.unwrap() {
             NoiseFunction::Fbm => 7.0,
             NoiseFunction::Billow => 7.0,
             NoiseFunction::Ridged => 7.0,
             NoiseFunction::Value => 7.0,
-            NoiseFunction::Checkerboard => 2.0,
             NoiseFunction::Cylinders => 2.0,
             NoiseFunction::Worley => 7.0,
             NoiseFunction::Curl => 7.0,
+            NoiseFunction::Magnet => 7.0,
+            NoiseFunction::Gravity => 7.0,
         };
         let noise_factor = rng.gen_range(1.0..max_factor);
         let noise_scale = rng.gen_range(1.0..7.0);
@@ -103,19 +148,23 @@ impl Distribution<Controls> for Standard {
         let len_type: Option<Len> = Some(rng.gen());
         let len_size = rng.gen_range(50.0..300.0);
         let len_dir: Option<Dir> = Some(rng.gen());
-        let cap: Option<GradStyle> = Some(rng.gen());
+        let grad_style: Option<GradStyle> = Some(rng.gen());
+        let curve_style: Option<CurveStyle> = Some(rng.gen());
+        let background: Option<Background> = Some(rng.gen());
         Controls {
-            palette_num,
             location,
             grid_sep,
             noise_factor,
             noise_scale,
             octaves,
             noise_function,
+            color,
             len_type,
             len_size,
             len_dir,
-            grad_style: cap,
+            grad_style,
+            curve_style,
+            background,
             ..Default::default()
         }
     }
@@ -127,8 +176,8 @@ pub struct Xtrusion {
 
 impl Xtrusion {
     pub fn new() -> Self {
-        let mut controls = Controls::new();
-        let canvas = draw(&mut controls, 1.0);
+        let controls = Controls::new();
+        let canvas = draw(&controls, 1.0);
         Self {
             controls: Controls::new(),
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
@@ -136,12 +185,12 @@ impl Xtrusion {
     }
 
     pub fn draw(&mut self) {
-        let mut controls = Controls {
+        let controls = Controls {
             export_width: String::new(),
             export_height: String::new(),
             ..self.controls
         };
-        let canvas = draw(&mut controls, 1.0);
+        let canvas = draw(&controls, 1.0);
         self.image = image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
     }
 }
