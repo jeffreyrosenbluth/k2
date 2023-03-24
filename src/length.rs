@@ -44,7 +44,7 @@ fn indep(p: Point, w: f32, h: f32, dir: Dir) -> f32 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Len {
+pub enum ExtrusionStyle {
     Expanding,
     Contracting,
     Constant,
@@ -52,44 +52,44 @@ pub enum Len {
     Noisy,
 }
 
-impl std::fmt::Display for Len {
+impl std::fmt::Display for ExtrusionStyle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                Len::Constant => "Constant",
-                Len::Expanding => "Expanding",
-                Len::Contracting => "Contracting",
-                Len::Varying => "Varying",
-                Len::Noisy => "Noisy",
+                ExtrusionStyle::Constant => "Constant",
+                ExtrusionStyle::Expanding => "Expanding",
+                ExtrusionStyle::Contracting => "Contracting",
+                ExtrusionStyle::Varying => "Varying",
+                ExtrusionStyle::Noisy => "Noisy",
             }
         )
     }
 }
 
-impl Distribution<Len> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Len {
+impl Distribution<ExtrusionStyle> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ExtrusionStyle {
         let index: u8 = rng.gen_range(0..5);
         match index {
-            0 => Len::Constant,
-            1 => Len::Expanding,
-            2 => Len::Contracting,
-            3 => Len::Varying,
-            4 => Len::Noisy,
+            0 => ExtrusionStyle::Constant,
+            1 => ExtrusionStyle::Expanding,
+            2 => ExtrusionStyle::Contracting,
+            3 => ExtrusionStyle::Varying,
+            4 => ExtrusionStyle::Noisy,
             _ => unreachable!(),
         }
     }
 }
 
-impl Len {
+impl ExtrusionStyle {
     pub fn calc(self, w: f32, h: f32, r: f32, dir: Dir) -> Box<dyn Fn(Point) -> f32> {
         match self {
-            Len::Expanding => Box::new(expanding(w, h, r, dir)),
-            Len::Contracting => Box::new(contracting(w, h, r, dir)),
-            Len::Varying => Box::new(varying(w, h, r)),
-            Len::Constant => Box::new(constant(r)),
-            Len::Noisy => Box::new(noisy(w, h, r)),
+            ExtrusionStyle::Expanding => Box::new(expanding(w, h, r, dir)),
+            ExtrusionStyle::Contracting => Box::new(contracting(w, h, r, dir)),
+            ExtrusionStyle::Varying => Box::new(varying(w, h, r)),
+            ExtrusionStyle::Constant => Box::new(constant(r)),
+            ExtrusionStyle::Noisy => Box::new(noisy(w, h, r)),
         }
     }
 }
@@ -121,4 +121,12 @@ fn noisy(w: f32, h: f32, r: f32) -> impl Fn(Point) -> f32 {
 
 fn constant(r: f32) -> impl Fn(Point) -> f32 {
     move |_| r * 0.5
+}
+
+fn periodic(w: f32, h: f32, r: f32, scale: f32, min_size: f32) -> impl Fn(Point) -> f32 {
+    move |p| {
+        let opts = NoiseOpts::with_wh(w, h).scales(scale);
+        let nf = Perlin::default().set_seed(98713);
+        f32::max(min_size, (noise2d_01(nf, &opts, p.x, p.y)) * r)
+    }
 }

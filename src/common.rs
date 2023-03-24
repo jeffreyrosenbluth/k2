@@ -1,7 +1,7 @@
 use crate::art::draw;
 use crate::background::Background;
 use crate::gradient::GradStyle;
-use crate::length::{Dir, Len};
+use crate::length::{Dir, ExtrusionStyle};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use iced::widget::image;
@@ -51,8 +51,10 @@ pub struct Controls {
     pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
     pub curve_length: u32,
-    pub color: Color,
-    pub show_color_picker: bool,
+    pub color1: Color,
+    pub color2: Color,
+    pub show_color_picker1: bool,
+    pub show_color_picker2: bool,
     pub location: Option<Location>,
     pub grid_sep: f32,
     pub noise_factor: f32,
@@ -61,7 +63,7 @@ pub struct Controls {
     pub persistence: f32,
     pub noise_function: Option<NoiseFunction>,
     pub speed: f32,
-    pub len_type: Option<Len>,
+    pub len_type: Option<ExtrusionStyle>,
     pub len_size: f32,
     pub len_dir: Option<Dir>,
     pub grad_style: Option<GradStyle>,
@@ -80,8 +82,10 @@ impl Controls {
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
-            color: Color::from_rgb8(20, 134, 187),
-            show_color_picker: false,
+            color1: Color::from_rgb8(20, 134, 187),
+            color2: Color::from_rgb8(0, 0, 0),
+            show_color_picker1: false,
+            show_color_picker2: false,
             location: Some(Location::Halton),
             grid_sep: 50.0,
             noise_factor: 1.0,
@@ -90,7 +94,7 @@ impl Controls {
             persistence: 0.5,
             noise_function: Some(NoiseFunction::Fbm),
             speed: 1.0,
-            len_type: Some(Len::Contracting),
+            len_type: Some(ExtrusionStyle::Contracting),
             len_size: 200.0,
             len_dir: Some(Dir::Both),
             grad_style: Some(GradStyle::None),
@@ -126,7 +130,12 @@ impl Distribution<Controls> for Standard {
         let location: Option<Location> = Some(rng.gen());
         let grid_sep = rng.gen_range(25.0..75.0);
         let noise_function: Option<NoiseFunction> = Some(rng.gen());
-        let color = Color::from_rgb8(
+        let color1 = Color::from_rgb8(
+            rng.gen_range(0..255),
+            rng.gen_range(0..255),
+            rng.gen_range(0..255),
+        );
+        let color2 = Color::from_rgb8(
             rng.gen_range(0..255),
             rng.gen_range(0..255),
             rng.gen_range(0..255),
@@ -145,7 +154,7 @@ impl Distribution<Controls> for Standard {
         let noise_factor = rng.gen_range(1.0..max_factor);
         let noise_scale = rng.gen_range(1.0..7.0);
         let octaves = rng.gen_range(1..9);
-        let len_type: Option<Len> = Some(rng.gen());
+        let len_type: Option<ExtrusionStyle> = Some(rng.gen());
         let len_size = rng.gen_range(50.0..300.0);
         let len_dir: Option<Dir> = Some(rng.gen());
         let grad_style: Option<GradStyle> = Some(rng.gen());
@@ -158,7 +167,8 @@ impl Distribution<Controls> for Standard {
             noise_scale,
             octaves,
             noise_function,
-            color,
+            color1,
+            color2,
             len_type,
             len_size,
             len_dir,

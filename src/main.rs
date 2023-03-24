@@ -1,6 +1,7 @@
 use iced::{
     widget::{button, image, row, text, text_input, toggler, vertical_space, Container},
-    Alignment, Application, Color, Command, Element, Settings, Theme,
+    Alignment::{self, Center},
+    Application, Color, Command, Element, Settings, Theme,
 };
 use iced_aw::ColorPicker;
 use rand::prelude::*;
@@ -18,8 +19,8 @@ mod noise;
 
 use crate::common::*;
 use crate::gradient::GradStyle;
-use crate::gui::*;
-use crate::length::{Dir, Len};
+use crate::gui::{extrude::Extrude, helpers::*};
+use crate::length::{Dir, ExtrusionStyle};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::{art::*, background::Background};
@@ -33,10 +34,9 @@ pub fn main() -> iced::Result {
 }
 
 #[derive(Debug, Clone)]
-pub enum ColorMessage {
-    Choose,
-    Submit(Color),
-    Cancel,
+pub enum ColorChooser {
+    Color1,
+    Color2,
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +45,7 @@ pub enum RandomMessage {
     RandomNoiseFactor,
     RandomNoiseScale,
     RandomOctaves,
-    RandomColor,
+    RandomColor(ColorChooser),
     RandomSpeed,
     RandomPersistence,
     RandomLenSize,
@@ -56,6 +56,13 @@ pub enum RandomMessage {
     RandomHighlight,
     RandomCurveStyle,
     RandomBackground,
+}
+
+#[derive(Debug, Clone)]
+pub enum ColorMessage {
+    Choose,
+    Submit(Color),
+    Cancel,
 }
 
 #[derive(Debug, Clone)]
@@ -74,7 +81,7 @@ pub enum Message {
     Persistence(f32),
     Noise(NoiseFunction),
     Speed(f32),
-    Length(Len),
+    Length(ExtrusionStyle),
     LengthSize(f32),
     LengthDir(Dir),
     Grad(GradStyle),
@@ -84,7 +91,8 @@ pub enum Message {
     ExportWidth(String),
     ExportHeight(String),
     Rand(RandomMessage),
-    Color(ColorMessage),
+    Color1(ColorMessage),
+    Color2(ColorMessage),
     Background(Background),
     Null,
 }
@@ -130,9 +138,14 @@ fn rand_message(message: RandomMessage, controls: &mut Controls) {
         RandomHighlight => {
             controls.grad_style = random_controls.grad_style;
         }
-        RandomColor => {
-            controls.color = random_controls.color;
-        }
+        RandomColor(c) => match c {
+            ColorChooser::Color1 => {
+                controls.color1 = random_controls.color1;
+            }
+            ColorChooser::Color2 => {
+                controls.color2 = random_controls.color2;
+            }
+        },
         RandomCurveStyle => {
             controls.curve_style = random_controls.curve_style;
         }
@@ -164,11 +177,11 @@ impl Application for Xtrusion {
                 self.controls.hi_res = b;
                 if b {
                     self.controls.spacing /= 4.0;
-                    self.controls.curve_length *= 4;
+                    // self.controls.curve_length *= 4;
                     self.controls.stroke_width /= 4.0;
                 } else {
                     self.controls.spacing *= 4.0;
-                    self.controls.curve_length /= 4;
+                    // self.controls.curve_length /= 4;
                     self.controls.stroke_width *= 4.0;
                 }
                 self.draw();
@@ -253,14 +266,23 @@ impl Application for Xtrusion {
                 rand_message(rnd, &mut self.controls);
                 self.draw();
             }
-            Message::Color(c) => match c {
-                ColorMessage::Choose => self.controls.show_color_picker = true,
+            Message::Color1(c) => match c {
+                ColorMessage::Choose => self.controls.show_color_picker1 = true,
                 ColorMessage::Submit(k) => {
-                    self.controls.color = k;
-                    self.controls.show_color_picker = false;
+                    self.controls.color1 = k;
+                    self.controls.show_color_picker1 = false;
                     self.draw()
                 }
-                ColorMessage::Cancel => self.controls.show_color_picker = false,
+                ColorMessage::Cancel => self.controls.show_color_picker1 = false,
+            },
+            Message::Color2(c) => match c {
+                ColorMessage::Choose => self.controls.show_color_picker2 = true,
+                ColorMessage::Submit(k) => {
+                    self.controls.color2 = k;
+                    self.controls.show_color_picker2 = false;
+                    self.draw()
+                }
+                ColorMessage::Cancel => self.controls.show_color_picker2 = false,
             },
             Message::Background(b) => {
                 self.controls.background = Some(b);
@@ -278,15 +300,31 @@ impl Application for Xtrusion {
         use RandomMessage::*;
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
         let mut control_panel = iced::widget::column![];
-        let color_button =
-            button(text("Primary Color").size(15)).on_press(Message::Color(ColorMessage::Choose));
+        let color_button1 =
+            button(text("Color 1").size(15)).on_press(Message::Color1(ColorMessage::Choose));
+        let color_button2 =
+            button(text("Color 2").size(15)).on_press(Message::Color2(ColorMessage::Choose));
 
-        let color_picker = ColorPicker::new(
-            self.controls.show_color_picker,
-            self.controls.color,
-            color_button,
-            Message::Color(ColorMessage::Cancel),
-            |c| Message::Color(ColorMessage::Submit(c)),
+        let color_picker1 = ColorPicker::new(
+            self.controls.show_color_picker1,
+            self.controls.color1,
+            color_button1,
+            Message::Color1(ColorMessage::Cancel),
+            |c| Message::Color1(ColorMessage::Submit(c)),
+        );
+        let color_picker2 = ColorPicker::new(
+            self.controls.show_color_picker2,
+            self.controls.color2,
+            color_button2,
+            Message::Color2(ColorMessage::Cancel),
+            |c| Message::Color2(ColorMessage::Submit(c)),
+        );
+
+        let extrusion = Extrude::new(
+            self.controls.len_type,
+            self.controls.len_size,
+            self.controls.len_dir,
+            self.controls.grad_style,
         );
 
         control_panel = control_panel
@@ -425,10 +463,35 @@ impl Application for Xtrusion {
             )
             .push(
                 row![
-                    color_picker,
-                    button(text("Random Color").size(15)).on_press(Rand(RandomColor))
+                    color_picker1,
+                    button(text("Random").size(15))
+                        .on_press(Rand(RandomColor(ColorChooser::Color1))),
+                    text(format!(
+                        "{:3} {:3} {:3}",
+                        (self.controls.color1.r * 255.0) as u8,
+                        (self.controls.color1.g * 255.0) as u8,
+                        (self.controls.color1.b * 255.0) as u8
+                    ))
+                    .size(15)
                 ]
-                .spacing(15),
+                .spacing(15)
+                .align_items(Center),
+            )
+            .push(
+                row![
+                    color_picker2,
+                    button(text("Random").size(15))
+                        .on_press(Rand(RandomColor(ColorChooser::Color2))),
+                    text(format!(
+                        "{:3} {:3} {:3}",
+                        (self.controls.color2.r * 255.0) as u8,
+                        (self.controls.color2.g * 255.0) as u8,
+                        (self.controls.color2.b * 255.0) as u8
+                    ))
+                    .size(15)
+                ]
+                .spacing(15)
+                .align_items(Center),
             )
             .push(
                 SliderBuilder::new(
@@ -441,35 +504,13 @@ impl Application for Xtrusion {
                 .range(5.0..=100.0)
                 .decimals(0)
                 .build(),
-            )
-            .push(
-                PickListBuilder::new(
-                    "Extrusion Length".to_string(),
-                    vec![
-                        Len::Constant,
-                        Len::Expanding,
-                        Len::Contracting,
-                        Len::Varying,
-                        Len::Noisy,
-                    ],
-                    self.controls.len_type,
-                    Length,
-                    Rand(RandomLenType),
-                )
-                .build(),
-            )
-            .push(
-                SliderBuilder::new(
-                    "Extrusion Size".to_string(),
-                    LengthSize,
-                    Draw,
-                    Some(Rand(RandomLenSize)),
-                    self.controls.len_size,
-                )
-                .range(1.0..=350.0)
-                .decimals(0)
-                .build(),
-            )
+            );
+
+        if self.controls.curve_style == Some(crate::CurveStyle::Extrusion) {
+            control_panel = control_panel.push(extrusion.show())
+        };
+
+        control_panel = control_panel
             .push(
                 SliderBuilder::new(
                     "Stroke Width".to_string(),
@@ -481,33 +522,6 @@ impl Application for Xtrusion {
                 .range(0.5..=25.0)
                 .step(0.5)
                 .decimals(1)
-                .build(),
-            )
-            .push(
-                PickListBuilder::new(
-                    "Extrusion Direction".to_string(),
-                    vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
-                    self.controls.len_dir,
-                    LengthDir,
-                    Rand(RandomLenDir),
-                )
-                .build(),
-            )
-            .push(
-                PickListBuilder::new(
-                    "Highlight".to_string(),
-                    vec![
-                        GradStyle::None,
-                        GradStyle::Light,
-                        GradStyle::Dark,
-                        GradStyle::Fiber,
-                        GradStyle::LightFiber,
-                        GradStyle::DarkFiber,
-                    ],
-                    self.controls.grad_style,
-                    Grad,
-                    Rand(RandomHighlight),
-                )
                 .build(),
             )
             .push(

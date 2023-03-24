@@ -100,8 +100,10 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
             .unwrap()
             .starts(canvas.w_f32(), canvas.h_f32(), controls.grid_sep);
 
-    let mut palette = Palette::new(color_bi(
-        Color::from_rgba(controls.color.r, controls.color.g, controls.color.b, 1.0).unwrap(),
+    let mut palette = Palette::new(color_scale(
+        Color::from_rgba(controls.color1.r, controls.color1.g, controls.color1.b, 1.0).unwrap(),
+        Color::from_rgba(controls.color2.r, controls.color2.g, controls.color2.b, 1.0).unwrap(),
+        8,
     ));
 
     let len_fn = controls.len_type.unwrap().calc(
