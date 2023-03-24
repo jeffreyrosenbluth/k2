@@ -6,45 +6,6 @@ use iced::{
     Alignment, Color,
 };
 
-pub fn wslider<'a, M, T, F>(
-    title: String,
-    message: M,
-    release: F,
-    range: RangeInclusive<T>,
-    value: T,
-    step: T,
-) -> Column<'a, F>
-where
-    T: 'a
-        + num_traits::cast::FromPrimitive
-        + Copy
-        + From<u8>
-        + PartialOrd<T>
-        + std::fmt::Display
-        + num_traits::One,
-    F: 'a + Clone,
-    M: 'a + Fn(T) -> F + Clone,
-    f64: From<T>,
-{
-    let n = if step >= T::one() {
-        format!("{value:5.0}")
-    } else {
-        format!("{value:5.2}")
-    };
-    iced::widget::column![
-        text(title).size(15),
-        row![
-            slider(range, value, message)
-                .on_release(release)
-                .step(step)
-                .width(150),
-            text(n).size(15).style(Color::from_rgb8(0x5E, 0x7C, 0xE2))
-        ]
-        .align_items(Alignment::Center)
-    ]
-    .spacing(5)
-}
-
 pub struct SliderBuilder<T, M, F>
 where
     F: Clone,

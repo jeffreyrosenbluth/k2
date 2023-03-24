@@ -19,7 +19,7 @@ mod noise;
 
 use crate::common::*;
 use crate::gradient::GradStyle;
-use crate::gui::{extrude::Extrude, helpers::*};
+use crate::gui::{extrude::Extrude, helpers::*, lpicklist};
 use crate::length::{Dir, ExtrusionStyle};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
@@ -331,20 +331,17 @@ impl Application for Xtrusion {
             .push(Container::new(
                 toggler("Hi Res".to_owned(), self.controls.hi_res, HiRes).text_size(TEXT_SIZE),
             ))
-            .push(
-                PickListBuilder::new(
-                    "Curve Style".to_string(),
-                    vec![
-                        crate::CurveStyle::Line,
-                        crate::CurveStyle::Dots,
-                        crate::CurveStyle::Extrusion,
-                    ],
-                    self.controls.curve_style,
-                    CurveStyle,
-                    Rand(RandomCurveStyle),
-                )
-                .build(),
-            )
+            .push(lpicklist::LPickList::new(
+                "Curve Style".to_string(),
+                vec![
+                    crate::CurveStyle::Line,
+                    crate::CurveStyle::Dots,
+                    crate::CurveStyle::Extrusion,
+                ],
+                self.controls.curve_style,
+                |x| x.map_or(CurveStyle(common::CurveStyle::Dots), |v| CurveStyle(v)),
+                || Rand(RandomCurveStyle),
+            ))
             .push(
                 SliderBuilder::new(
                     "Spacing".to_string(),
@@ -368,18 +365,15 @@ impl Application for Xtrusion {
                 .range(10..=1000)
                 .build(),
             )
-            .push(
-                PickListBuilder::new(
-                    "Flow Field".to_string(),
-                    vec![
-                        Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
-                    ],
-                    self.controls.noise_function,
-                    Noise,
-                    Rand(RandomNoiseFunction),
-                )
-                .build(),
-            );
+            .push(lpicklist::LPickList::new(
+                "Flow Field".to_string(),
+                vec![
+                    Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
+                ],
+                self.controls.noise_function,
+                |x| x.map_or(Noise(Fbm), |v| Noise(v)),
+                || Rand(RandomNoiseFunction),
+            ));
         control_panel = control_panel.push(
             SliderBuilder::new(
                 "Octaves".to_string(),
@@ -444,23 +438,20 @@ impl Application for Xtrusion {
                 .decimals(2)
                 .build(),
             )
-            .push(
-                PickListBuilder::new(
-                    "Location".to_string(),
-                    vec![
-                        Location::Grid,
-                        Location::Rand,
-                        Location::Halton,
-                        Location::Poisson,
-                        Location::Circle,
-                        Location::Lissajous,
-                    ],
-                    self.controls.location,
-                    Loc,
-                    Rand(RandomLocation),
-                )
-                .build(),
-            )
+            .push(lpicklist::LPickList::new(
+                "Location".to_string(),
+                vec![
+                    Location::Grid,
+                    Location::Rand,
+                    Location::Halton,
+                    Location::Poisson,
+                    Location::Circle,
+                    Location::Lissajous,
+                ],
+                self.controls.location,
+                |x| x.map_or(Loc(Location::Grid), |x| Loc(x)),
+                || Rand(RandomLocation),
+            ))
             .push(
                 row![
                     color_picker1,
@@ -524,16 +515,13 @@ impl Application for Xtrusion {
                 .decimals(1)
                 .build(),
             )
-            .push(
-                PickListBuilder::new(
-                    "Background Style".to_string(),
-                    vec![Grain, Clouds],
-                    self.controls.background,
-                    Background,
-                    Rand(RandomBackground),
-                )
-                .build(),
-            )
+            .push(lpicklist::LPickList::new(
+                "Background Style".to_string(),
+                vec![Grain, Clouds],
+                self.controls.background,
+                |x| x.map_or(Background(Grain), |v| Background(v)),
+                || Rand(RandomBackground),
+            ))
             .padding(20)
             .spacing(15)
             .width(250);
