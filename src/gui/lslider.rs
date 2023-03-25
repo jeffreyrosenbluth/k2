@@ -17,8 +17,8 @@ where
     spacing: u16,
     decimals: u8,
     on_change: Box<dyn Fn(T) -> Message>,
-    on_rand: Box<dyn Fn() -> Message>,
-    on_release: Box<dyn Fn() -> Message>,
+    on_rand: Message,
+    on_release: Message,
 }
 
 #[derive(Debug, Clone)]
@@ -38,8 +38,8 @@ where
         range: RangeInclusive<T>,
         step: T,
         on_change: impl Fn(T) -> Message + 'static,
-        on_rand: impl Fn() -> Message + 'static,
-        on_release: impl Fn() -> Message + 'static,
+        on_rand: Message,
+        on_release: Message,
     ) -> Self {
         Self {
             label,
@@ -51,8 +51,8 @@ where
             spacing: 5,
             decimals: 1,
             on_change: Box::new(on_change),
-            on_rand: Box::new(on_rand),
-            on_release: Box::new(on_release),
+            on_rand,
+            on_release,
         }
     }
 
@@ -75,22 +75,22 @@ where
 
 impl<'a, T, Message, Renderer> Component<Message, Renderer> for LSlider<T, Message>
 where
-    T: Copy + From<u8> + PartialOrd + num_traits::FromPrimitive + std::fmt::Display + Eq + 'static,
+    T: Copy + From<u8> + PartialOrd + num_traits::FromPrimitive + std::fmt::Display + 'static,
     f64: From<T>,
     Renderer: iced_native::text::Renderer + 'static,
     Renderer::Theme: button::StyleSheet + text::StyleSheet + slider::StyleSheet,
     <<Renderer as iced_native::Renderer>::Theme as iced::widget::text::StyleSheet>::Style:
         From<iced::Color>,
-    Message: 'a,
+    Message: 'a + Clone,
 {
     type State = ();
     type Event = Event<T>;
 
     fn update(&mut self, _state: &mut Self::State, event: Self::Event) -> Option<Message> {
         match event {
-            Event::RandPressed => Some((self.on_rand)()),
+            Event::RandPressed => Some(self.on_rand.clone()),
             Event::SliderChanged(v) => Some((self.on_change)(v)),
-            Event::SliderReleased => Some((self.on_release)()),
+            Event::SliderReleased => Some(self.on_release.clone()),
         }
     }
 
@@ -127,13 +127,13 @@ where
 
 impl<'a, T, Message, Renderer> From<LSlider<T, Message>> for Element<'a, Message, Renderer>
 where
-    T: Copy + From<u8> + PartialOrd + num_traits::FromPrimitive + std::fmt::Display + Eq + 'static,
+    T: Copy + From<u8> + PartialOrd + num_traits::FromPrimitive + std::fmt::Display + 'static,
     f64: From<T>,
     Renderer: iced_native::text::Renderer + 'static,
     Renderer::Theme: button::StyleSheet + text::StyleSheet + slider::StyleSheet,
     <<Renderer as iced_native::Renderer>::Theme as iced::widget::text::StyleSheet>::Style:
         From<iced::Color>,
-    Message: 'a,
+    Message: 'a + Clone,
 {
     fn from(lslider: LSlider<T, Message>) -> Self {
         iced_lazy::component(lslider)

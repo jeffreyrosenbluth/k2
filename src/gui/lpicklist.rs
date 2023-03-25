@@ -13,7 +13,7 @@ where
     width: u16,
     spacing: u16,
     on_change: Box<dyn Fn(Option<T>) -> Message>,
-    on_rand: Box<dyn Fn() -> Message>,
+    on_rand: Message,
 }
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,7 @@ where
         choices: Vec<T>,
         value: Option<T>,
         on_change: impl Fn(Option<T>) -> Message + 'static,
-        on_rand: impl Fn() -> Message + 'static,
+        on_rand: Message,
     ) -> Self {
         Self {
             label,
@@ -41,7 +41,7 @@ where
             width: 175,
             spacing: 5,
             on_change: Box::new(on_change),
-            on_rand: Box::new(on_rand),
+            on_rand,
         }
     }
 
@@ -61,6 +61,7 @@ where
 impl<T, Message, Renderer> Component<Message, Renderer> for LPickList<T, Message>
 where
     T: Clone + std::fmt::Display + Eq + 'static,
+    Message: Clone,
     Renderer: iced_native::text::Renderer + 'static,
     <<Renderer as iced_native::Renderer>::Theme as iced::overlay::menu::StyleSheet>::Style: From<
         <<Renderer as iced_native::Renderer>::Theme as iced::widget::pick_list::StyleSheet>::Style,
@@ -75,9 +76,9 @@ where
     type State = ();
     type Event = Event<T>;
 
-    fn update(&mut self, _state: &mut Self::State, event: Self::Event) -> Option<Message> {
+    fn update(&mut self, _state: &mut Self::State, event: Event<T>) -> Option<Message> {
         match event {
-            Event::RandPressed => Some((self.on_rand)()),
+            Event::RandPressed => Some(self.on_rand.clone()),
             Event::PickListChanged(v) => Some((self.on_change)(Some(v))),
         }
     }
@@ -103,7 +104,6 @@ where
         .into()
     }
 }
-
 impl<'a, T, Message, Renderer> From<LPickList<T, Message>> for Element<'a, Message, Renderer>
 where
     T: Clone + std::fmt::Display + Eq + 'static,
@@ -117,7 +117,7 @@ where
         + scrollable::StyleSheet
         + container::StyleSheet
         + overlay::menu::StyleSheet,
-    Message: 'a,
+    Message: 'a + Clone,
 {
     fn from(numeric_input: LPickList<T, Message>) -> Self {
         iced_lazy::component(numeric_input)

@@ -19,7 +19,7 @@ mod noise;
 
 use crate::common::*;
 use crate::gradient::GradStyle;
-use crate::gui::{extrude::Extrude, helpers::*, lpicklist};
+use crate::gui::{extrude::Extrude, lpicklist, lslider::LSlider};
 use crate::length::{Dir, ExtrusionStyle};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
@@ -56,6 +56,9 @@ pub enum RandomMessage {
     RandomHighlight,
     RandomCurveStyle,
     RandomBackground,
+    RandomSpacing,
+    RandomGridSep,
+    RandomStrokeWidth,
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +154,15 @@ fn rand_message(message: RandomMessage, controls: &mut Controls) {
         }
         RandomBackground => {
             controls.background = random_controls.background;
+        }
+        RandomSpacing => {
+            controls.spacing = random_controls.spacing;
+        }
+        RandomGridSep => {
+            controls.grid_sep = random_controls.grid_sep;
+        }
+        RandomStrokeWidth => {
+            controls.stroke_width = random_controls.stroke_width;
         }
     }
 }
@@ -340,31 +352,29 @@ impl Application for Xtrusion {
                 ],
                 self.controls.curve_style,
                 |x| x.map_or(CurveStyle(common::CurveStyle::Dots), |v| CurveStyle(v)),
-                || Rand(RandomCurveStyle),
+                Rand(RandomCurveStyle),
             ))
             .push(
-                SliderBuilder::new(
+                LSlider::new(
                     "Spacing".to_string(),
-                    Space,
-                    Draw,
-                    None,
                     self.controls.spacing,
-                )
-                .range(1.0..=50.0)
-                .decimals(0)
-                .build(),
-            )
-            .push(
-                SliderBuilder::new(
-                    "Curve Length".to_string(),
-                    CurveLength,
+                    1.0..=50.0,
+                    1.0,
+                    Space,
+                    Rand(RandomSpacing),
                     Draw,
-                    Some(Rand(RandomLength)),
-                    self.controls.curve_length,
                 )
-                .range(10..=1000)
-                .build(),
+                .decimals(0),
             )
+            .push(LSlider::new(
+                "Curve Length".to_string(),
+                self.controls.curve_length,
+                10..=1000,
+                1,
+                CurveLength,
+                Rand(RandomLength),
+                Draw,
+            ))
             .push(lpicklist::LPickList::new(
                 "Flow Field".to_string(),
                 vec![
@@ -372,71 +382,63 @@ impl Application for Xtrusion {
                 ],
                 self.controls.noise_function,
                 |x| x.map_or(Noise(Fbm), |v| Noise(v)),
-                || Rand(RandomNoiseFunction),
+                Rand(RandomNoiseFunction),
             ));
         control_panel = control_panel.push(
-            SliderBuilder::new(
+            LSlider::new(
                 "Octaves".to_string(),
-                Octaves,
-                Draw,
-                Some(Rand(RandomOctaves)),
                 self.controls.octaves,
+                1..=8,
+                1,
+                Octaves,
+                Rand(RandomOctaves),
+                Draw,
             )
-            .range(1..=8)
-            .decimals(0)
-            .build(),
+            .decimals(0),
         );
-        // };
         control_panel = control_panel
+            .push(LSlider::new(
+                "Noise Scale".to_string(),
+                self.controls.noise_scale,
+                0.5..=20.0,
+                0.1,
+                Scale,
+                Rand(RandomNoiseScale),
+                Draw,
+            ))
+            .push(LSlider::new(
+                "Noise Factor".to_string(),
+                self.controls.noise_factor,
+                0.5..=20.0,
+                0.1,
+                // |x| Factor(x),
+                Factor,
+                Rand(RandomNoiseFactor),
+                Draw,
+            ))
             .push(
-                SliderBuilder::new(
-                    "Noise Scale".to_string(),
-                    Scale,
-                    Draw,
-                    Some(Rand(RandomNoiseScale)),
-                    self.controls.noise_scale,
-                )
-                .range(0.5..=20.0)
-                .step(0.1)
-                .build(),
-            )
-            .push(
-                SliderBuilder::new(
-                    "Noise Factor".to_string(),
-                    Factor,
-                    Draw,
-                    Some(Rand(RandomNoiseFactor)),
-                    self.controls.noise_factor,
-                )
-                .range(0.5..=20.0)
-                .step(0.1)
-                .build(),
-            )
-            .push(
-                SliderBuilder::new(
+                LSlider::new(
                     "Persistence".to_string(),
-                    Persistence,
-                    Draw,
-                    Some(Rand(RandomPersistence)),
                     self.controls.persistence,
+                    0.05..=0.95,
+                    0.05,
+                    Persistence,
+                    Rand(RandomPersistence),
+                    Draw,
                 )
-                .range(0.05..=0.95)
-                .step(0.05)
-                .decimals(2)
-                .build(),
+                .decimals(2),
             )
             .push(
-                SliderBuilder::new(
+                LSlider::new(
                     "Speed".to_string(),
-                    Speed,
-                    Draw,
-                    Some(Rand(RandomSpeed)),
                     self.controls.speed,
+                    0.01..=1.00,
+                    0.01,
+                    Speed,
+                    Rand(RandomSpeed),
+                    Draw,
                 )
-                .range(0.01..=1.00)
-                .step(0.01)
-                .decimals(2)
-                .build(),
+                .decimals(2),
             )
             .push(lpicklist::LPickList::new(
                 "Location".to_string(),
@@ -450,7 +452,7 @@ impl Application for Xtrusion {
                 ],
                 self.controls.location,
                 |x| x.map_or(Loc(Location::Grid), |x| Loc(x)),
-                || Rand(RandomLocation),
+                Rand(RandomLocation),
             ))
             .push(
                 row![
@@ -485,16 +487,16 @@ impl Application for Xtrusion {
                 .align_items(Center),
             )
             .push(
-                SliderBuilder::new(
+                LSlider::new(
                     "Grid Spacing".to_string(),
-                    GridSep,
-                    Draw,
-                    None,
                     self.controls.grid_sep,
+                    5.0..=100.0,
+                    1.0,
+                    GridSep,
+                    Rand(RandomGridSep),
+                    Draw,
                 )
-                .range(5.0..=100.0)
-                .decimals(0)
-                .build(),
+                .decimals(0),
             );
 
         if self.controls.curve_style == Some(crate::CurveStyle::Extrusion) {
@@ -503,24 +505,23 @@ impl Application for Xtrusion {
 
         control_panel = control_panel
             .push(
-                SliderBuilder::new(
+                LSlider::new(
                     "Stroke Width".to_string(),
-                    StrokeWidth,
-                    Draw,
-                    None,
                     self.controls.stroke_width,
+                    0.5..=25.0,
+                    0.5,
+                    StrokeWidth,
+                    Rand(RandomStrokeWidth),
+                    Draw,
                 )
-                .range(0.5..=25.0)
-                .step(0.5)
-                .decimals(1)
-                .build(),
+                .decimals(1),
             )
             .push(lpicklist::LPickList::new(
                 "Background Style".to_string(),
                 vec![Grain, Clouds],
                 self.controls.background,
                 |x| x.map_or(Background(Grain), |v| Background(v)),
-                || Rand(RandomBackground),
+                Rand(RandomBackground),
             ))
             .padding(20)
             .spacing(15)

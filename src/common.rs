@@ -112,7 +112,7 @@ impl Controls {
         let mut rand_controls: Controls = rng.gen();
         rand_controls.hi_res = self.hi_res;
         rand_controls.stroke_width = self.stroke_width;
-        rand_controls.spacing = self.spacing;
+        // rand_controls.spacing = self.spacing;
         rand_controls.curve_length = self.curve_length;
         rand_controls.grid_sep = self.grid_sep;
         *self = rand_controls;
@@ -160,6 +160,7 @@ impl Distribution<Controls> for Standard {
         let grad_style: Option<GradStyle> = Some(rng.gen());
         let curve_style: Option<CurveStyle> = Some(rng.gen());
         let background: Option<Background> = Some(rng.gen());
+        let spacing = rng.gen_range(1.0..50.0);
         Controls {
             location,
             grid_sep,
@@ -175,6 +176,7 @@ impl Distribution<Controls> for Standard {
             grad_style,
             curve_style,
             background,
+            spacing,
             ..Default::default()
         }
     }
