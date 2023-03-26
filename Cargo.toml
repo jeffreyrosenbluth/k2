@@ -14,3 +14,4 @@ iced_aw = { git = "https://github.com/jeffreyrosenbluth/iced_aw", default-featur
 ] }
 iced_lazy = "0.5.0"
 iced_native = "0.9.1"
+directories = "5.0.0"

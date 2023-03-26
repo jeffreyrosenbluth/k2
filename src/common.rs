@@ -1,9 +1,9 @@
 use crate::art::draw;
 use crate::background::Background;
 use crate::gradient::GradStyle;
-use crate::length::{Dir, ExtrusionStyle};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
+use crate::size::{Dir, SizeFn};
 use iced::widget::image;
 use iced::Color;
 use rand::distributions::Standard;
@@ -56,16 +56,18 @@ pub struct Controls {
     pub show_color_picker1: bool,
     pub show_color_picker2: bool,
     pub location: Option<Location>,
-    pub grid_sep: f32,
+    pub density: f32,
     pub noise_factor: f32,
     pub noise_scale: f32,
     pub octaves: u8,
     pub persistence: f32,
+    pub lacunarity: f32,
+    pub frequency: f32,
     pub noise_function: Option<NoiseFunction>,
     pub speed: f32,
-    pub len_type: Option<ExtrusionStyle>,
-    pub len_size: f32,
-    pub len_dir: Option<Dir>,
+    pub size_fn: Option<SizeFn>,
+    pub size: f32,
+    pub direction: Option<Dir>,
     pub grad_style: Option<GradStyle>,
     pub exporting: bool,
     pub worley_dist: bool,
@@ -73,13 +75,14 @@ pub struct Controls {
     pub background: Option<Background>,
     pub export_width: String,
     pub export_height: String,
+    pub border: bool,
 }
 
 impl Controls {
     pub fn new() -> Self {
         Self {
             hi_res: false,
-            curve_style: Some(CurveStyle::Dots),
+            curve_style: Some(CurveStyle::Extrusion),
             spacing: 4.0,
             curve_length: 50,
             color1: Color::from_rgb8(20, 134, 187),
@@ -87,16 +90,18 @@ impl Controls {
             show_color_picker1: false,
             show_color_picker2: false,
             location: Some(Location::Halton),
-            grid_sep: 50.0,
+            density: 50.0,
             noise_factor: 1.0,
             noise_scale: 4.0,
             octaves: 4,
             persistence: 0.5,
+            lacunarity: 2.0943950,
+            frequency: 1.0,
             noise_function: Some(NoiseFunction::Fbm),
             speed: 1.0,
-            len_type: Some(ExtrusionStyle::Contracting),
-            len_size: 200.0,
-            len_dir: Some(Dir::Both),
+            size_fn: Some(SizeFn::Contracting),
+            size: 200.0,
+            direction: Some(Dir::Both),
             grad_style: Some(GradStyle::None),
             exporting: false,
             worley_dist: false,
@@ -104,6 +109,7 @@ impl Controls {
             background: Some(Background::Clouds),
             export_width: String::new(),
             export_height: String::new(),
+            border: true,
         }
     }
 
@@ -112,9 +118,8 @@ impl Controls {
         let mut rand_controls: Controls = rng.gen();
         rand_controls.hi_res = self.hi_res;
         rand_controls.stroke_width = self.stroke_width;
-        // rand_controls.spacing = self.spacing;
         rand_controls.curve_length = self.curve_length;
-        rand_controls.grid_sep = self.grid_sep;
+        rand_controls.density = self.density;
         *self = rand_controls;
     }
 }
@@ -154,7 +159,7 @@ impl Distribution<Controls> for Standard {
         let noise_factor = rng.gen_range(1.0..max_factor);
         let noise_scale = rng.gen_range(1.0..7.0);
         let octaves = rng.gen_range(1..9);
-        let len_type: Option<ExtrusionStyle> = Some(rng.gen());
+        let len_type: Option<SizeFn> = Some(rng.gen());
         let len_size = rng.gen_range(50.0..300.0);
         let len_dir: Option<Dir> = Some(rng.gen());
         let grad_style: Option<GradStyle> = Some(rng.gen());
@@ -163,16 +168,16 @@ impl Distribution<Controls> for Standard {
         let spacing = rng.gen_range(1.0..50.0);
         Controls {
             location,
-            grid_sep,
+            density: grid_sep,
             noise_factor,
             noise_scale,
             octaves,
             noise_function,
             color1,
             color2,
-            len_type,
-            len_size,
-            len_dir,
+            size_fn: len_type,
+            size: len_size,
+            direction: len_dir,
             grad_style,
             curve_style,
             background,

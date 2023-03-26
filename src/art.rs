@@ -1,4 +1,4 @@
-// use wassily::prelude::distance_functions::*;
+use directories::UserDirs;
 use wassily::prelude::*;
 
 use crate::background::*;
@@ -89,6 +89,8 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     let bg = match controls.background.unwrap() {
         Background::Clouds => BG::clouds(canvas.width, canvas.height),
         Background::Grain => BG::grain(canvas.width, canvas.height),
+        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height),
+        Background::DarkClouds => BG::dark_clouds(canvas.width, canvas.height),
     };
     bg.canvas_bg(&mut canvas);
 
@@ -98,7 +100,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         controls
             .location
             .unwrap()
-            .starts(canvas.w_f32(), canvas.h_f32(), controls.grid_sep);
+            .starts(canvas.w_f32(), canvas.h_f32(), 105.0 - controls.density);
 
     let mut palette = Palette::new(color_scale(
         Color::from_rgba(controls.color1.r, controls.color1.g, controls.color1.b, 1.0).unwrap(),
@@ -106,11 +108,11 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         8,
     ));
 
-    let len_fn = controls.len_type.unwrap().calc(
+    let len_fn = controls.size_fn.unwrap().calc(
         canvas.w_f32(),
         canvas.h_f32(),
-        controls.len_size,
-        controls.len_dir.unwrap(),
+        controls.size,
+        controls.direction.unwrap(),
     );
 
     for p in starts {
@@ -121,12 +123,15 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
             CurveStyle::Dots => {
                 for p in pts {
                     let r = len_fn(p) / 15.0;
-                    ShapeBuilder::new()
+                    let mut sb = ShapeBuilder::new()
                         .circle(p, r)
-                        .no_stroke()
-                        .fill_color(c)
-                        .build()
-                        .draw(&mut canvas);
+                        .stroke_color(Color::WHITE)
+                        .stroke_weight(controls.stroke_width)
+                        .fill_color(c);
+                    if controls.stroke_width < 0.5 {
+                        sb = sb.no_stroke();
+                    }
+                    sb.build().draw(&mut canvas);
                 }
             }
             CurveStyle::Line => ShapeBuilder::new()
@@ -152,20 +157,23 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
             }
         }
     }
-
-    let border_color = palette.rand_color().darken_fixed(0.25);
-    ShapeBuilder::new()
-        .rect_xywh(pt(0, 0), pt(canvas.width, canvas.height))
-        .no_fill()
-        .stroke_color(border_color)
-        .stroke_weight(20.0)
-        .build()
-        .draw(&mut canvas);
+    if controls.border {
+        let border_color = palette.rand_color().darken_fixed(0.25);
+        ShapeBuilder::new()
+            .rect_xywh(pt(0, 0), pt(canvas.width, canvas.height))
+            .no_fill()
+            .stroke_color(border_color)
+            .stroke_weight(20.0)
+            .build()
+            .draw(&mut canvas);
+    }
     canvas
 }
 
 pub async fn print(controls: Controls, scale: f32) {
     let canvas = draw(&controls, scale);
-    let name = format!("./output/{}.png", "image");
-    canvas.save_png(name);
+    let dirs = UserDirs::new().unwrap();
+    let name = dirs.download_dir().unwrap();
+    let file_name = name.join("image.png");
+    canvas.save_png(file_name);
 }

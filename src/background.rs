@@ -4,14 +4,18 @@ use wassily::prelude::*;
 pub enum Background {
     Grain,
     Clouds,
+    DarkGrain,
+    DarkClouds,
 }
 
 impl Distribution<Background> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Background {
-        let index: u8 = rng.gen_range(0..2);
+        let index: u8 = rng.gen_range(0..4);
         match index {
             0 => Background::Grain,
             1 => Background::Clouds,
+            2 => Background::DarkGrain,
+            3 => Background::DarkClouds,
             _ => unreachable!(),
         }
     }
@@ -23,8 +27,10 @@ impl std::fmt::Display for Background {
             f,
             "{}",
             match self {
-                Background::Grain => "Grain",
-                Background::Clouds => "Clouds",
+                Background::Grain => "Light Grain",
+                Background::Clouds => "Light Clouds",
+                Background::DarkGrain => "Dark Grain",
+                Background::DarkClouds => "Dark Clouds ",
             }
         )
     }
@@ -32,6 +38,27 @@ impl std::fmt::Display for Background {
 pub struct BG(Canvas);
 
 impl BG {
+    pub fn dark_grain(width: u32, height: u32) -> Self {
+        let mut canvas = Canvas::new(width, height);
+        canvas.fill(*WHITE);
+        let mut rng = SmallRng::from_entropy();
+        for i in 0..width {
+            for j in 0..height {
+                let alpha = rng.gen_range(200..=240);
+                let c = Color::from_rgba8(0, 0, 0, alpha);
+                let mut paint = Paint::default();
+                paint.set_color(c);
+                ShapeBuilder::new()
+                    .rect_xywh(pt(i, j), pt(1, 1))
+                    .fill_paint(&paint)
+                    .no_stroke()
+                    .build()
+                    .draw(&mut canvas);
+            }
+        }
+        BG(canvas)
+    }
+
     pub fn grain(width: u32, height: u32) -> Self {
         let mut canvas = Canvas::new(width, height);
         canvas.fill(*WHITE);
@@ -62,6 +89,29 @@ impl BG {
             for j in 0..height {
                 let y =
                     225 + (30.0 * noise2d_01(&nf, &opts, i as f32 * 0.05, j as f32 * 0.10)) as u8;
+                let c = Color::from_rgba8(y, y, y, 255);
+                let mut paint = Paint::default();
+                paint.set_color(c);
+                paint.blend_mode = BlendMode::Multiply;
+                ShapeBuilder::new()
+                    .rect_xywh(pt(i, j), pt(1, 1))
+                    .fill_paint(&paint)
+                    .no_stroke()
+                    .build()
+                    .draw(&mut canvas);
+            }
+        }
+        BG(canvas)
+    }
+
+    pub fn dark_clouds(width: u32, height: u32) -> Self {
+        let mut canvas = Canvas::new(width, height);
+        let nf = Fbm::<Perlin>::default().set_octaves(4);
+        let opts = NoiseOpts::default();
+        for i in 0..width {
+            for j in 0..height {
+                let y =
+                    25 + (30.0 * noise2d_01(&nf, &opts, i as f32 * 0.05, j as f32 * 0.10)) as u8;
                 let c = Color::from_rgba8(y, y, y, 255);
                 let mut paint = Paint::default();
                 paint.set_color(c);

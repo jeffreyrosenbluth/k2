@@ -17,7 +17,7 @@ where
     spacing: u16,
     decimals: u8,
     on_change: Box<dyn Fn(T) -> Message>,
-    on_rand: Message,
+    on_rand: Option<Message>,
     on_release: Message,
 }
 
@@ -38,7 +38,7 @@ where
         range: RangeInclusive<T>,
         step: T,
         on_change: impl Fn(T) -> Message + 'static,
-        on_rand: Message,
+        on_rand: Option<Message>,
         on_release: Message,
     ) -> Self {
         Self {
@@ -48,7 +48,7 @@ where
             step,
             text_size: 15,
             width: 150,
-            spacing: 5,
+            spacing: 10,
             decimals: 1,
             on_change: Box::new(on_change),
             on_rand,
@@ -88,7 +88,7 @@ where
 
     fn update(&mut self, _state: &mut Self::State, event: Self::Event) -> Option<Message> {
         match event {
-            Event::RandPressed => Some(self.on_rand.clone()),
+            Event::RandPressed => self.on_rand.clone(),
             Event::SliderChanged(v) => Some((self.on_change)(v)),
             Event::SliderReleased => Some(self.on_release.clone()),
         }
@@ -101,14 +101,17 @@ where
             _ => format!("{:7.2}", self.value),
         };
 
-        iced::widget::column![
-            row![
-                text(self.label.clone()).size(self.text_size),
+        let mut r = row![text(self.label.clone()).size(self.text_size)];
+        if self.on_rand.is_some() {
+            r = r.push(
                 button(text("Rand").size(self.text_size * 5 / 8))
                     .on_press(Event::RandPressed)
-                    .height(self.text_size * 5 / 4)
-            ]
-            .spacing(self.text_size),
+                    .height(self.text_size * 5 / 4),
+            )
+        }
+
+        iced::widget::column![
+            r.spacing(self.text_size),
             row![
                 slider(self.range.clone(), self.value, Event::SliderChanged)
                     .on_release(Event::SliderReleased)

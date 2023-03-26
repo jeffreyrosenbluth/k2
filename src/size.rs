@@ -44,7 +44,7 @@ fn indep(p: Point, w: f32, h: f32, dir: Dir) -> f32 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExtrusionStyle {
+pub enum SizeFn {
     Expanding,
     Contracting,
     Constant,
@@ -52,44 +52,44 @@ pub enum ExtrusionStyle {
     Noisy,
 }
 
-impl std::fmt::Display for ExtrusionStyle {
+impl std::fmt::Display for SizeFn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                ExtrusionStyle::Constant => "Constant",
-                ExtrusionStyle::Expanding => "Expanding",
-                ExtrusionStyle::Contracting => "Contracting",
-                ExtrusionStyle::Varying => "Varying",
-                ExtrusionStyle::Noisy => "Noisy",
+                SizeFn::Constant => "Constant",
+                SizeFn::Expanding => "Expanding",
+                SizeFn::Contracting => "Contracting",
+                SizeFn::Varying => "Varying",
+                SizeFn::Noisy => "Noisy",
             }
         )
     }
 }
 
-impl Distribution<ExtrusionStyle> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ExtrusionStyle {
+impl Distribution<SizeFn> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> SizeFn {
         let index: u8 = rng.gen_range(0..5);
         match index {
-            0 => ExtrusionStyle::Constant,
-            1 => ExtrusionStyle::Expanding,
-            2 => ExtrusionStyle::Contracting,
-            3 => ExtrusionStyle::Varying,
-            4 => ExtrusionStyle::Noisy,
+            0 => SizeFn::Constant,
+            1 => SizeFn::Expanding,
+            2 => SizeFn::Contracting,
+            3 => SizeFn::Varying,
+            4 => SizeFn::Noisy,
             _ => unreachable!(),
         }
     }
 }
 
-impl ExtrusionStyle {
+impl SizeFn {
     pub fn calc(self, w: f32, h: f32, r: f32, dir: Dir) -> Box<dyn Fn(Point) -> f32> {
         match self {
-            ExtrusionStyle::Expanding => Box::new(expanding(w, h, r, dir)),
-            ExtrusionStyle::Contracting => Box::new(contracting(w, h, r, dir)),
-            ExtrusionStyle::Varying => Box::new(varying(w, h, r)),
-            ExtrusionStyle::Constant => Box::new(constant(r)),
-            ExtrusionStyle::Noisy => Box::new(noisy(w, h, r)),
+            SizeFn::Expanding => Box::new(expanding(w, h, r, dir)),
+            SizeFn::Contracting => Box::new(contracting(w, h, r, dir)),
+            SizeFn::Varying => Box::new(varying(w, h, r)),
+            SizeFn::Constant => Box::new(constant(r)),
+            SizeFn::Noisy => Box::new(noisy(w, h, r)),
         }
     }
 }

@@ -39,7 +39,7 @@ where
             value,
             text_size: 15,
             width: 175,
-            spacing: 5,
+            spacing: 10,
             on_change: Box::new(on_change),
             on_rand,
         }
