@@ -4,6 +4,7 @@ use crate::gradient::GradStyle;
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::size::{Dir, SizeFn};
+use directories::UserDirs;
 use iced::widget::image;
 use iced::Color;
 use rand::distributions::Standard;
@@ -11,6 +12,7 @@ use rand::prelude::*;
 
 pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
+pub const SEED: u64 = 98713;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CurveStyle {
@@ -47,6 +49,7 @@ impl std::fmt::Display for CurveStyle {
 
 #[derive(Clone)]
 pub struct Controls {
+    pub scale: f32,
     pub hi_res: bool,
     pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
@@ -82,7 +85,7 @@ impl Controls {
     pub fn new() -> Self {
         Self {
             hi_res: false,
-            curve_style: Some(CurveStyle::Extrusion),
+            curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
             color1: Color::from_rgb8(20, 134, 187),
@@ -105,22 +108,13 @@ impl Controls {
             grad_style: Some(GradStyle::None),
             exporting: false,
             worley_dist: false,
-            stroke_width: 8.0,
+            stroke_width: 1.0,
             background: Some(Background::Clouds),
             export_width: String::new(),
             export_height: String::new(),
             border: true,
+            scale: 1.0,
         }
-    }
-
-    pub fn randomize(&mut self) {
-        let mut rng = SmallRng::from_entropy();
-        let mut rand_controls: Controls = rng.gen();
-        rand_controls.hi_res = self.hi_res;
-        rand_controls.stroke_width = self.stroke_width;
-        rand_controls.curve_length = self.curve_length;
-        rand_controls.density = self.density;
-        *self = rand_controls;
     }
 }
 
@@ -186,28 +180,55 @@ impl Distribution<Controls> for Standard {
         }
     }
 }
+
+#[derive(Clone)]
 pub struct Xtrusion {
     pub controls: Controls,
     pub image: image::Handle,
+    pub rng: SmallRng,
 }
 
 impl Xtrusion {
     pub fn new() -> Self {
         let controls = Controls::new();
-        let canvas = draw(&controls, 1.0);
+        let mut rng = SmallRng::seed_from_u64(SEED);
+        let canvas = draw(&controls, &mut rng);
         Self {
-            controls: Controls::new(),
+            controls,
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
+            rng: SmallRng::seed_from_u64(SEED),
         }
     }
 
     pub fn draw(&mut self) {
-        let controls = Controls {
-            export_width: String::new(),
-            export_height: String::new(),
-            ..self.controls
-        };
-        let canvas = draw(&controls, 1.0);
-        self.image = image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take());
+        // let controls = Controls {
+        //     export_width: String::new(),
+        //     export_height: String::new(),
+        //     ..self.controls
+        // };
+        let canvas = draw(&self.controls, &mut self.rng);
+        self.image = image::Handle::from_pixels(
+            canvas.pixmap.width(),
+            canvas.pixmap.height(),
+            canvas.pixmap.take(),
+        );
+    }
+
+    pub fn randomize(&mut self) {
+        let mut rand_controls: Controls = self.rng.gen();
+        rand_controls.hi_res = self.controls.hi_res;
+        rand_controls.stroke_width = self.controls.stroke_width;
+        rand_controls.curve_length = self.controls.curve_length;
+        rand_controls.density = self.controls.density;
+        self.controls = rand_controls;
+    }
+
+    // pub async fn print(&self) {
+    pub fn print(&mut self) {
+        let canvas = draw(&self.controls, &mut self.rng);
+        let dirs = UserDirs::new().unwrap();
+        let name = dirs.download_dir().unwrap();
+        let file_name = name.join("image.png");
+        canvas.save_png(file_name);
     }
 }

@@ -1,3 +1,5 @@
+use crate::common::SEED;
+use rand::RngCore;
 use wassily::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -11,9 +13,8 @@ pub enum Location {
 }
 
 impl Location {
-    pub fn starts(&self, w: f32, h: f32, sep: f32) -> Vec<Point> {
+    pub fn starts<R: RngCore>(&self, w: f32, h: f32, sep: f32, rng: &mut R) -> Vec<Point> {
         let mut pts = Vec::new();
-        let mut rng = SmallRng::from_entropy();
         match &self {
             Location::Grid => {
                 let mut i = 0.0;
@@ -34,9 +35,8 @@ impl Location {
                 }
             }
             Location::Halton => {
-                let seed: u64 = rng.gen();
                 let n = (w * h) / (sep * sep);
-                pts = halton_23(w, h, n as u32, seed)
+                pts = halton_23(w, h, n as u32, SEED)
             }
             Location::Poisson => pts = poisson_disk(w, h, sep / 1.2, 0),
             Location::Circle => {

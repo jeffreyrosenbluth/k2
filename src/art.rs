@@ -1,4 +1,5 @@
-use directories::UserDirs;
+// use directories::UserDirs;
+use rand::RngCore;
 use wassily::prelude::*;
 
 use crate::background::*;
@@ -30,9 +31,9 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                     .set_persistence(controls.persistence as f64),
             ),
             NoiseFunction::Value => Box::<Value>::default(),
-            NoiseFunction::Worley => Box::new(
-                Worley::default().set_return_type(ReturnType::Distance), // .set_distance_function(chebyshev),
-            ),
+            NoiseFunction::Worley => {
+                Box::new(Worley::default().set_return_type(ReturnType::Distance))
+            }
             NoiseFunction::Cylinders => Box::new(
                 TranslatePoint::new(
                     Cylinders::default().set_frequency(controls.octaves as f64 / 2.0),
@@ -75,32 +76,33 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     }
 }
 
-pub fn draw(controls: &Controls, scale: f32) -> Canvas {
-    let mut canvas = Canvas::with_scale(WIDTH, HEIGHT, scale);
-    if let Ok(w) = controls.export_width.parse::<u32>() {
-        if let Ok(h) = controls.export_height.parse::<u32>() {
-            let aspect_ratio = h as f32 / w as f32;
-            let h = aspect_ratio * WIDTH as f32;
-            let s = w as f32 / WIDTH as f32;
-            canvas = Canvas::with_scale(WIDTH, h as u32, s)
-        }
-    };
+pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
+    let mut canvas = Canvas::with_scale(WIDTH, HEIGHT, controls.scale);
+    // if let Ok(w) = controls.export_width.parse::<u32>() {
+    //     if let Ok(h) = controls.export_height.parse::<u32>() {
+    //         let aspect_ratio = h as f32 / w as f32;
+    //         let h = aspect_ratio * WIDTH as f32;
+    //         let s = w as f32 / WIDTH as f32;
+    //         canvas = Canvas::with_scale(WIDTH, h as u32, s)
+    //     }
+    // };
 
     let bg = match controls.background.unwrap() {
         Background::Clouds => BG::clouds(canvas.width, canvas.height),
-        Background::Grain => BG::grain(canvas.width, canvas.height),
-        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height),
+        Background::Grain => BG::grain(canvas.width, canvas.height, rng),
+        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, rng),
         Background::DarkClouds => BG::dark_clouds(canvas.width, canvas.height),
     };
     bg.canvas_bg(&mut canvas);
 
-    let mut flow = choose_flow(controls, canvas.width(), canvas.height());
+    let mut flow = choose_flow(controls, canvas.width, canvas.height);
 
-    let starts =
-        controls
-            .location
-            .unwrap()
-            .starts(canvas.w_f32(), canvas.h_f32(), 105.0 - controls.density);
+    let starts = controls.location.unwrap().starts(
+        canvas.w_f32(),
+        canvas.h_f32(),
+        105.0 - controls.density,
+        rng,
+    );
 
     let mut palette = Palette::new(color_scale(
         Color::from_rgba(controls.color1.r, controls.color1.g, controls.color1.b, 1.0).unwrap(),
@@ -146,7 +148,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
                     let r = len_fn(p);
                     let y0 = p.y - r;
                     let y1 = p.y + r;
-                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap());
+                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap(), rng);
                     ShapeBuilder::new()
                         .line(pt(p.x, y0), pt(p.x, y1))
                         .stroke_weight(controls.stroke_width)
@@ -158,7 +160,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         }
     }
     if controls.border {
-        let border_color = palette.rand_color().darken_fixed(0.25);
+        let border_color = palette.rand_color().darken_fixed(0.35);
         ShapeBuilder::new()
             .rect_xywh(pt(0, 0), pt(canvas.width, canvas.height))
             .no_fill()
@@ -170,10 +172,10 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     canvas
 }
 
-pub async fn print(controls: Controls, scale: f32) {
-    let canvas = draw(&controls, scale);
-    let dirs = UserDirs::new().unwrap();
-    let name = dirs.download_dir().unwrap();
-    let file_name = name.join("image.png");
-    canvas.save_png(file_name);
-}
+// pub async fn print<R: RngCore>(controls: Controls, scale: f32, rng: &mut R) {
+//     let canvas = draw(&controls, scale, rng);
+//     let dirs = UserDirs::new().unwrap();
+//     let name = dirs.download_dir().unwrap();
+//     let file_name = name.join("image.png");
+//     canvas.save_png(file_name);
+// }

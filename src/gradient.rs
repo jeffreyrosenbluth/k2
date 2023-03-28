@@ -1,3 +1,5 @@
+use crate::common::SEED;
+use rand::RngCore;
 use wassily::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -42,16 +44,16 @@ impl std::fmt::Display for GradStyle {
     }
 }
 
-pub fn paint_lg<'a>(
+pub fn paint_lg<'a, R: RngCore>(
     x0: f32,
     y0: f32,
     x1: f32,
     y1: f32,
     color1: Color,
     grad_style: GradStyle,
+    rng: &mut R,
 ) -> Paint<'a> {
     use GradStyle::*;
-    let mut rng = SmallRng::from_entropy();
     let color0 = Color::from_rgba8(230, 230, 230, 255);
     let stops = match grad_style {
         LightFiber => vec![
