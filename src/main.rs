@@ -1,5 +1,7 @@
 use iced::{
-    widget::{button, image, row, text, text_input, toggler, vertical_space, Container},
+    widget::{
+        button, image, progress_bar, row, text, text_input, toggler, vertical_space, Container,
+    },
     Alignment::{self, Center},
     Application, Color, Command, Element, Settings, Theme,
 };
@@ -17,6 +19,7 @@ mod location;
 mod noise;
 mod size;
 
+use crate::art::print;
 use crate::background::Background;
 use crate::common::*;
 use crate::gradient::GradStyle;
@@ -73,7 +76,6 @@ pub enum ColorMessage {
 #[derive(Debug, Clone)]
 pub enum Message {
     HiRes(bool),
-    Scale(f32),
     CurveStyle(CurveStyle),
     Space(f32),
     CurveLength(u32),
@@ -194,19 +196,22 @@ impl Application for Xtrusion {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         use Message::*;
+        let controls = self.controls.clone();
         match message {
             HiRes(b) => {
-                self.controls.hi_res = b;
-                if b {
-                    self.controls.spacing = 1.0;
-                    self.controls.curve_length = 200;
-                    self.controls.stroke_width = 2.0;
-                } else {
-                    self.controls.spacing = 4.0;
-                    self.controls.curve_length = 50;
-                    self.controls.stroke_width = 8.0;
+                if controls.curve_style == Some(common::CurveStyle::Extrusion) {
+                    self.controls.hi_res = b;
+                    if b {
+                        self.controls.spacing = 1.0;
+                        self.controls.curve_length = 200;
+                        self.controls.stroke_width = 2.0;
+                    } else {
+                        self.controls.spacing = 4.0;
+                        self.controls.curve_length = 50;
+                        self.controls.stroke_width = 8.0;
+                    }
+                    self.draw();
                 }
-                self.draw();
             }
             CurveStyle(cs) => {
                 self.controls.curve_style = Some(cs);
@@ -222,8 +227,7 @@ impl Application for Xtrusion {
             CurveLength(l) => self.controls.curve_length = l,
             Export => {
                 self.controls.exporting = true;
-                self.print();
-                // return Command::perform(self.print(), ExportComplete);
+                return Command::perform(print(controls), ExportComplete);
             }
             Loc(loc) => {
                 self.controls.location = Some(loc);
@@ -263,17 +267,17 @@ impl Application for Xtrusion {
                 self.draw();
             }
             Randomize => {
-                let w = self.controls.export_width.clone();
-                let h = self.controls.export_height.clone();
+                let w = self.controls.width.clone();
+                let h = self.controls.height.clone();
                 self.randomize();
-                self.controls.export_width = w;
-                self.controls.export_height = h;
+                self.controls.width = w;
+                self.controls.height = h;
                 self.draw();
             }
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
-            ExportWidth(w) => self.controls.export_width = w,
-            ExportHeight(h) => self.controls.export_height = h,
+            ExportWidth(w) => self.controls.width = w,
+            ExportHeight(h) => self.controls.height = h,
             Rand(rnd) => {
                 rand_message(rnd, &mut self.controls, &mut self.rng);
                 self.draw();
@@ -305,9 +309,6 @@ impl Application for Xtrusion {
                 self.controls.border = b;
                 self.draw();
             }
-            Message::Scale(s) => {
-                self.controls.scale = s;
-            }
         }
         Command::none()
     }
@@ -317,9 +318,8 @@ impl Application for Xtrusion {
         use crate::NoiseFunction::*;
         use Message::*;
         use RandomMessage::*;
-        let img_view = image::viewer(self.image.clone())
-            .min_scale(1.0)
-            .width(1000.0);
+        let img_view = image::viewer(self.image.clone()).min_scale(1.0);
+        // .width(1000.0);
         let mut left_panel = iced::widget::column![];
         let mut right_panel = iced::widget::column![];
         let color_button1 =
@@ -345,21 +345,20 @@ impl Application for Xtrusion {
         right_panel = right_panel.push(vertical_space(5.0));
         left_panel = left_panel
             .push(vertical_space(5.0))
+            .push(
+                row!(
+                    text_input("Width", &self.controls.width, ExportWidth)
+                        .size(15)
+                        .width(90),
+                    text_input("Height", &self.controls.height, ExportHeight)
+                        .size(15)
+                        .width(90)
+                )
+                .spacing(15),
+            )
             .push(Container::new(
                 toggler("Hi Res".to_owned(), self.controls.hi_res, HiRes).text_size(TEXT_SIZE),
             ))
-            .push(
-                LSlider::new(
-                    "Scale".to_string(),
-                    self.controls.scale,
-                    0.1..=10.0,
-                    0.1,
-                    Scale,
-                    None,
-                    Draw,
-                )
-                .decimals(1),
-            )
             .push(lpicklist::LPickList::new(
                 "Curve Style".to_string(),
                 vec![
@@ -556,18 +555,8 @@ impl Application for Xtrusion {
         };
         left_panel = left_panel
             .push(row!(rand_button, export_button).spacing(20))
-            .push(
-                row!(
-                    text_input("Export Width", &self.controls.export_width, ExportWidth)
-                        .size(15)
-                        .width(90),
-                    text_input("Export Height", &self.controls.export_height, ExportHeight)
-                        .size(15)
-                        .width(90)
-                )
-                .spacing(15),
-            );
-        let img_container = Container::new(img_view).width(1000).height(1000);
+            .spacing(15);
+        let img_container = Container::new(img_view).width(self.width).height(1000);
         let image_panel =
             iced::widget::column!(vertical_space(25), img_container, vertical_space(5),)
                 .spacing(15)

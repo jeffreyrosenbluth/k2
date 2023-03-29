@@ -4,7 +4,6 @@ use crate::gradient::GradStyle;
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::size::{Dir, SizeFn};
-use directories::UserDirs;
 use iced::widget::image;
 use iced::Color;
 use rand::distributions::Standard;
@@ -49,7 +48,6 @@ impl std::fmt::Display for CurveStyle {
 
 #[derive(Clone)]
 pub struct Controls {
-    pub scale: f32,
     pub hi_res: bool,
     pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
@@ -76,8 +74,8 @@ pub struct Controls {
     pub worley_dist: bool,
     pub stroke_width: f32,
     pub background: Option<Background>,
-    pub export_width: String,
-    pub export_height: String,
+    pub width: String,
+    pub height: String,
     pub border: bool,
 }
 
@@ -110,10 +108,9 @@ impl Controls {
             worley_dist: false,
             stroke_width: 1.0,
             background: Some(Background::Clouds),
-            export_width: String::new(),
-            export_height: String::new(),
+            width: String::new(),
+            height: String::new(),
             border: true,
-            scale: 1.0,
         }
     }
 }
@@ -127,7 +124,7 @@ impl Default for Controls {
 impl Distribution<Controls> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Controls {
         let location: Option<Location> = Some(rng.gen());
-        let grid_sep = rng.gen_range(25.0..75.0);
+        let density = rng.gen_range(25.0..75.0);
         let noise_function: Option<NoiseFunction> = Some(rng.gen());
         let color1 = Color::from_rgb8(
             rng.gen_range(0..255),
@@ -162,7 +159,7 @@ impl Distribution<Controls> for Standard {
         let spacing = rng.gen_range(1.0..50.0);
         Controls {
             location,
-            density: grid_sep,
+            density,
             noise_factor,
             noise_scale,
             octaves,
@@ -186,6 +183,8 @@ pub struct Xtrusion {
     pub controls: Controls,
     pub image: image::Handle,
     pub rng: SmallRng,
+    pub width: u16,
+    pub height: u16,
 }
 
 impl Xtrusion {
@@ -197,16 +196,15 @@ impl Xtrusion {
             controls,
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
             rng: SmallRng::seed_from_u64(SEED),
+            width: canvas.width as u16,
+            height: canvas.height as u16,
         }
     }
 
     pub fn draw(&mut self) {
-        // let controls = Controls {
-        //     export_width: String::new(),
-        //     export_height: String::new(),
-        //     ..self.controls
-        // };
         let canvas = draw(&self.controls, &mut self.rng);
+        self.width = canvas.width() as u16;
+        self.height = canvas.height() as u16;
         self.image = image::Handle::from_pixels(
             canvas.pixmap.width(),
             canvas.pixmap.height(),
@@ -221,14 +219,5 @@ impl Xtrusion {
         rand_controls.curve_length = self.controls.curve_length;
         rand_controls.density = self.controls.density;
         self.controls = rand_controls;
-    }
-
-    // pub async fn print(&self) {
-    pub fn print(&mut self) {
-        let canvas = draw(&self.controls, &mut self.rng);
-        let dirs = UserDirs::new().unwrap();
-        let name = dirs.download_dir().unwrap();
-        let file_name = name.join("image.png");
-        canvas.save_png(file_name);
     }
 }

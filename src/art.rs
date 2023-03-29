@@ -1,4 +1,4 @@
-// use directories::UserDirs;
+use directories::UserDirs;
 use rand::RngCore;
 use wassily::prelude::*;
 
@@ -77,15 +77,20 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
 }
 
 pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
-    let mut canvas = Canvas::with_scale(WIDTH, HEIGHT, controls.scale);
-    // if let Ok(w) = controls.export_width.parse::<u32>() {
-    //     if let Ok(h) = controls.export_height.parse::<u32>() {
-    //         let aspect_ratio = h as f32 / w as f32;
-    //         let h = aspect_ratio * WIDTH as f32;
-    //         let s = w as f32 / WIDTH as f32;
-    //         canvas = Canvas::with_scale(WIDTH, h as u32, s)
-    //     }
-    // };
+    let mut canvas = Canvas::new(WIDTH, HEIGHT);
+    if let Ok(w) = controls.width.parse::<u32>() {
+        if let Ok(h) = controls.height.parse::<u32>() {
+            let aspect_ratio = w as f32 / h as f32;
+            let mut ch = HEIGHT;
+            let mut cw = WIDTH;
+            if w >= h {
+                ch = (WIDTH as f32 / aspect_ratio) as u32;
+            } else {
+                cw = (HEIGHT as f32 * aspect_ratio) as u32;
+            }
+            canvas = Canvas::with_scale(cw, ch, std::cmp::max(w, h) as f32 / 1000.0)
+        }
+    };
 
     let bg = match controls.background.unwrap() {
         Background::Clouds => BG::clouds(canvas.width, canvas.height),
@@ -160,7 +165,7 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
         }
     }
     if controls.border {
-        let border_color = palette.rand_color().darken_fixed(0.35);
+        let border_color = palette[0].darken_fixed(0.35);
         ShapeBuilder::new()
             .rect_xywh(pt(0, 0), pt(canvas.width, canvas.height))
             .no_fill()
@@ -172,10 +177,11 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
     canvas
 }
 
-// pub async fn print<R: RngCore>(controls: Controls, scale: f32, rng: &mut R) {
-//     let canvas = draw(&controls, scale, rng);
-//     let dirs = UserDirs::new().unwrap();
-//     let name = dirs.download_dir().unwrap();
-//     let file_name = name.join("image.png");
-//     canvas.save_png(file_name);
-// }
+pub async fn print(controls: Controls) {
+    let mut rng = SmallRng::from_entropy();
+    let canvas = draw(&controls, &mut rng);
+    let dirs = UserDirs::new().unwrap();
+    let name = dirs.download_dir().unwrap();
+    let file_name = name.join("image.png");
+    canvas.save_png(file_name);
+}
