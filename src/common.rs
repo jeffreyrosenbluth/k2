@@ -69,6 +69,8 @@ pub struct Controls {
     pub size_fn: Option<SizeFn>,
     pub size: f32,
     pub direction: Option<Dir>,
+    pub size_scale: f32,
+    pub min_size: f32,
     pub grad_style: Option<GradStyle>,
     pub exporting: bool,
     pub worley_dist: bool,
@@ -103,6 +105,8 @@ impl Controls {
             size_fn: Some(SizeFn::Contracting),
             size: 200.0,
             direction: Some(Dir::Both),
+            size_scale: 10.0,
+            min_size: 25.0,
             grad_style: Some(GradStyle::None),
             exporting: false,
             worley_dist: false,
@@ -153,6 +157,8 @@ impl Distribution<Controls> for Standard {
         let len_type: Option<SizeFn> = Some(rng.gen());
         let len_size = rng.gen_range(50.0..300.0);
         let len_dir: Option<Dir> = Some(rng.gen());
+        let size_scale = rng.gen_range(1.0..32.0);
+        let min_size = rng.gen_range(0.0..50.0);
         let grad_style: Option<GradStyle> = Some(rng.gen());
         let curve_style: Option<CurveStyle> = Some(rng.gen());
         let background: Option<Background> = Some(rng.gen());
@@ -169,6 +175,8 @@ impl Distribution<Controls> for Standard {
             size_fn: len_type,
             size: len_size,
             direction: len_dir,
+            size_scale,
+            min_size,
             grad_style,
             curve_style,
             background,

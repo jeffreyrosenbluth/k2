@@ -10,14 +10,18 @@ pub struct Dot {
     pub style: Option<SizeFn>,
     pub size: f32,
     pub direction: Option<Dir>,
+    pub size_scale: f32,
+    pub min_size: f32,
 }
 
 impl<'a> Dot {
-    pub fn new(style: Option<SizeFn>, size: f32, direction: Option<Dir>) -> Self {
+    pub fn new(style: Option<SizeFn>, size: f32, direction: Option<Dir>, size_scale: f32, min_size: f32) -> Self {
         Self {
             style,
             size,
             direction,
+            size_scale,
+            min_size
         }
     }
 
@@ -29,11 +33,10 @@ impl<'a> Dot {
                     SizeFn::Constant,
                     SizeFn::Expanding,
                     SizeFn::Contracting,
-                    SizeFn::Varying,
-                    SizeFn::Noisy,
+                    SizeFn::Periodic,
                 ],
                 self.style,
-                |x| x.map_or(Length(SizeFn::Constant), |v| Length(v)),
+                |x| x.map_or(Length(SizeFn::Constant), Length),
                 Rand(RandomLenType),
             ))
             .push(
@@ -54,9 +57,29 @@ impl<'a> Dot {
                 "Direction".to_string(),
                 vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
                 self.direction,
-                |x| x.map_or(LengthDir(Dir::Both), |v| LengthDir(v)),
+                |x| x.map_or(LengthDir(Dir::Both), LengthDir),
                 Rand(RandomLenDir),
             ));
+        } else if self.style == Some(SizeFn::Periodic) {
+            col = col.push(LSlider::new(
+                "Size Scale".to_string(),
+                self.size_scale,
+                1.0..=30.0,
+                1.0,
+                SizeScale,
+                Some(Rand(RandomSizeScale)),
+                Draw,
+            )).push(
+                LSlider::new(
+                    "Min Size".to_string(),
+                    self.min_size,
+                    1.0..=50.0,
+                    1.0,
+                    MinSize,
+                    Some(Rand(RandomMinSize)),
+                    Draw,
+                )
+            )
         }
         col
     }

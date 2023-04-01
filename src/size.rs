@@ -48,8 +48,7 @@ pub enum SizeFn {
     Expanding,
     Contracting,
     Constant,
-    Varying,
-    Noisy,
+    Periodic,
 }
 
 impl std::fmt::Display for SizeFn {
@@ -61,8 +60,7 @@ impl std::fmt::Display for SizeFn {
                 SizeFn::Constant => "Constant",
                 SizeFn::Expanding => "Expanding",
                 SizeFn::Contracting => "Contracting",
-                SizeFn::Varying => "Varying",
-                SizeFn::Noisy => "Noisy",
+                SizeFn::Periodic =>"Periodic",
             }
         )
     }
@@ -70,26 +68,24 @@ impl std::fmt::Display for SizeFn {
 
 impl Distribution<SizeFn> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> SizeFn {
-        let index: u8 = rng.gen_range(0..5);
+        let index: u8 = rng.gen_range(0..4);
         match index {
             0 => SizeFn::Constant,
             1 => SizeFn::Expanding,
             2 => SizeFn::Contracting,
-            3 => SizeFn::Varying,
-            4 => SizeFn::Noisy,
+            3 => SizeFn::Periodic,
             _ => unreachable!(),
         }
     }
 }
 
 impl SizeFn {
-    pub fn calc(self, w: f32, h: f32, r: f32, dir: Dir) -> Box<dyn Fn(Point) -> f32> {
+    pub fn calc(self, w: f32, h: f32, r: f32, dir: Dir, scale: f32, min_size: f32) -> Box<dyn Fn(Point) -> f32> {
         match self {
             SizeFn::Expanding => Box::new(expanding(w, h, r, dir)),
             SizeFn::Contracting => Box::new(contracting(w, h, r, dir)),
-            SizeFn::Varying => Box::new(varying(w, h, r)),
             SizeFn::Constant => Box::new(constant(r)),
-            SizeFn::Noisy => Box::new(noisy(w, h, r)),
+            SizeFn::Periodic =>Box::new(periodic(w, h, r, scale, min_size))
         }
     }
 }
@@ -100,23 +96,6 @@ fn expanding(w: f32, h: f32, r: f32, dir: Dir) -> impl Fn(Point) -> f32 {
 
 fn contracting(w: f32, h: f32, r: f32, dir: Dir) -> impl Fn(Point) -> f32 {
     move |p| f32::max(15.0, (0.5 - indep(p, w, h, dir)) * r)
-}
-
-fn varying(w: f32, h: f32, r: f32) -> impl Fn(Point) -> f32 {
-    move |p| {
-        let opts = NoiseOpts::with_wh(w, h).scales(10.0);
-        let nf = Perlin::default().set_seed(2);
-        f32::max(25.0, (noise2d_01(nf, &opts, p.x, p.y)) * r / 2.0)
-    }
-}
-
-fn noisy(w: f32, h: f32, r: f32) -> impl Fn(Point) -> f32 {
-    move |p| {
-        let opts = NoiseOpts::with_wh(w, h).scales(16.0);
-        let nf = Perlin::default().set_seed(1);
-        let k = noise2d_01(nf, &opts, p.x, p.y);
-        k * r
-    }
 }
 
 fn constant(r: f32) -> impl Fn(Point) -> f32 {

@@ -1,6 +1,6 @@
 use iced::{
     widget::{
-        button, image, progress_bar, row, text, text_input, toggler, vertical_space, Container,
+        button, image, row, text, text_input, toggler, vertical_space, Container,
     },
     Alignment::{self, Center},
     Application, Color, Command, Element, Settings, Theme,
@@ -56,6 +56,8 @@ pub enum RandomMessage {
     RandomLocation,
     RandomLenType,
     RandomLenDir,
+    RandomSizeScale,
+    RandomMinSize,
     RandomHighlight,
     RandomCurveStyle,
     RandomBackground,
@@ -94,12 +96,14 @@ pub enum Message {
     Length(SizeFn),
     LengthSize(f32),
     LengthDir(Dir),
+    SizeScale(f32),
+    MinSize(f32),
     Grad(GradStyle),
     Randomize,
     ExportComplete(()),
     StrokeWidth(f32),
-    ExportWidth(String),
-    ExportHeight(String),
+    Width(String),
+    Height(String),
     Rand(RandomMessage),
     Color1(ColorMessage),
     Color2(ColorMessage),
@@ -112,42 +116,18 @@ fn rand_message<R: RngCore>(message: RandomMessage, controls: &mut Controls, rng
     use RandomMessage::*;
     let random_controls: Controls = rng.gen();
     match message {
-        RandomLength => {
-            controls.curve_length = rng.gen_range(140..=360) / controls.spacing as u32;
-        }
-        RandomNoiseFactor => {
-            controls.noise_factor = random_controls.noise_factor;
-        }
-        RandomNoiseScale => {
-            controls.noise_scale = random_controls.noise_scale;
-        }
-        RandomOctaves => {
-            controls.octaves = random_controls.octaves;
-        }
-        RandomSpeed => {
-            controls.speed = rng.gen_range(0.0..=1.0);
-        }
-        RandomPersistence => {
-            controls.persistence = rng.gen_range(0.05..=0.95);
-        }
-        RandomLenSize => {
-            controls.size = random_controls.size;
-        }
-        RandomNoiseFunction => {
-            controls.noise_function = random_controls.noise_function;
-        }
-        RandomLocation => {
-            controls.location = random_controls.location;
-        }
-        RandomLenType => {
-            controls.size_fn = random_controls.size_fn;
-        }
-        RandomLenDir => {
-            controls.direction = random_controls.direction;
-        }
-        RandomHighlight => {
-            controls.grad_style = random_controls.grad_style;
-        }
+        RandomLength => controls.curve_length = rng.gen_range(140..=360) / controls.spacing as u32,
+        RandomNoiseFactor => controls.noise_factor = random_controls.noise_factor,
+        RandomNoiseScale => controls.noise_scale = random_controls.noise_scale,
+        RandomOctaves => controls.octaves = random_controls.octaves,
+        RandomSpeed => controls.speed = rng.gen_range(0.0..=1.0),
+        RandomPersistence => controls.persistence = rng.gen_range(0.05..=0.95),
+        RandomLenSize => controls.size = random_controls.size,
+        RandomNoiseFunction => controls.noise_function = random_controls.noise_function,
+        RandomLocation => controls.location = random_controls.location,
+        RandomLenType => controls.size_fn = random_controls.size_fn,
+        RandomLenDir => controls.direction = random_controls.direction,
+        RandomHighlight => controls.grad_style = random_controls.grad_style,
         RandomColor(c) => match c {
             ColorChooser::Color1 => {
                 controls.color1 = random_controls.color1;
@@ -156,27 +136,15 @@ fn rand_message<R: RngCore>(message: RandomMessage, controls: &mut Controls, rng
                 controls.color2 = random_controls.color2;
             }
         },
-        RandomCurveStyle => {
-            controls.curve_style = random_controls.curve_style;
-        }
-        RandomBackground => {
-            controls.background = random_controls.background;
-        }
-        RandomSpacing => {
-            controls.spacing = random_controls.spacing;
-        }
-        RandomDensity => {
-            controls.density = random_controls.density;
-        }
-        RandomStrokeWidth => {
-            controls.stroke_width = random_controls.stroke_width;
-        }
-        RandomLacunarity => {
-            controls.lacunarity = random_controls.lacunarity;
-        }
-        RandomFrequency => {
-            controls.frequency = random_controls.frequency;
-        }
+        RandomCurveStyle => controls.curve_style = random_controls.curve_style,
+        RandomBackground => controls.background = random_controls.background,
+        RandomSpacing => controls.spacing = random_controls.spacing,
+        RandomDensity => controls.density = random_controls.density,
+        RandomStrokeWidth => controls.stroke_width = random_controls.stroke_width,
+        RandomLacunarity => controls.lacunarity = random_controls.lacunarity,
+        RandomFrequency => controls.frequency = random_controls.frequency,
+        RandomSizeScale => controls.size_scale = random_controls.size_scale,
+        RandomMinSize => controls.min_size = random_controls.min_size,
     }
 }
 
@@ -196,10 +164,10 @@ impl Application for Xtrusion {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         use Message::*;
-        let controls = self.controls.clone();
+        // let controls = self.controls.clone();
         match message {
             HiRes(b) => {
-                if controls.curve_style == Some(common::CurveStyle::Extrusion) {
+                if self.controls.curve_style == Some(common::CurveStyle::Extrusion) {
                     self.controls.hi_res = b;
                     if b {
                         self.controls.spacing = 1.0;
@@ -227,7 +195,7 @@ impl Application for Xtrusion {
             CurveLength(l) => self.controls.curve_length = l,
             Export => {
                 self.controls.exporting = true;
-                return Command::perform(print(controls), ExportComplete);
+                return Command::perform(print(self.controls.clone()), ExportComplete);
             }
             Loc(loc) => {
                 self.controls.location = Some(loc);
@@ -262,6 +230,8 @@ impl Application for Xtrusion {
                 self.controls.direction = Some(d);
                 self.draw();
             }
+            SizeScale(s) => self.controls.size_scale = s,
+            MinSize(m) => self.controls.min_size = m,
             Grad(c) => {
                 self.controls.grad_style = Some(c);
                 self.draw();
@@ -276,8 +246,8 @@ impl Application for Xtrusion {
             }
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
-            ExportWidth(w) => self.controls.width = w,
-            ExportHeight(h) => self.controls.height = h,
+            Width(w) => self.controls.width = w,
+            Height(h) => self.controls.height = h,
             Rand(rnd) => {
                 rand_message(rnd, &mut self.controls, &mut self.rng);
                 self.draw();
@@ -347,10 +317,10 @@ impl Application for Xtrusion {
             .push(vertical_space(5.0))
             .push(
                 row!(
-                    text_input("Width", &self.controls.width, ExportWidth)
+                    text_input("Width", &self.controls.width, Width)
                         .size(15)
                         .width(90),
-                    text_input("Height", &self.controls.height, ExportHeight)
+                    text_input("Height", &self.controls.height, Height)
                         .size(15)
                         .width(90)
                 )
@@ -367,7 +337,7 @@ impl Application for Xtrusion {
                     crate::CurveStyle::Extrusion,
                 ],
                 self.controls.curve_style,
-                |x| x.map_or(CurveStyle(common::CurveStyle::Dots), |v| CurveStyle(v)),
+                |x| x.map_or(CurveStyle(common::CurveStyle::Dots), CurveStyle),
                 Rand(RandomCurveStyle),
             ))
             .push(
@@ -409,7 +379,7 @@ impl Application for Xtrusion {
                     Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
                 ],
                 self.controls.noise_function,
-                |x| x.map_or(Noise(Fbm), |v| Noise(v)),
+                |x| x.map_or(Noise(Fbm), Noise),
                 Rand(RandomNoiseFunction),
             ));
         left_panel = left_panel
@@ -454,7 +424,7 @@ impl Application for Xtrusion {
                     Location::Lissajous,
                 ],
                 self.controls.location,
-                |x| x.map_or(Loc(Location::Grid), |x| Loc(x)),
+                |x| x.map_or(Loc(Location::Grid), Loc),
                 Rand(RandomLocation),
             ))
             .push(
@@ -495,6 +465,8 @@ impl Application for Xtrusion {
                 self.controls.size_fn,
                 self.controls.size,
                 self.controls.direction,
+                self.controls.size_scale,
+                self.controls.min_size,
                 self.controls.grad_style,
             );
             right_panel = right_panel.push(extrusion.show())
@@ -503,6 +475,8 @@ impl Application for Xtrusion {
                 self.controls.size_fn,
                 self.controls.size,
                 self.controls.direction,
+                self.controls.size_scale,
+                self.controls.min_size,
             );
             right_panel = right_panel.push(dot.show())
         };
@@ -537,7 +511,7 @@ impl Application for Xtrusion {
                 "Background Style".to_string(),
                 vec![Grain, Clouds, DarkGrain, DarkClouds],
                 self.controls.background,
-                |x| x.map_or(Background(Grain), |v| Background(v)),
+                |x| x.map_or(Background(Grain), Background),
                 Rand(RandomBackground),
             ))
             .push(Container::new(

@@ -1,4 +1,3 @@
-use crate::common::SEED;
 use rand::RngCore;
 use wassily::prelude::*;
 

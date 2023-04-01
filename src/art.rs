@@ -4,6 +4,7 @@ use wassily::prelude::*;
 
 use crate::background::*;
 use crate::color::*;
+use crate::common::SEED;
 use crate::common::{Controls, CurveStyle, HEIGHT, WIDTH};
 use crate::field::*;
 use crate::gradient::*;
@@ -120,6 +121,8 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
         canvas.h_f32(),
         controls.size,
         controls.direction.unwrap(),
+        controls.size_scale,
+        controls.min_size,
     );
 
     for p in starts {
@@ -178,7 +181,7 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
 }
 
 pub async fn print(controls: Controls) {
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = SmallRng::seed_from_u64(SEED);
     let canvas = draw(&controls, &mut rng);
     let dirs = UserDirs::new().unwrap();
     let name = dirs.download_dir().unwrap();
