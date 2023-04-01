@@ -33,16 +33,6 @@ impl std::fmt::Display for Dir {
     }
 }
 
-fn indep(p: Point, w: f32, h: f32, dir: Dir) -> f32 {
-    let cx = (p.x - w / 2.0).abs();
-    let cy = (p.y - h / 2.0).abs();
-    match dir {
-        Dir::Both => (cx * cx / (w * w) + cy * cy / (h * h)).sqrt(),
-        Dir::Horizontal => cx / w,
-        Dir::Vertical => cy / h,
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SizeFn {
     Expanding,
@@ -90,12 +80,22 @@ impl SizeFn {
     }
 }
 
+fn distance(p: Point, w: f32, h: f32, dir: Dir) -> f32 {
+    let cx = (p.x - w / 2.0).abs();
+    let cy = (p.y - h / 2.0).abs();
+    match dir {
+        Dir::Both => (cx * cx / (w * w) + cy * cy / (h * h)).sqrt(),
+        Dir::Horizontal => cx / w,
+        Dir::Vertical => cy / h,
+    }
+}
+
 fn expanding(w: f32, h: f32, r: f32, dir: Dir) -> impl Fn(Point) -> f32 {
-    move |p| f32::max(20.0, indep(p, w, h, dir) * r)
+    move |p| f32::max(20.0, distance(p, w, h, dir) * r)
 }
 
 fn contracting(w: f32, h: f32, r: f32, dir: Dir) -> impl Fn(Point) -> f32 {
-    move |p| f32::max(15.0, (0.5 - indep(p, w, h, dir)) * r)
+    move |p| f32::max(15.0, (0.5 - distance(p, w, h, dir)) * r)
 }
 
 fn constant(r: f32) -> impl Fn(Point) -> f32 {

@@ -13,6 +13,50 @@ pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
 pub const SEED: u64 = 98713;
 
+#[derive(Clone)]
+pub struct Xtrusion {
+    pub controls: Controls,
+    pub image: image::Handle,
+    pub rng: SmallRng,
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Xtrusion {
+    pub fn new() -> Self {
+        let controls = Controls::new();
+        let mut rng = SmallRng::seed_from_u64(SEED);
+        let canvas = draw(&controls, &mut rng);
+        Self {
+            controls,
+            image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
+            rng: SmallRng::seed_from_u64(SEED),
+            width: canvas.width as u16,
+            height: canvas.height as u16,
+        }
+    }
+
+    pub fn draw(&mut self) {
+        let canvas = draw(&self.controls, &mut self.rng);
+        self.width = canvas.width() as u16;
+        self.height = canvas.height() as u16;
+        self.image = image::Handle::from_pixels(
+            canvas.pixmap.width(),
+            canvas.pixmap.height(),
+            canvas.pixmap.take(),
+        );
+    }
+
+    pub fn randomize(&mut self) {
+        let mut rand_controls: Controls = self.rng.gen();
+        rand_controls.hi_res = self.controls.hi_res;
+        rand_controls.stroke_width = self.controls.stroke_width;
+        rand_controls.curve_length = self.controls.curve_length;
+        rand_controls.density = self.controls.density;
+        self.controls = rand_controls;
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CurveStyle {
     Line,
@@ -98,7 +142,7 @@ impl Controls {
             noise_scale: 4.0,
             octaves: 4,
             persistence: 0.5,
-            lacunarity: 2.0943950,
+            lacunarity: 2.094395,
             frequency: 1.0,
             noise_function: Some(NoiseFunction::Fbm),
             speed: 1.0,
@@ -183,49 +227,5 @@ impl Distribution<Controls> for Standard {
             spacing,
             ..Default::default()
         }
-    }
-}
-
-#[derive(Clone)]
-pub struct Xtrusion {
-    pub controls: Controls,
-    pub image: image::Handle,
-    pub rng: SmallRng,
-    pub width: u16,
-    pub height: u16,
-}
-
-impl Xtrusion {
-    pub fn new() -> Self {
-        let controls = Controls::new();
-        let mut rng = SmallRng::seed_from_u64(SEED);
-        let canvas = draw(&controls, &mut rng);
-        Self {
-            controls,
-            image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
-            rng: SmallRng::seed_from_u64(SEED),
-            width: canvas.width as u16,
-            height: canvas.height as u16,
-        }
-    }
-
-    pub fn draw(&mut self) {
-        let canvas = draw(&self.controls, &mut self.rng);
-        self.width = canvas.width() as u16;
-        self.height = canvas.height() as u16;
-        self.image = image::Handle::from_pixels(
-            canvas.pixmap.width(),
-            canvas.pixmap.height(),
-            canvas.pixmap.take(),
-        );
-    }
-
-    pub fn randomize(&mut self) {
-        let mut rand_controls: Controls = self.rng.gen();
-        rand_controls.hi_res = self.controls.hi_res;
-        rand_controls.stroke_width = self.controls.stroke_width;
-        rand_controls.curve_length = self.controls.curve_length;
-        rand_controls.density = self.controls.density;
-        self.controls = rand_controls;
     }
 }

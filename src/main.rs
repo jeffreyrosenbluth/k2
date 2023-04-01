@@ -164,7 +164,6 @@ impl Application for Xtrusion {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         use Message::*;
-        // let controls = self.controls.clone();
         match message {
             HiRes(b) => {
                 if self.controls.curve_style == Some(common::CurveStyle::Extrusion) {
@@ -246,7 +245,7 @@ impl Application for Xtrusion {
             }
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
-            Width(w) => self.controls.width = w,
+            Width(w) => self.controls.width =w,
             Height(h) => self.controls.height = h,
             Rand(rnd) => {
                 rand_message(rnd, &mut self.controls, &mut self.rng);
@@ -340,6 +339,36 @@ impl Application for Xtrusion {
                 |x| x.map_or(CurveStyle(common::CurveStyle::Dots), CurveStyle),
                 Rand(RandomCurveStyle),
             ))
+            .push(lpicklist::LPickList::new(
+                "Flow Field".to_string(),
+                vec![
+                    Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
+                ],
+                self.controls.noise_function,
+                |x| x.map_or(Noise(Fbm), Noise),
+                Rand(RandomNoiseFunction),
+            ))
+            .push(lpicklist::LPickList::new(
+                "Curve Locations".to_string(),
+                vec![
+                    Location::Grid,
+                    Location::Rand,
+                    Location::Halton,
+                    Location::Poisson,
+                    Location::Circle,
+                    Location::Lissajous,
+                ],
+                self.controls.location,
+                |x| x.map_or(Loc(Location::Grid), Loc),
+                Rand(RandomLocation),
+            ))
+            .push(lpicklist::LPickList::new(
+                "Background Style".to_string(),
+                vec![Grain, Clouds, DarkGrain, DarkClouds],
+                self.controls.background,
+                |x| x.map_or(Background(Grain), Background),
+                Rand(RandomBackground),
+            ))
             .push(
                 LSlider::new(
                     "Density".to_string(),
@@ -372,15 +401,6 @@ impl Application for Xtrusion {
                 CurveLength,
                 Some(Rand(RandomLength)),
                 Draw,
-            ))
-            .push(lpicklist::LPickList::new(
-                "Flow Field".to_string(),
-                vec![
-                    Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
-                ],
-                self.controls.noise_function,
-                |x| x.map_or(Noise(Fbm), Noise),
-                Rand(RandomNoiseFunction),
             ));
         left_panel = left_panel
             .push(LSlider::new(
@@ -413,20 +433,6 @@ impl Application for Xtrusion {
                 )
                 .decimals(2),
             )
-            .push(lpicklist::LPickList::new(
-                "Curve Locations".to_string(),
-                vec![
-                    Location::Grid,
-                    Location::Rand,
-                    Location::Halton,
-                    Location::Poisson,
-                    Location::Circle,
-                    Location::Lissajous,
-                ],
-                self.controls.location,
-                |x| x.map_or(Loc(Location::Grid), Loc),
-                Rand(RandomLocation),
-            ))
             .push(
                 row![
                     color_picker1,
@@ -507,13 +513,6 @@ impl Application for Xtrusion {
                 )
                 .decimals(1),
             )
-            .push(lpicklist::LPickList::new(
-                "Background Style".to_string(),
-                vec![Grain, Clouds, DarkGrain, DarkClouds],
-                self.controls.background,
-                |x| x.map_or(Background(Grain), Background),
-                Rand(RandomBackground),
-            ))
             .push(Container::new(
                 toggler("Border".to_owned(), self.controls.border, Border).text_size(TEXT_SIZE),
             ))
