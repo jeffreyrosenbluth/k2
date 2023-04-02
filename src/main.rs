@@ -396,7 +396,7 @@ impl Application for Xtrusion {
             .push(LSlider::new(
                 "Curve Length".to_string(),
                 self.controls.curve_length,
-                10..=1000,
+                5..=1000,
                 1,
                 CurveLength,
                 Some(Rand(RandomLength)),

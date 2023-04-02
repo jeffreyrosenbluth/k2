@@ -45,7 +45,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             NoiseFunction::Curl => Box::new(Curl::new(Perlin::default())),
             NoiseFunction::Magnet => {
                 opts = NoiseOpts::default();
-                let mut rng = SmallRng::from_entropy();
+                let mut rng = SmallRng::seed_from_u64(SEED);
                 let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
                 let w = w as f32;
                 let h = h as f32;
@@ -57,7 +57,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             }
             NoiseFunction::Gravity => {
                 opts = NoiseOpts::default();
-                let mut rng = SmallRng::from_entropy();
+                let mut rng = SmallRng::seed_from_u64(SEED);
                 let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
                 let w = w as f32;
                 let h = h as f32;
