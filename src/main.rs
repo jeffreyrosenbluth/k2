@@ -1,7 +1,5 @@
 use iced::{
-    widget::{
-        button, image, row, text, text_input, toggler, vertical_space, Container,
-    },
+    widget::{button, image, row, text, text_input, toggler, vertical_space, Container},
     Alignment::{self, Center},
     Application, Color, Command, Element, Settings, Theme,
 };
@@ -66,6 +64,7 @@ pub enum RandomMessage {
     RandomStrokeWidth,
     RandomLacunarity,
     RandomFrequency,
+    RandomPearlSides,
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +76,6 @@ pub enum ColorMessage {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    HiRes(bool),
     CurveStyle(CurveStyle),
     Space(f32),
     CurveLength(u32),
@@ -99,6 +97,9 @@ pub enum Message {
     SizeScale(f32),
     MinSize(f32),
     Grad(GradStyle),
+    Dot(DotStyle),
+    PearlSides(u32),
+    PearlSmoothness(u32),
     Randomize,
     ExportComplete(()),
     StrokeWidth(f32),
@@ -145,6 +146,7 @@ fn rand_message<R: RngCore>(message: RandomMessage, controls: &mut Controls, rng
         RandomFrequency => controls.frequency = random_controls.frequency,
         RandomSizeScale => controls.size_scale = random_controls.size_scale,
         RandomMinSize => controls.min_size = random_controls.min_size,
+        RandomPearlSides => controls.pearl_sides = random_controls.pearl_sides,
     }
 }
 
@@ -165,29 +167,8 @@ impl Application for Xtrusion {
     fn update(&mut self, message: Message) -> Command<Message> {
         use Message::*;
         match message {
-            HiRes(b) => {
-                if self.controls.curve_style == Some(common::CurveStyle::Extrusion) {
-                    self.controls.hi_res = b;
-                    if b {
-                        self.controls.spacing = 1.0;
-                        self.controls.curve_length = 200;
-                        self.controls.stroke_width = 2.0;
-                    } else {
-                        self.controls.spacing = 4.0;
-                        self.controls.curve_length = 50;
-                        self.controls.stroke_width = 8.0;
-                    }
-                    self.draw();
-                }
-            }
             CurveStyle(cs) => {
                 self.controls.curve_style = Some(cs);
-                if cs == common::CurveStyle::Dots {
-                    self.controls.stroke_width = 1.0;
-                }
-                if cs == common::CurveStyle::Line {
-                    self.controls.spacing = 1.0;
-                }
                 self.draw();
             }
             Space(b) => self.controls.spacing = b,
@@ -212,11 +193,6 @@ impl Application for Xtrusion {
             NoiseScale(s) => self.controls.noise_scale = s,
             Noise(n) => {
                 self.controls.noise_function = Some(n);
-                if n == NoiseFunction::Cylinders {
-                    self.controls.noise_scale = 1.0;
-                    self.controls.noise_factor = 1.0;
-                    self.controls.octaves = 2;
-                }
                 self.draw();
             }
             Speed(s) => self.controls.speed = s,
@@ -235,20 +211,27 @@ impl Application for Xtrusion {
                 self.controls.grad_style = Some(c);
                 self.draw();
             }
+            Dot(d) => {
+                self.controls.dot_style = Some(d);
+                self.draw();
+            }
+            PearlSides(s) => self.controls.pearl_sides = s,
+            PearlSmoothness(s) => self.controls.pearl_smoothness = s,
             Randomize => {
                 let w = self.controls.width.clone();
                 let h = self.controls.height.clone();
-                self.randomize();
+                self.controls = self.rng.gen();
                 self.controls.width = w;
                 self.controls.height = h;
                 self.draw();
             }
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
-            Width(w) => self.controls.width =w,
+            Width(w) => self.controls.width = w,
             Height(h) => self.controls.height = h,
             Rand(rnd) => {
-                rand_message(rnd, &mut self.controls, &mut self.rng);
+                let mut rng = SmallRng::seed_from_u64(SEED);
+                rand_message(rnd, &mut self.controls, &mut rng);
                 self.draw();
             }
             Message::Color1(c) => match c {
@@ -288,7 +271,6 @@ impl Application for Xtrusion {
         use Message::*;
         use RandomMessage::*;
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
-        // .width(1000.0);
         let mut left_panel = iced::widget::column![];
         let mut right_panel = iced::widget::column![];
         let color_button1 =
@@ -325,9 +307,6 @@ impl Application for Xtrusion {
                 )
                 .spacing(15),
             )
-            .push(Container::new(
-                toggler("Hi Res".to_owned(), self.controls.hi_res, HiRes).text_size(TEXT_SIZE),
-            ))
             .push(lpicklist::LPickList::new(
                 "Curve Style".to_string(),
                 vec![
@@ -385,7 +364,7 @@ impl Application for Xtrusion {
                 LSlider::new(
                     "Point Spacing".to_string(),
                     self.controls.spacing,
-                    1.0..=50.0,
+                    1.0..=100.0,
                     1.0,
                     Space,
                     Some(Rand(RandomSpacing)),
@@ -396,7 +375,7 @@ impl Application for Xtrusion {
             .push(LSlider::new(
                 "Curve Length".to_string(),
                 self.controls.curve_length,
-                5..=1000,
+                1..=500,
                 1,
                 CurveLength,
                 Some(Rand(RandomLength)),
@@ -477,12 +456,15 @@ impl Application for Xtrusion {
             );
             right_panel = right_panel.push(extrusion.show())
         } else if self.controls.curve_style == Some(crate::CurveStyle::Dots) {
-            let dot = Dot::new(
+            let dot = crate::Dot::new(
+                self.controls.dot_style,
                 self.controls.size_fn,
                 self.controls.size,
                 self.controls.direction,
                 self.controls.size_scale,
                 self.controls.min_size,
+                self.controls.pearl_sides,
+                self.controls.pearl_smoothness,
             );
             right_panel = right_panel.push(dot.show())
         };

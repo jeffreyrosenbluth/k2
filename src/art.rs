@@ -5,7 +5,7 @@ use wassily::prelude::*;
 use crate::background::*;
 use crate::color::*;
 use crate::common::SEED;
-use crate::common::{Controls, CurveStyle, HEIGHT, WIDTH};
+use crate::common::{Controls, CurveStyle, DotStyle, HEIGHT, WIDTH};
 use crate::field::*;
 use crate::gradient::*;
 use crate::noise::*;
@@ -131,17 +131,29 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
 
         match controls.curve_style.unwrap() {
             CurveStyle::Dots => {
+                let mut rng = SmallRng::seed_from_u64(SEED);
                 for p in pts {
-                    let r = len_fn(p) / 15.0;
-                    let mut sb = ShapeBuilder::new()
-                        .circle(p, r)
-                        .stroke_color(Color::WHITE)
-                        .stroke_weight(controls.stroke_width)
-                        .fill_color(c);
+                    let r = len_fn(p);
+                    let mut sb = match controls.dot_style.unwrap() {
+                        DotStyle::Circle => ShapeBuilder::new().circle(p, r),
+                        DotStyle::Square => ShapeBuilder::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
+                        DotStyle::Pearl => ShapeBuilder::new().pearl(
+                            p,
+                            r,
+                            r,
+                            controls.pearl_sides,
+                            controls.pearl_smoothness,
+                            &mut rng,
+                        ),
+                    };
                     if controls.stroke_width < 0.5 {
                         sb = sb.no_stroke();
+                    } else {
+                        sb = sb
+                            .stroke_weight(controls.stroke_width)
+                            .stroke_color(Color::WHITE)
                     }
-                    sb.build().draw(&mut canvas);
+                    sb.fill_color(c).build().draw(&mut canvas);
                 }
             }
             CurveStyle::Line => ShapeBuilder::new()

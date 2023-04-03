@@ -30,7 +30,7 @@ impl Xtrusion {
         Self {
             controls,
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
-            rng: SmallRng::seed_from_u64(SEED),
+            rng,
             width: canvas.width as u16,
             height: canvas.height as u16,
         }
@@ -45,15 +45,6 @@ impl Xtrusion {
             canvas.pixmap.height(),
             canvas.pixmap.take(),
         );
-    }
-
-    pub fn randomize(&mut self) {
-        let mut rand_controls: Controls = self.rng.gen();
-        rand_controls.hi_res = self.controls.hi_res;
-        rand_controls.stroke_width = self.controls.stroke_width;
-        rand_controls.curve_length = self.controls.curve_length;
-        rand_controls.density = self.controls.density;
-        self.controls = rand_controls;
     }
 }
 
@@ -90,9 +81,41 @@ impl std::fmt::Display for CurveStyle {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DotStyle {
+    Circle,
+    Square,
+    Pearl,
+}
+
+impl Distribution<DotStyle> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> DotStyle {
+        let index: u8 = rng.gen_range(0..3);
+        match index {
+            0 => DotStyle::Circle,
+            1 => DotStyle::Square,
+            2 => DotStyle::Pearl,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl std::fmt::Display for DotStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                DotStyle::Circle => "Circle",
+                DotStyle::Square => "Square",
+                DotStyle::Pearl => "Pearl",
+            }
+        )
+    }
+}
+
 #[derive(Clone)]
 pub struct Controls {
-    pub hi_res: bool,
     pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
     pub curve_length: u32,
@@ -116,6 +139,9 @@ pub struct Controls {
     pub size_scale: f32,
     pub min_size: f32,
     pub grad_style: Option<GradStyle>,
+    pub dot_style: Option<DotStyle>,
+    pub pearl_sides: u32,
+    pub pearl_smoothness: u32,
     pub exporting: bool,
     pub worley_dist: bool,
     pub stroke_width: f32,
@@ -128,7 +154,6 @@ pub struct Controls {
 impl Controls {
     pub fn new() -> Self {
         Self {
-            hi_res: false,
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
@@ -147,11 +172,14 @@ impl Controls {
             noise_function: Some(NoiseFunction::Fbm),
             speed: 1.0,
             size_fn: Some(SizeFn::Contracting),
-            size: 200.0,
+            size: 100.0,
             direction: Some(Dir::Both),
             size_scale: 10.0,
             min_size: 25.0,
             grad_style: Some(GradStyle::None),
+            dot_style: Some(DotStyle::Circle),
+            pearl_sides: 4,
+            pearl_smoothness: 3,
             exporting: false,
             worley_dist: false,
             stroke_width: 1.0,
@@ -199,7 +227,7 @@ impl Distribution<Controls> for Standard {
         let noise_scale = rng.gen_range(1.0..7.0);
         let octaves = rng.gen_range(1..9);
         let len_type: Option<SizeFn> = Some(rng.gen());
-        let len_size = rng.gen_range(50.0..300.0);
+        let len_size = rng.gen_range(10.0..300.0);
         let len_dir: Option<Dir> = Some(rng.gen());
         let size_scale = rng.gen_range(1.0..32.0);
         let min_size = rng.gen_range(0.0..50.0);

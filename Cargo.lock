@@ -154,7 +154,7 @@ checksum = "fdde5c9cd29ebd706ce1b35600920a33550e402fc998a2e53ad3b42c3c47a192"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.11",
+ "syn 2.0.13",
 ]
 
 [[package]]
@@ -318,9 +318,9 @@ dependencies = [
 
 [[package]]
 name = "core-foundation-sys"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
+checksum = "e496a50fda8aacccc86d7529e2c1e0892dbd0f898a6b5645b5561b89c3210efa"
 
 [[package]]
 name = "core-graphics"
@@ -704,7 +704,7 @@ checksum = "1a5c6c585bc94aaf2c7b51dd4c2ba22680844aba4c687be581871a6f518c5742"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.11",
+ "syn 2.0.13",
 ]
 
 [[package]]
@@ -743,9 +743,9 @@ dependencies = [
 
 [[package]]
 name = "futures"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "531ac96c6ff5fd7c62263c5e3c67a603af4fcaee2e1a0ae5565ba3a11e69e549"
+checksum = "23342abe12aba583913b2e62f22225ff9c950774065e4bfb61a19cd9770fec40"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -758,9 +758,9 @@ dependencies = [
 
 [[package]]
 name = "futures-channel"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "164713a5a0dcc3e7b4b1ed7d3b433cabc18025386f9339346e8daf15963cf7ac"
+checksum = "955518d47e09b25bbebc7a18df10b81f0c766eaf4c4f1cccef2fca5f2a4fb5f2"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -768,15 +768,15 @@ dependencies = [
 
 [[package]]
 name = "futures-core"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86d7a0c1aa76363dac491de0ee99faf6941128376f1cf96f07db7603b7de69dd"
+checksum = "4bca583b7e26f571124fe5b7561d49cb2868d79116cfa0eefce955557c6fee8c"
 
 [[package]]
 name = "futures-executor"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1997dd9df74cdac935c76252744c1ed5794fac083242ea4fe77ef3ed60ba0f83"
+checksum = "ccecee823288125bd88b4d7f565c9e58e41858e47ab72e8ea2d64e93624386e0"
 dependencies = [
  "futures-core",
  "futures-task",
@@ -786,38 +786,38 @@ dependencies = [
 
 [[package]]
 name = "futures-io"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89d422fa3cbe3b40dca574ab087abb5bc98258ea57eea3fd6f1fa7162c778b91"
+checksum = "4fff74096e71ed47f8e023204cfd0aa1289cd54ae5430a9523be060cdb849964"
 
 [[package]]
 name = "futures-macro"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eb14ed937631bd8b8b8977f2c198443447a8355b6e3ca599f38c975e5a963b6"
+checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.13",
 ]
 
 [[package]]
 name = "futures-sink"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec93083a4aecafb2a80a885c9de1f0ccae9dbd32c2bb54b0c3a65690e0b8d2f2"
+checksum = "f43be4fe21a13b9781a69afa4985b0f6ee0e1afab2c6f454a8cf30e2b2237b6e"
 
 [[package]]
 name = "futures-task"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd65540d33b37b16542a0438c12e6aeead10d4ac5d05bd3f805b8f35ab592879"
+checksum = "76d3d132be6c0e6aa1534069c705a74a5997a356c0dc2f86a47765e5617c5b65"
 
 [[package]]
 name = "futures-util"
-version = "0.3.27"
+version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ef6b17e481503ec85211fed8f39d1970f128935ca1f814cd32ac4a6842e84ab"
+checksum = "26b01e40b772d54cf6c6d721c1d1abd0647a0106a12ecaa1c186273392a69533"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -1105,7 +1105,7 @@ dependencies = [
  "kamadak-exif",
  "log",
  "lyon",
- "raw-window-handle 0.5.1",
+ "raw-window-handle 0.5.2",
  "thiserror",
 ]
 
@@ -1160,7 +1160,7 @@ dependencies = [
  "iced_graphics",
  "iced_native",
  "log",
- "raw-window-handle 0.5.1",
+ "raw-window-handle 0.5.2",
  "wgpu",
  "wgpu_glyph",
 ]
@@ -1526,7 +1526,7 @@ dependencies = [
  "jni-sys",
  "ndk-sys",
  "num_enum",
- "raw-window-handle 0.5.1",
+ "raw-window-handle 0.5.2",
  "thiserror",
 ]
 
@@ -2002,9 +2002,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.54"
+version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e472a104799c74b514a57226160104aa483546de37e839ec50e3c2e41dd87534"
+checksum = "2b63bdb0cd06f1f4dedf69b254734f9b45af66e4a031e42a7480257d9898b435"
 dependencies = [
  "unicode-ident",
 ]
@@ -2109,9 +2109,9 @@ dependencies = [
 
 [[package]]
 name = "raw-window-handle"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f851a03551ceefd30132e447f07f96cb7011d6b658374f3aed847333adb5559"
+checksum = "f2ff9a1f06a88b01621b7ae906ef0211290d1c8a168a15542486a8f61c0833b9"
 
 [[package]]
 name = "rayon"
@@ -2223,7 +2223,7 @@ checksum = "4c614d17805b093df4b147b51339e7e44bf05ef59fba1e45d83500bcfb4d8585"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.11",
+ "syn 2.0.13",
 ]
 
 [[package]]
@@ -2314,9 +2314,9 @@ dependencies = [
 
 [[package]]
 name = "spin"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0959fd6f767df20b231736396e4f602171e00d95205676286e79d4a4eb67bef"
+checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 dependencies = [
  "lock_api",
 ]
@@ -2380,9 +2380,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.11"
+version = "2.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e3787bb71465627110e7d87ed4faaa36c1f61042ee67badb9e2ef173accc40"
+checksum = "4c9da457c5285ac1f936ebd076af6dac17a61cfe7826f2076b4d015cf47bc8ec"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2415,7 +2415,7 @@ checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.11",
+ "syn 2.0.13",
 ]
 
 [[package]]
@@ -2658,7 +2658,7 @@ dependencies = [
 [[package]]
 name = "wassily"
 version = "0.3.0"
-source = "git+https://github.com/jeffreyrosenbluth/wassily#7a39a7c7383f2f819d6ff1fab7f257f18116517c"
+source = "git+https://github.com/jeffreyrosenbluth/wassily#5f5473dbc5e25843830dd5355ce78341d23f9af5"
 dependencies = [
  "color-thief",
  "image",
@@ -2773,7 +2773,7 @@ dependencies = [
  "log",
  "naga",
  "parking_lot 0.12.1",
- "raw-window-handle 0.5.1",
+ "raw-window-handle 0.5.2",
  "smallvec",
  "static_assertions",
  "wasm-bindgen",
@@ -2800,7 +2800,7 @@ dependencies = [
  "naga",
  "parking_lot 0.12.1",
  "profiling",
- "raw-window-handle 0.5.1",
+ "raw-window-handle 0.5.2",
  "smallvec",
  "thiserror",
  "web-sys",
@@ -2837,7 +2837,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "profiling",
  "range-alloc",
- "raw-window-handle 0.5.1",
+ "raw-window-handle 0.5.2",
  "renderdoc-sys",
  "smallvec",
  "thiserror",
@@ -3053,7 +3053,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "percent-encoding",
  "raw-window-handle 0.4.3",
- "raw-window-handle 0.5.1",
+ "raw-window-handle 0.5.2",
  "sctk-adwaita",
  "smithay-client-toolkit",
  "wasm-bindgen",
@@ -3128,9 +3128,9 @@ checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
 
 [[package]]
 name = "zune-inflate"
-version = "0.2.52"
+version = "0.2.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10ca8ee3897e213bf74d46641942575fb9b4bd9933cbce0b40eb320836da67e0"
+checksum = "440a08fd59c6442e4b846ea9b10386c38307eae728b216e1ab2c305d1c9daaf8"
 dependencies = [
  "simd-adler32",
 ]

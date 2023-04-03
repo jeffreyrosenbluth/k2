@@ -1,7 +1,7 @@
 use crate::gui::lslider::LSlider;
 use crate::Message::{self, *};
 use crate::RandomMessage::*;
-use iced::widget::Column;
+use iced::widget::{rule, Column, Rule};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Fractal {
@@ -22,6 +22,8 @@ impl<'a> Fractal {
     }
     pub fn show(&self) -> Column<'a, Message> {
         let mut col = Column::new()
+            .push(Rule::horizontal(10))
+            .push("Fractal Noise")
             .push(
                 LSlider::new(
                     "Octaves".to_string(),

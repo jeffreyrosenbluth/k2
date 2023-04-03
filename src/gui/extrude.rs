@@ -70,16 +70,17 @@ impl<'a> Extrude {
                 Rand(RandomLenDir),
             ))
         } else if self.style == Some(SizeFn::Periodic) {
-            col = col.push(LSlider::new(
-                "Size Scale".to_string(),
-                self.size_scale,
-                1.0..=30.0,
-                1.0,
-                SizeScale,
-                Some(Rand(RandomSizeScale)),
-                Draw,
-            )).push(
-                LSlider::new(
+            col = col
+                .push(LSlider::new(
+                    "Size Scale".to_string(),
+                    self.size_scale,
+                    1.0..=30.0,
+                    1.0,
+                    SizeScale,
+                    Some(Rand(RandomSizeScale)),
+                    Draw,
+                ))
+                .push(LSlider::new(
                     "Min Size".to_string(),
                     self.min_size,
                     1.0..=50.0,
