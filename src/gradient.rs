@@ -11,21 +11,6 @@ pub enum GradStyle {
     DarkFiber,
 }
 
-impl Distribution<GradStyle> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> GradStyle {
-        let index: u8 = rng.gen_range(0..6);
-        match index {
-            0 => GradStyle::None,
-            1 => GradStyle::Light,
-            2 => GradStyle::Dark,
-            3 => GradStyle::Fiber,
-            4 => GradStyle::LightFiber,
-            5 => GradStyle::DarkFiber,
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl std::fmt::Display for GradStyle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

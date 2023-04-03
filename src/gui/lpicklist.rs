@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, pick_list, row, scrollable, text};
+use iced::widget::{button, column, container, pick_list, scrollable, text};
 use iced_lazy::{self, Component};
 use iced_native::{overlay, Element};
 
@@ -13,12 +13,10 @@ where
     width: u16,
     spacing: u16,
     on_change: Box<dyn Fn(Option<T>) -> Message>,
-    on_rand: Message,
 }
 
 #[derive(Debug, Clone)]
 pub enum Event<T> {
-    RandPressed,
     PickListChanged(T),
 }
 
@@ -31,7 +29,6 @@ where
         choices: Vec<T>,
         value: Option<T>,
         on_change: impl Fn(Option<T>) -> Message + 'static,
-        on_rand: Message,
     ) -> Self {
         Self {
             label,
@@ -41,7 +38,6 @@ where
             width: 175,
             spacing: 10,
             on_change: Box::new(on_change),
-            on_rand,
         }
     }
 
@@ -78,20 +74,13 @@ where
 
     fn update(&mut self, _state: &mut Self::State, event: Event<T>) -> Option<Message> {
         match event {
-            Event::RandPressed => Some(self.on_rand.clone()),
             Event::PickListChanged(v) => Some((self.on_change)(Some(v))),
         }
     }
 
     fn view(&self, _state: &Self::State) -> iced_native::Element<'_, Self::Event, Renderer> {
         column![
-            row![
-                text(self.label.clone()).size(self.text_size),
-                button(text("Rand").size(self.text_size * 5 / 8))
-                    .on_press(Event::RandPressed)
-                    .height(self.text_size * 5 / 4)
-            ]
-            .spacing(self.text_size),
+            text(self.label.clone()).size(self.text_size),
             pick_list(
                 self.choices.clone(),
                 self.value.clone(),

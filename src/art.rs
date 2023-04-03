@@ -1,5 +1,4 @@
 use directories::UserDirs;
-use rand::RngCore;
 use wassily::prelude::*;
 
 use crate::background::*;
@@ -77,7 +76,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     }
 }
 
-pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
+pub fn draw(controls: &Controls) -> Canvas {
     let mut canvas = Canvas::new(WIDTH, HEIGHT);
     if let Ok(w) = controls.width.parse::<u32>() {
         if let Ok(h) = controls.height.parse::<u32>() {
@@ -93,10 +92,12 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
         }
     };
 
+    let mut rng = SmallRng::seed_from_u64(SEED);
+
     let bg = match controls.background.unwrap() {
         Background::Clouds => BG::clouds(canvas.width, canvas.height),
-        Background::Grain => BG::grain(canvas.width, canvas.height, rng),
-        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, rng),
+        Background::Grain => BG::grain(canvas.width, canvas.height, &mut rng),
+        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, &mut rng),
         Background::DarkClouds => BG::dark_clouds(canvas.width, canvas.height),
     };
     bg.canvas_bg(&mut canvas);
@@ -107,7 +108,7 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
         canvas.w_f32(),
         canvas.h_f32(),
         105.0 - controls.density,
-        rng,
+        &mut rng,
     );
 
     let mut palette = Palette::new(color_scale(
@@ -131,7 +132,6 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
 
         match controls.curve_style.unwrap() {
             CurveStyle::Dots => {
-                let mut rng = SmallRng::seed_from_u64(SEED);
                 for p in pts {
                     let r = len_fn(p);
                     let mut sb = match controls.dot_style.unwrap() {
@@ -168,7 +168,7 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
                     let r = len_fn(p);
                     let y0 = p.y - r;
                     let y1 = p.y + r;
-                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap(), rng);
+                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap(), &mut rng);
                     ShapeBuilder::new()
                         .line(pt(p.x, y0), pt(p.x, y1))
                         .stroke_weight(controls.stroke_width)
@@ -193,8 +193,7 @@ pub fn draw<R: RngCore>(controls: &Controls, rng: &mut R) -> Canvas {
 }
 
 pub async fn print(controls: Controls) {
-    let mut rng = SmallRng::seed_from_u64(SEED);
-    let canvas = draw(&controls, &mut rng);
+    let canvas = draw(&controls);
     let dirs = UserDirs::new().unwrap();
     let name = dirs.download_dir().unwrap();
     let file_name = name.join("image.png");

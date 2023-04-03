@@ -7,18 +7,6 @@ pub enum Dir {
     Vertical,
 }
 
-impl Distribution<Dir> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Dir {
-        let index: u8 = rng.gen_range(0..3);
-        match index {
-            0 => Dir::Both,
-            1 => Dir::Horizontal,
-            2 => Dir::Vertical,
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl std::fmt::Display for Dir {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -50,32 +38,27 @@ impl std::fmt::Display for SizeFn {
                 SizeFn::Constant => "Constant",
                 SizeFn::Expanding => "Expanding",
                 SizeFn::Contracting => "Contracting",
-                SizeFn::Periodic =>"Periodic",
+                SizeFn::Periodic => "Periodic",
             }
         )
     }
 }
 
-impl Distribution<SizeFn> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> SizeFn {
-        let index: u8 = rng.gen_range(0..4);
-        match index {
-            0 => SizeFn::Constant,
-            1 => SizeFn::Expanding,
-            2 => SizeFn::Contracting,
-            3 => SizeFn::Periodic,
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl SizeFn {
-    pub fn calc(self, w: f32, h: f32, r: f32, dir: Dir, scale: f32, min_size: f32) -> Box<dyn Fn(Point) -> f32> {
+    pub fn calc(
+        self,
+        w: f32,
+        h: f32,
+        r: f32,
+        dir: Dir,
+        scale: f32,
+        min_size: f32,
+    ) -> Box<dyn Fn(Point) -> f32> {
         match self {
             SizeFn::Expanding => Box::new(expanding(w, h, r, dir)),
             SizeFn::Contracting => Box::new(contracting(w, h, r, dir)),
             SizeFn::Constant => Box::new(constant(r)),
-            SizeFn::Periodic =>Box::new(periodic(w, h, r, scale, min_size))
+            SizeFn::Periodic => Box::new(periodic(w, h, r, scale, min_size)),
         }
     }
 }

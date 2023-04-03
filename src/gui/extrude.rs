@@ -3,7 +3,6 @@ use crate::gui::lpicklist::LPickList;
 use crate::gui::lslider::LSlider;
 use crate::size::{Dir, SizeFn};
 use crate::Message::{self, *};
-use crate::RandomMessage::*;
 use iced::widget::Column;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -47,7 +46,6 @@ impl<'a> Extrude {
                 ],
                 self.style,
                 |x| x.map_or(Length(SizeFn::Constant), Length),
-                Rand(RandomLenType),
             ))
             .push(
                 LSlider::new(
@@ -56,7 +54,6 @@ impl<'a> Extrude {
                     5.0..=500.0,
                     5.0,
                     LengthSize,
-                    Some(Rand(RandomLenSize)),
                     Draw,
                 )
                 .decimals(0),
@@ -67,7 +64,6 @@ impl<'a> Extrude {
                 vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
                 self.direction,
                 |x| x.map_or(LengthDir(Dir::Both), LengthDir),
-                Rand(RandomLenDir),
             ))
         } else if self.style == Some(SizeFn::Periodic) {
             col = col
@@ -77,7 +73,6 @@ impl<'a> Extrude {
                     1.0..=30.0,
                     1.0,
                     SizeScale,
-                    Some(Rand(RandomSizeScale)),
                     Draw,
                 ))
                 .push(LSlider::new(
@@ -86,7 +81,6 @@ impl<'a> Extrude {
                     1.0..=50.0,
                     1.0,
                     MinSize,
-                    Some(Rand(RandomMinSize)),
                     Draw,
                 ))
         }
@@ -103,7 +97,6 @@ impl<'a> Extrude {
                 ],
                 self.grad_style,
                 |x| x.map_or(Grad(GradStyle::None), Grad),
-                Rand(RandomHighlight),
             ))
             .spacing(15);
         col

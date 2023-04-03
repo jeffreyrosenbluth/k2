@@ -3,7 +3,6 @@ use crate::gui::lpicklist::LPickList;
 use crate::gui::lslider::LSlider;
 use crate::size::{Dir, SizeFn};
 use crate::Message::{self, *};
-use crate::RandomMessage::*;
 use iced::widget::Column;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,7 +47,6 @@ impl<'a> Dot {
                 vec![DotStyle::Circle, DotStyle::Square, DotStyle::Pearl],
                 self.dot_style,
                 |x| x.map_or(Dot(DotStyle::Circle), Dot),
-                Rand(RandomPearlSides),
             ))
             .push(LPickList::new(
                 "Size Function".to_string(),
@@ -60,7 +58,6 @@ impl<'a> Dot {
                 ],
                 self.size_fn,
                 |x| x.map_or(Length(SizeFn::Constant), Length),
-                Rand(RandomLenType),
             ))
             .push(
                 LSlider::new(
@@ -69,7 +66,6 @@ impl<'a> Dot {
                     5.0..=500.0,
                     5.0,
                     LengthSize,
-                    Some(Rand(RandomLenSize)),
                     Draw,
                 )
                 .decimals(0),
@@ -81,7 +77,6 @@ impl<'a> Dot {
                 vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
                 self.direction,
                 |x| x.map_or(LengthDir(Dir::Both), LengthDir),
-                Rand(RandomLenDir),
             ));
         } else if self.size_fn == Some(SizeFn::Periodic) {
             col = col
@@ -91,7 +86,6 @@ impl<'a> Dot {
                     1.0..=30.0,
                     1.0,
                     SizeScale,
-                    Some(Rand(RandomSizeScale)),
                     Draw,
                 ))
                 .push(LSlider::new(
@@ -100,7 +94,6 @@ impl<'a> Dot {
                     1.0..=50.0,
                     1.0,
                     MinSize,
-                    Some(Rand(RandomMinSize)),
                     Draw,
                 ))
         }
@@ -112,7 +105,6 @@ impl<'a> Dot {
                     3..=8,
                     1,
                     PearlSides,
-                    None,
                     Draw,
                 ))
                 .push(LSlider::new(
@@ -121,7 +113,6 @@ impl<'a> Dot {
                     0..=5,
                     1,
                     PearlSmoothness,
-                    None,
                     Draw,
                 ))
         }

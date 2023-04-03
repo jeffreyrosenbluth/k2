@@ -6,8 +6,6 @@ use crate::noise::NoiseFunction;
 use crate::size::{Dir, SizeFn};
 use iced::widget::image;
 use iced::Color;
-use rand::distributions::Standard;
-use rand::prelude::*;
 
 pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
@@ -17,7 +15,6 @@ pub const SEED: u64 = 98713;
 pub struct Xtrusion {
     pub controls: Controls,
     pub image: image::Handle,
-    pub rng: SmallRng,
     pub width: u16,
     pub height: u16,
 }
@@ -25,19 +22,17 @@ pub struct Xtrusion {
 impl Xtrusion {
     pub fn new() -> Self {
         let controls = Controls::new();
-        let mut rng = SmallRng::seed_from_u64(SEED);
-        let canvas = draw(&controls, &mut rng);
+        let canvas = draw(&controls);
         Self {
             controls,
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
-            rng,
             width: canvas.width as u16,
             height: canvas.height as u16,
         }
     }
 
     pub fn draw(&mut self) {
-        let canvas = draw(&self.controls, &mut self.rng);
+        let canvas = draw(&self.controls);
         self.width = canvas.width() as u16;
         self.height = canvas.height() as u16;
         self.image = image::Handle::from_pixels(
@@ -47,24 +42,28 @@ impl Xtrusion {
         );
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Preset {
+    Extrusion,
+}
+
+impl std::fmt::Display for Preset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Preset::Extrusion => "Extrusion",
+            }
+        )
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CurveStyle {
     Line,
     Dots,
     Extrusion,
-}
-
-impl Distribution<CurveStyle> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> CurveStyle {
-        let index: u8 = rng.gen_range(0..3);
-        match index {
-            0 => CurveStyle::Line,
-            1 => CurveStyle::Dots,
-            2 => CurveStyle::Extrusion,
-            _ => unreachable!(),
-        }
-    }
 }
 
 impl std::fmt::Display for CurveStyle {
@@ -88,18 +87,6 @@ pub enum DotStyle {
     Pearl,
 }
 
-impl Distribution<DotStyle> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> DotStyle {
-        let index: u8 = rng.gen_range(0..3);
-        match index {
-            0 => DotStyle::Circle,
-            1 => DotStyle::Square,
-            2 => DotStyle::Pearl,
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl std::fmt::Display for DotStyle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -116,6 +103,7 @@ impl std::fmt::Display for DotStyle {
 
 #[derive(Clone)]
 pub struct Controls {
+    pub preset: Option<Preset>,
     pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
     pub curve_length: u32,
@@ -154,6 +142,7 @@ pub struct Controls {
 impl Controls {
     pub fn new() -> Self {
         Self {
+            preset: Some(Preset::Extrusion),
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
@@ -194,66 +183,5 @@ impl Controls {
 impl Default for Controls {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Distribution<Controls> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Controls {
-        let location: Option<Location> = Some(rng.gen());
-        let density = rng.gen_range(25.0..75.0);
-        let noise_function: Option<NoiseFunction> = Some(rng.gen());
-        let color1 = Color::from_rgb8(
-            rng.gen_range(0..255),
-            rng.gen_range(0..255),
-            rng.gen_range(0..255),
-        );
-        let color2 = Color::from_rgb8(
-            rng.gen_range(0..255),
-            rng.gen_range(0..255),
-            rng.gen_range(0..255),
-        );
-        let max_factor = match noise_function.unwrap() {
-            NoiseFunction::Fbm => 7.0,
-            NoiseFunction::Billow => 7.0,
-            NoiseFunction::Ridged => 7.0,
-            NoiseFunction::Value => 7.0,
-            NoiseFunction::Cylinders => 2.0,
-            NoiseFunction::Worley => 7.0,
-            NoiseFunction::Curl => 7.0,
-            NoiseFunction::Magnet => 7.0,
-            NoiseFunction::Gravity => 7.0,
-        };
-        let noise_factor = rng.gen_range(1.0..max_factor);
-        let noise_scale = rng.gen_range(1.0..7.0);
-        let octaves = rng.gen_range(1..9);
-        let len_type: Option<SizeFn> = Some(rng.gen());
-        let len_size = rng.gen_range(10.0..300.0);
-        let len_dir: Option<Dir> = Some(rng.gen());
-        let size_scale = rng.gen_range(1.0..32.0);
-        let min_size = rng.gen_range(0.0..50.0);
-        let grad_style: Option<GradStyle> = Some(rng.gen());
-        let curve_style: Option<CurveStyle> = Some(rng.gen());
-        let background: Option<Background> = Some(rng.gen());
-        let spacing = rng.gen_range(1.0..50.0);
-        Controls {
-            location,
-            density,
-            noise_factor,
-            noise_scale,
-            octaves,
-            noise_function,
-            color1,
-            color2,
-            size_fn: len_type,
-            size: len_size,
-            direction: len_dir,
-            size_scale,
-            min_size,
-            grad_style,
-            curve_style,
-            background,
-            spacing,
-            ..Default::default()
-        }
     }
 }

@@ -85,18 +85,3 @@ impl std::fmt::Display for Location {
         )
     }
 }
-
-impl Distribution<Location> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Location {
-        let index: u8 = rng.gen_range(0..6);
-        match index {
-            0 => Location::Grid,
-            1 => Location::Rand,
-            2 => Location::Halton,
-            3 => Location::Poisson,
-            4 => Location::Circle,
-            5 => Location::Lissajous,
-            _ => unreachable!(),
-        }
-    }
-}

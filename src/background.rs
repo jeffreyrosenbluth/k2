@@ -9,19 +9,6 @@ pub enum Background {
     DarkClouds,
 }
 
-impl Distribution<Background> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Background {
-        let index: u8 = rng.gen_range(0..4);
-        match index {
-            0 => Background::Grain,
-            1 => Background::Clouds,
-            2 => Background::DarkGrain,
-            3 => Background::DarkClouds,
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl std::fmt::Display for Background {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
