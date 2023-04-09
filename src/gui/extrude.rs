@@ -59,12 +59,21 @@ impl<'a> Extrude {
                 .decimals(0),
             );
         if self.style == Some(SizeFn::Expanding) || self.style == Some(SizeFn::Contracting) {
-            col = col.push(LPickList::new(
-                "Direction".to_string(),
-                vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
-                self.direction,
-                |x| x.map_or(LengthDir(Dir::Both), LengthDir),
-            ))
+            col = col
+                .push(LPickList::new(
+                    "Direction".to_string(),
+                    vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
+                    self.direction,
+                    |x| x.map_or(LengthDir(Dir::Both), LengthDir),
+                ))
+                .push(LSlider::new(
+                    "Min Size".to_string(),
+                    self.min_size,
+                    1.0..=50.0,
+                    1.0,
+                    MinSize,
+                    Draw,
+                ))
         } else if self.style == Some(SizeFn::Periodic) {
             col = col
                 .push(LSlider::new(

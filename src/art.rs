@@ -76,7 +76,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     }
 }
 
-pub fn draw(controls: &Controls) -> Canvas {
+pub fn draw(controls: &Controls, print: bool) -> Canvas {
     let mut canvas = Canvas::new(WIDTH, HEIGHT);
     if let Ok(w) = controls.width.parse::<u32>() {
         if let Ok(h) = controls.height.parse::<u32>() {
@@ -88,7 +88,11 @@ pub fn draw(controls: &Controls) -> Canvas {
             } else {
                 cw = (HEIGHT as f32 * aspect_ratio) as u32;
             }
-            canvas = Canvas::with_scale(cw, ch, std::cmp::max(w, h) as f32 / 1000.0)
+            if print {
+                canvas = Canvas::with_scale(cw, ch, std::cmp::max(w, h) as f32 / 1000.0)
+            } else {
+                canvas = Canvas::new(cw, ch)
+            }
         }
     };
 
@@ -193,7 +197,7 @@ pub fn draw(controls: &Controls) -> Canvas {
 }
 
 pub async fn print(controls: Controls) {
-    let canvas = draw(&controls);
+    let canvas = draw(&controls, true);
     let dirs = UserDirs::new().unwrap();
     let name = dirs.download_dir().unwrap();
     let file_name = name.join("image.png");

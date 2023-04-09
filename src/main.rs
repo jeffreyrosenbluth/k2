@@ -100,11 +100,20 @@ impl Application for Xtrusion {
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
+        use crate::common::Preset::*;
         use Message::*;
         match message {
             Preset(p) => {
                 self.controls = match p {
-                    common::Preset::Extrusion => xtrusion_fbm(),
+                    Slinky => Controls::default(),
+                    RustyRibbons => rusty_ribbons(),
+                    Solar => solar(),
+                    RiverStones => river_stones(),
+                    Purple => purple(),
+                    Canyon => canyon(),
+                    Stripes => stripes(),
+                    Splat => splat(),
+                    Ridges => ridges(),
                 };
                 self.controls.preset = Some(p);
                 self.draw();
@@ -196,6 +205,7 @@ impl Application for Xtrusion {
     fn view(&self) -> Element<Message> {
         use crate::Background::*;
         use crate::NoiseFunction::*;
+        use crate::Preset::*;
         use Message::*;
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
         let mut left_panel = iced::widget::column![];
@@ -236,9 +246,19 @@ impl Application for Xtrusion {
             )
             .push(lpicklist::LPickList::new(
                 "Preset".to_string(),
-                vec![crate::Preset::Extrusion],
+                vec![
+                    Slinky,
+                    RustyRibbons,
+                    Solar,
+                    RiverStones,
+                    Purple,
+                    Canyon,
+                    Stripes,
+                    Splat,
+                    Ridges,
+                ],
                 self.controls.preset,
-                |x| x.map_or(Preset(common::Preset::Extrusion), Preset),
+                |x| x.map_or(Preset(RustyRibbons), Preset),
             ))
             .push(lpicklist::LPickList::new(
                 "Curve Style".to_string(),

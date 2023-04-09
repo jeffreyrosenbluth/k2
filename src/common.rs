@@ -22,7 +22,7 @@ pub struct Xtrusion {
 impl Xtrusion {
     pub fn new() -> Self {
         let controls = Controls::new();
-        let canvas = draw(&controls);
+        let canvas = draw(&controls, false);
         Self {
             controls,
             image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
@@ -32,7 +32,7 @@ impl Xtrusion {
     }
 
     pub fn draw(&mut self) {
-        let canvas = draw(&self.controls);
+        let canvas = draw(&self.controls, false);
         self.width = canvas.width() as u16;
         self.height = canvas.height() as u16;
         self.image = image::Handle::from_pixels(
@@ -44,7 +44,15 @@ impl Xtrusion {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Preset {
-    Extrusion,
+    Slinky,
+    RustyRibbons,
+    Solar,
+    RiverStones,
+    Purple,
+    Canyon,
+    Stripes,
+    Splat,
+    Ridges,
 }
 
 impl std::fmt::Display for Preset {
@@ -53,7 +61,15 @@ impl std::fmt::Display for Preset {
             f,
             "{}",
             match self {
-                Preset::Extrusion => "Extrusion",
+                Preset::Slinky => "Slinky",
+                Preset::RustyRibbons => "Rusty Ribbons",
+                Preset::Solar => "Solar",
+                Preset::RiverStones => "River Stones",
+                Preset::Purple => "Purple",
+                Preset::Canyon => "Canyon",
+                Preset::Stripes => "Stripes",
+                Preset::Splat => "Splat",
+                Preset::Ridges => "Ridges",
             }
         )
     }
@@ -142,7 +158,7 @@ pub struct Controls {
 impl Controls {
     pub fn new() -> Self {
         Self {
-            preset: Some(Preset::Extrusion),
+            preset: Some(Preset::Slinky),
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
