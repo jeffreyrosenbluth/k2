@@ -52,6 +52,7 @@ pub enum Preset {
     Canyon,
     Stripes,
     Splat,
+    Tubes,
     Ridges,
 }
 
@@ -69,6 +70,7 @@ impl std::fmt::Display for Preset {
                 Preset::Canyon => "Canyon",
                 Preset::Stripes => "Stripes",
                 Preset::Splat => "Splat",
+                Preset::Tubes => "Tubes",
                 Preset::Ridges => "Ridges",
             }
         )

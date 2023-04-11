@@ -192,3 +192,25 @@ pub fn splat() -> Controls {
         ..Default::default()
     }
 }
+
+pub fn tubes() -> Controls {
+    Controls {
+        curve_style: Some(CurveStyle::Dots),
+        noise_function: Some(NoiseFunction::Value),
+        location: Some(Location::Lissajous),
+        spacing: 1.0,
+        stroke_width: 1.0,
+        curve_length: 0,
+        size: 235.0,
+        size_fn: Some(SizeFn::Periodic),
+        size_scale: 3.0,
+        min_size: 10.0,
+        density: 65.0,
+        color1: Color::from_rgb8(187, 42, 20),
+        color2: Color::from_rgb8(155, 21, 48),
+        background: Some(Background::DarkClouds),
+        width: "1000".to_string(),
+        height: "1200".to_string(),
+        ..Default::default()
+    }
+}

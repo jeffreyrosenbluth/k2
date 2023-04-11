@@ -77,12 +77,15 @@ pub enum Message {
     PearlSmoothness(u32),
     ExportComplete(()),
     StrokeWidth(f32),
-    Width(String),
-    Height(String),
+    WidthSet(String),
+    Width,
+    HeightSet(String),
+    Height,
     Color1(ColorMessage),
     Color2(ColorMessage),
     Background(Background),
     Border(bool),
+    Null,
 }
 
 impl Application for Xtrusion {
@@ -113,6 +116,7 @@ impl Application for Xtrusion {
                     Canyon => canyon(),
                     Stripes => stripes(),
                     Splat => splat(),
+                    Tubes => tubes(),
                     Ridges => ridges(),
                 };
                 self.controls.preset = Some(p);
@@ -170,8 +174,12 @@ impl Application for Xtrusion {
             PearlSmoothness(s) => self.controls.pearl_smoothness = s,
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
-            Width(w) => self.controls.width = w,
-            Height(h) => self.controls.height = h,
+            WidthSet(w) => {
+                self.controls.width = w;
+            }
+            Width => self.draw(),
+            HeightSet(h) => self.controls.height = h,
+            Height => self.draw(),
             Message::Color1(c) => match c {
                 ColorMessage::Choose => self.controls.show_color_picker1 = true,
                 ColorMessage::Submit(k) => {
@@ -198,6 +206,7 @@ impl Application for Xtrusion {
                 self.controls.border = b;
                 self.draw();
             }
+            Null => {}
         }
         Command::none()
     }
@@ -235,12 +244,14 @@ impl Application for Xtrusion {
             .push(vertical_space(5.0))
             .push(
                 row!(
-                    text_input("Width", &self.controls.width, Width)
-                        .size(15)
-                        .width(90),
-                    text_input("Height", &self.controls.height, Height)
+                    text_input("Width", &self.controls.width, WidthSet)
                         .size(15)
                         .width(90)
+                        .on_submit(Width),
+                    text_input("Height", &self.controls.height, HeightSet)
+                        .size(15)
+                        .width(90)
+                        .on_submit(Height),
                 )
                 .spacing(15),
             )
@@ -255,6 +266,7 @@ impl Application for Xtrusion {
                     Canyon,
                     Stripes,
                     Splat,
+                    Tubes,
                     Ridges,
                 ],
                 self.controls.preset,
@@ -302,7 +314,7 @@ impl Application for Xtrusion {
                     "Density".to_string(),
                     self.controls.density,
                     5.0..=100.0,
-                    1.0,
+                    5.0,
                     Density,
                     Draw,
                 )
@@ -322,7 +334,7 @@ impl Application for Xtrusion {
             .push(LSlider::new(
                 "Curve Length".to_string(),
                 self.controls.curve_length,
-                1..=500,
+                0..=500,
                 1,
                 CurveLength,
                 Draw,
