@@ -32,6 +32,7 @@ use crate::size::{Dir, SizeFn};
 const TEXT_SIZE: u16 = 15;
 
 pub fn main() -> iced::Result {
+    env_logger::init();
     let mut settings = Settings::default();
     settings.window.size = (1480, 1100);
     Xtrusion::run(settings)
@@ -123,6 +124,7 @@ impl Application for Xtrusion {
                     Stripes => stripes(),
                     Splat => splat(),
                     Tubes => tubes(),
+                    Ducts => ducts(),
                     Ridges => ridges(),
                 };
                 self.controls.preset = Some(p);
@@ -277,6 +279,7 @@ impl Application for Xtrusion {
                     Stripes,
                     Splat,
                     Tubes,
+                    Ducts,
                     Ridges,
                 ],
                 self.controls.preset,

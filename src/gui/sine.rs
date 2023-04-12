@@ -25,7 +25,7 @@ impl<'a> Sine {
             .push("Sine Noise")
             .push(
                 LSlider::new(
-                    "Sine x Frequency".to_string(),
+                    "X Frequency".to_string(),
                     self.xfreq,
                     0.1..=4.0,
                     0.1,
@@ -36,7 +36,7 @@ impl<'a> Sine {
             )
             .push(
                 LSlider::new(
-                    "Sine y Frequency".to_string(),
+                    "Y Frequency".to_string(),
                     self.yfreq,
                     0.1..=4.0,
                     0.1,
@@ -47,7 +47,7 @@ impl<'a> Sine {
             )
             .push(
                 LSlider::new(
-                    "Sine x Exponent".to_string(),
+                    "X Exponent".to_string(),
                     self.xexp,
                     1.0..=4.0,
                     1.0,
@@ -58,7 +58,7 @@ impl<'a> Sine {
             )
             .push(
                 LSlider::new(
-                    "Sine y Exponent".to_string(),
+                    "Y Exponent".to_string(),
                     self.yexp,
                     1.0..=4.0,
                     1.0,

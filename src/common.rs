@@ -53,6 +53,7 @@ pub enum Preset {
     Stripes,
     Splat,
     Tubes,
+    Ducts,
     Ridges,
 }
 
@@ -71,6 +72,7 @@ impl std::fmt::Display for Preset {
                 Preset::Stripes => "Stripes",
                 Preset::Splat => "Splat",
                 Preset::Tubes => "Tubes",
+                Preset::Ducts => "Ducts",
                 Preset::Ridges => "Ridges",
             }
         )

@@ -214,3 +214,30 @@ pub fn tubes() -> Controls {
         ..Default::default()
     }
 }
+
+pub fn ducts() -> Controls {
+    Controls {
+        curve_style: Some(CurveStyle::Dots),
+        noise_function: Some(NoiseFunction::Sinusoidal),
+        location: Some(Location::Halton),
+        dot_style: Some(DotStyle::Square),
+        noise_scale: 4.0,
+        noise_factor: 4.0,
+        spacing: 2.0,
+        stroke_width: 0.5,
+        curve_length: 150,
+        size: 100.0,
+        size_fn: Some(SizeFn::Periodic),
+        size_scale: 10.0,
+        min_size: 10.0,
+        density: 50.0,
+        color1: Color::from_rgb8(218, 187, 55),
+        color2: Color::from_rgb8(229, 15, 15),
+        sin_xfreq: 2.0,
+        sin_yfreq: 2.0,
+        sin_xexp: 1.0,
+        sin_yexp: 3.0,
+        background: Some(Background::Grain),
+        ..Default::default()
+    }
+}
