@@ -3,7 +3,8 @@ use wassily::prelude::*;
 
 use crate::background::*;
 use crate::color::*;
-use crate::common::{Controls, CurveStyle, HEIGHT, WIDTH};
+use crate::common::SEED;
+use crate::common::{Controls, CurveStyle, DotStyle, HEIGHT, WIDTH};
 use crate::field::*;
 use crate::gradient::*;
 use crate::noise::*;
@@ -30,9 +31,9 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                     .set_persistence(controls.persistence as f64),
             ),
             NoiseFunction::Value => Box::<Value>::default(),
-            NoiseFunction::Worley => Box::new(
-                Worley::default().set_return_type(ReturnType::Distance), // .set_distance_function(chebyshev),
-            ),
+            NoiseFunction::Worley => {
+                Box::new(Worley::default().set_return_type(ReturnType::Distance))
+            }
             NoiseFunction::Cylinders => Box::new(
                 TranslatePoint::new(
                     Cylinders::default().set_frequency(controls.octaves as f64 / 2.0),
@@ -43,7 +44,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             NoiseFunction::Curl => Box::new(Curl::new(Perlin::default())),
             NoiseFunction::Magnet => {
                 opts = NoiseOpts::default();
-                let mut rng = SmallRng::from_entropy();
+                let mut rng = SmallRng::seed_from_u64(SEED);
                 let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
                 let w = w as f32;
                 let h = h as f32;
@@ -55,7 +56,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             }
             NoiseFunction::Gravity => {
                 opts = NoiseOpts::default();
-                let mut rng = SmallRng::from_entropy();
+                let mut rng = SmallRng::seed_from_u64(SEED);
                 let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
                 let w = w as f32;
                 let h = h as f32;
@@ -65,6 +66,12 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                     pt(r5 * w, r6 * h),
                 ])))
             }
+            NoiseFunction::Sinusoidal => Box::new(Sinusoidal::new(
+                controls.sin_xfreq as f64,
+                controls.sin_yfreq as f64,
+                controls.sin_xexp as f64,
+                controls.sin_yexp as f64,
+            )),
         },
         noise_opts: opts,
         step_size: controls.spacing,
@@ -75,32 +82,44 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     }
 }
 
-pub fn draw(controls: &Controls, scale: f32) -> Canvas {
-    let mut canvas = Canvas::with_scale(WIDTH, HEIGHT, scale);
-    if let Ok(w) = controls.export_width.parse::<u32>() {
-        if let Ok(h) = controls.export_height.parse::<u32>() {
-            let aspect_ratio = h as f32 / w as f32;
-            let h = aspect_ratio * WIDTH as f32;
-            let s = w as f32 / WIDTH as f32;
-            canvas = Canvas::with_scale(WIDTH, h as u32, s)
+pub fn draw(controls: &Controls, print: bool) -> Canvas {
+    let mut canvas = Canvas::new(WIDTH, HEIGHT);
+    if let Ok(w) = controls.width.parse::<u32>() {
+        if let Ok(h) = controls.height.parse::<u32>() {
+            let aspect_ratio = w as f32 / h as f32;
+            let mut ch = HEIGHT;
+            let mut cw = WIDTH;
+            if w >= h {
+                ch = (WIDTH as f32 / aspect_ratio) as u32;
+            } else {
+                cw = (HEIGHT as f32 * aspect_ratio) as u32;
+            }
+            if print {
+                canvas = Canvas::with_scale(cw, ch, std::cmp::max(w, h) as f32 / 1000.0)
+            } else {
+                canvas = Canvas::new(cw, ch)
+            }
         }
     };
 
+    let mut rng = SmallRng::seed_from_u64(SEED);
+
     let bg = match controls.background.unwrap() {
         Background::Clouds => BG::clouds(canvas.width, canvas.height),
-        Background::Grain => BG::grain(canvas.width, canvas.height),
-        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height),
+        Background::Grain => BG::grain(canvas.width, canvas.height, &mut rng),
+        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, &mut rng),
         Background::DarkClouds => BG::dark_clouds(canvas.width, canvas.height),
     };
     bg.canvas_bg(&mut canvas);
 
-    let mut flow = choose_flow(controls, canvas.width(), canvas.height());
+    let mut flow = choose_flow(controls, canvas.width, canvas.height);
 
-    let starts =
-        controls
-            .location
-            .unwrap()
-            .starts(canvas.w_f32(), canvas.h_f32(), 105.0 - controls.density);
+    let starts = controls.location.unwrap().starts(
+        canvas.w_f32(),
+        canvas.h_f32(),
+        105.0 - controls.density,
+        &mut rng,
+    );
 
     let mut palette = Palette::new(color_scale(
         Color::from_rgba(controls.color1.r, controls.color1.g, controls.color1.b, 1.0).unwrap(),
@@ -113,6 +132,8 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         canvas.h_f32(),
         controls.size,
         controls.direction.unwrap(),
+        controls.size_scale,
+        controls.min_size,
     );
 
     for p in starts {
@@ -122,16 +143,27 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         match controls.curve_style.unwrap() {
             CurveStyle::Dots => {
                 for p in pts {
-                    let r = len_fn(p) / 15.0;
-                    let mut sb = ShapeBuilder::new()
-                        .circle(p, r)
-                        .stroke_color(Color::WHITE)
-                        .stroke_weight(controls.stroke_width)
-                        .fill_color(c);
+                    let r = len_fn(p);
+                    let mut sb = match controls.dot_style.unwrap() {
+                        DotStyle::Circle => ShapeBuilder::new().circle(p, r),
+                        DotStyle::Square => ShapeBuilder::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
+                        DotStyle::Pearl => ShapeBuilder::new().pearl(
+                            p,
+                            r,
+                            r,
+                            controls.pearl_sides,
+                            controls.pearl_smoothness,
+                            &mut rng,
+                        ),
+                    };
                     if controls.stroke_width < 0.5 {
                         sb = sb.no_stroke();
+                    } else {
+                        sb = sb
+                            .stroke_weight(controls.stroke_width)
+                            .stroke_color(Color::WHITE)
                     }
-                    sb.build().draw(&mut canvas);
+                    sb.fill_color(c).build().draw(&mut canvas);
                 }
             }
             CurveStyle::Line => ShapeBuilder::new()
@@ -146,7 +178,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
                     let r = len_fn(p);
                     let y0 = p.y - r;
                     let y1 = p.y + r;
-                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap());
+                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap(), &mut rng);
                     ShapeBuilder::new()
                         .line(pt(p.x, y0), pt(p.x, y1))
                         .stroke_weight(controls.stroke_width)
@@ -158,7 +190,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         }
     }
     if controls.border {
-        let border_color = palette.rand_color().darken_fixed(0.25);
+        let border_color = palette[0].darken_fixed(0.35);
         ShapeBuilder::new()
             .rect_xywh(pt(0, 0), pt(canvas.width, canvas.height))
             .no_fill()
@@ -170,8 +202,8 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     canvas
 }
 
-pub async fn print(controls: Controls, scale: f32) {
-    let canvas = draw(&controls, scale);
+pub async fn print(controls: Controls) {
+    let canvas = draw(&controls, true);
     let dirs = UserDirs::new().unwrap();
     let name = dirs.download_dir().unwrap();
     let file_name = name.join("image.png");

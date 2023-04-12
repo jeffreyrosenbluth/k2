@@ -1,3 +1,4 @@
+use rand::RngCore;
 use wassily::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -8,21 +9,6 @@ pub enum GradStyle {
     Fiber,
     LightFiber,
     DarkFiber,
-}
-
-impl Distribution<GradStyle> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> GradStyle {
-        let index: u8 = rng.gen_range(0..6);
-        match index {
-            0 => GradStyle::None,
-            1 => GradStyle::Light,
-            2 => GradStyle::Dark,
-            3 => GradStyle::Fiber,
-            4 => GradStyle::LightFiber,
-            5 => GradStyle::DarkFiber,
-            _ => unreachable!(),
-        }
-    }
 }
 
 impl std::fmt::Display for GradStyle {
@@ -42,16 +28,16 @@ impl std::fmt::Display for GradStyle {
     }
 }
 
-pub fn paint_lg<'a>(
+pub fn paint_lg<'a, R: RngCore>(
     x0: f32,
     y0: f32,
     x1: f32,
     y1: f32,
     color1: Color,
     grad_style: GradStyle,
+    rng: &mut R,
 ) -> Paint<'a> {
     use GradStyle::*;
-    let mut rng = SmallRng::from_entropy();
     let color0 = Color::from_rgba8(230, 230, 230, 255);
     let stops = match grad_style {
         LightFiber => vec![

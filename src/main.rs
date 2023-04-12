@@ -4,7 +4,6 @@ use iced::{
     Application, Color, Command, Element, Settings, Theme,
 };
 use iced_aw::ColorPicker;
-use rand::prelude::*;
 
 mod art;
 mod background;
@@ -15,19 +14,25 @@ mod gradient;
 mod gui;
 mod location;
 mod noise;
+mod presets;
 mod size;
 
+use crate::art::print;
+use crate::background::Background;
 use crate::common::*;
 use crate::gradient::GradStyle;
-use crate::gui::{dot::Dot, extrude::Extrude, fractal::Fractal, lpicklist, lslider::LSlider};
+use crate::gui::{
+    dot::Dot, extrude::Extrude, fractal::Fractal, lpicklist, lslider::LSlider, sine::Sine,
+};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
+use crate::presets::*;
 use crate::size::{Dir, SizeFn};
-use crate::{art::*, background::Background};
 
 const TEXT_SIZE: u16 = 15;
 
 pub fn main() -> iced::Result {
+    env_logger::init();
     let mut settings = Settings::default();
     settings.window.size = (1480, 1100);
     Xtrusion::run(settings)
@@ -40,30 +45,6 @@ pub enum ColorChooser {
 }
 
 #[derive(Debug, Clone)]
-pub enum RandomMessage {
-    RandomLength,
-    RandomNoiseFactor,
-    RandomNoiseScale,
-    RandomOctaves,
-    RandomColor(ColorChooser),
-    RandomSpeed,
-    RandomPersistence,
-    RandomLenSize,
-    RandomNoiseFunction,
-    RandomLocation,
-    RandomLenType,
-    RandomLenDir,
-    RandomHighlight,
-    RandomCurveStyle,
-    RandomBackground,
-    RandomSpacing,
-    RandomDensity,
-    RandomStrokeWidth,
-    RandomLacunarity,
-    RandomFrequency,
-}
-
-#[derive(Debug, Clone)]
 pub enum ColorMessage {
     Choose,
     Submit(Color),
@@ -72,7 +53,7 @@ pub enum ColorMessage {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    HiRes(bool),
+    Preset(Preset),
     CurveStyle(CurveStyle),
     Space(f32),
     CurveLength(u32),
@@ -82,7 +63,7 @@ pub enum Message {
     Density(f32),
     Octaves(u8),
     Factor(f32),
-    Scale(f32),
+    NoiseScale(f32),
     Persistence(f32),
     Lacunarity(f32),
     Frequency(f32),
@@ -91,91 +72,27 @@ pub enum Message {
     Length(SizeFn),
     LengthSize(f32),
     LengthDir(Dir),
+    SizeScale(f32),
+    MinSize(f32),
     Grad(GradStyle),
-    Randomize,
+    Dot(DotStyle),
+    PearlSides(u32),
+    PearlSmoothness(u32),
     ExportComplete(()),
     StrokeWidth(f32),
-    ExportWidth(String),
-    ExportHeight(String),
-    Rand(RandomMessage),
+    WidthSet(String),
+    Width,
+    HeightSet(String),
+    Height,
     Color1(ColorMessage),
     Color2(ColorMessage),
     Background(Background),
     Border(bool),
+    XFreq(f32),
+    YFreq(f32),
+    XExp(f32),
+    YExp(f32),
     Null,
-}
-
-fn rand_message(message: RandomMessage, controls: &mut Controls) {
-    use RandomMessage::*;
-    let mut rng = SmallRng::from_entropy();
-    let random_controls: Controls = rng.gen();
-    match message {
-        RandomLength => {
-            controls.curve_length = rng.gen_range(140..=360) / controls.spacing as u32;
-        }
-        RandomNoiseFactor => {
-            controls.noise_factor = random_controls.noise_factor;
-        }
-        RandomNoiseScale => {
-            controls.noise_scale = random_controls.noise_scale;
-        }
-        RandomOctaves => {
-            controls.octaves = random_controls.octaves;
-        }
-        RandomSpeed => {
-            controls.speed = rng.gen_range(0.0..=1.0);
-        }
-        RandomPersistence => {
-            controls.persistence = rng.gen_range(0.05..=0.95);
-        }
-        RandomLenSize => {
-            controls.size = random_controls.size;
-        }
-        RandomNoiseFunction => {
-            controls.noise_function = random_controls.noise_function;
-        }
-        RandomLocation => {
-            controls.location = random_controls.location;
-        }
-        RandomLenType => {
-            controls.size_fn = random_controls.size_fn;
-        }
-        RandomLenDir => {
-            controls.direction = random_controls.direction;
-        }
-        RandomHighlight => {
-            controls.grad_style = random_controls.grad_style;
-        }
-        RandomColor(c) => match c {
-            ColorChooser::Color1 => {
-                controls.color1 = random_controls.color1;
-            }
-            ColorChooser::Color2 => {
-                controls.color2 = random_controls.color2;
-            }
-        },
-        RandomCurveStyle => {
-            controls.curve_style = random_controls.curve_style;
-        }
-        RandomBackground => {
-            controls.background = random_controls.background;
-        }
-        RandomSpacing => {
-            controls.spacing = random_controls.spacing;
-        }
-        RandomDensity => {
-            controls.density = random_controls.density;
-        }
-        RandomStrokeWidth => {
-            controls.stroke_width = random_controls.stroke_width;
-        }
-        RandomLacunarity => {
-            controls.lacunarity = random_controls.lacunarity;
-        }
-        RandomFrequency => {
-            controls.frequency = random_controls.frequency;
-        }
-    }
 }
 
 impl Application for Xtrusion {
@@ -193,37 +110,35 @@ impl Application for Xtrusion {
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
+        use crate::common::Preset::*;
         use Message::*;
-        let controls = self.controls.clone();
         match message {
-            HiRes(b) => {
-                self.controls.hi_res = b;
-                if b {
-                    self.controls.spacing = 1.0;
-                    self.controls.curve_length = 200;
-                    self.controls.stroke_width = 2.0;
-                } else {
-                    self.controls.spacing = 4.0;
-                    self.controls.curve_length = 50;
-                    self.controls.stroke_width = 8.0;
-                }
+            Preset(p) => {
+                self.controls = match p {
+                    Slinky => Controls::default(),
+                    RustyRibbons => rusty_ribbons(),
+                    Solar => solar(),
+                    RiverStones => river_stones(),
+                    Purple => purple(),
+                    Canyon => canyon(),
+                    Stripes => stripes(),
+                    Splat => splat(),
+                    Tubes => tubes(),
+                    Ducts => ducts(),
+                    Ridges => ridges(),
+                };
+                self.controls.preset = Some(p);
                 self.draw();
             }
             CurveStyle(cs) => {
                 self.controls.curve_style = Some(cs);
-                if cs == common::CurveStyle::Dots {
-                    self.controls.stroke_width = 1.0;
-                }
-                if cs == common::CurveStyle::Line {
-                    self.controls.spacing = 1.0;
-                }
                 self.draw();
             }
             Space(b) => self.controls.spacing = b,
             CurveLength(l) => self.controls.curve_length = l,
             Export => {
                 self.controls.exporting = true;
-                return Command::perform(print(controls, 1.0), ExportComplete);
+                return Command::perform(print(self.controls.clone()), ExportComplete);
             }
             Loc(loc) => {
                 self.controls.location = Some(loc);
@@ -238,14 +153,9 @@ impl Application for Xtrusion {
             Lacunarity(l) => self.controls.lacunarity = l,
             Frequency(f) => self.controls.frequency = f,
             Factor(f) => self.controls.noise_factor = f,
-            Scale(s) => self.controls.noise_scale = s,
+            NoiseScale(s) => self.controls.noise_scale = s,
             Noise(n) => {
                 self.controls.noise_function = Some(n);
-                if n == NoiseFunction::Cylinders {
-                    self.controls.noise_scale = 1.0;
-                    self.controls.noise_factor = 1.0;
-                    self.controls.octaves = 2;
-                }
                 self.draw();
             }
             Speed(s) => self.controls.speed = s,
@@ -258,26 +168,26 @@ impl Application for Xtrusion {
                 self.controls.direction = Some(d);
                 self.draw();
             }
+            SizeScale(s) => self.controls.size_scale = s,
+            MinSize(m) => self.controls.min_size = m,
             Grad(c) => {
                 self.controls.grad_style = Some(c);
                 self.draw();
             }
-            Randomize => {
-                let w = self.controls.export_width.clone();
-                let h = self.controls.export_height.clone();
-                self.controls.randomize(); // = rng.gen();
-                self.controls.export_width = w;
-                self.controls.export_height = h;
+            Dot(d) => {
+                self.controls.dot_style = Some(d);
                 self.draw();
             }
+            PearlSides(s) => self.controls.pearl_sides = s,
+            PearlSmoothness(s) => self.controls.pearl_smoothness = s,
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
-            ExportWidth(w) => self.controls.export_width = w,
-            ExportHeight(h) => self.controls.export_height = h,
-            Rand(rnd) => {
-                rand_message(rnd, &mut self.controls);
-                self.draw();
+            WidthSet(w) => {
+                self.controls.width = w;
             }
+            Width => self.draw(),
+            HeightSet(h) => self.controls.height = h,
+            Height => self.draw(),
             Message::Color1(c) => match c {
                 ColorMessage::Choose => self.controls.show_color_picker1 = true,
                 ColorMessage::Submit(k) => {
@@ -300,11 +210,15 @@ impl Application for Xtrusion {
                 self.controls.background = Some(b);
                 self.draw();
             }
-            Null => {}
             Border(b) => {
                 self.controls.border = b;
                 self.draw();
             }
+            Null => {}
+            XFreq(f) => self.controls.sin_xfreq = f,
+            YFreq(f) => self.controls.sin_yfreq = f,
+            XExp(e) => self.controls.sin_xexp = e,
+            YExp(e) => self.controls.sin_yexp = e,
         }
         Command::none()
     }
@@ -312,15 +226,15 @@ impl Application for Xtrusion {
     fn view(&self) -> Element<Message> {
         use crate::Background::*;
         use crate::NoiseFunction::*;
+        use crate::Preset::*;
         use Message::*;
-        use RandomMessage::*;
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
         let mut left_panel = iced::widget::column![];
         let mut right_panel = iced::widget::column![];
         let color_button1 =
-            button(text("Color 1").size(15)).on_press(Message::Color1(ColorMessage::Choose));
+            button(text("Anchor 1 Color").size(15)).on_press(Message::Color1(ColorMessage::Choose));
         let color_button2 =
-            button(text("Color 2").size(15)).on_press(Message::Color2(ColorMessage::Choose));
+            button(text("Anchor 2 Color").size(15)).on_press(Message::Color2(ColorMessage::Choose));
 
         let color_picker1 = ColorPicker::new(
             self.controls.show_color_picker1,
@@ -340,8 +254,36 @@ impl Application for Xtrusion {
         right_panel = right_panel.push(vertical_space(5.0));
         left_panel = left_panel
             .push(vertical_space(5.0))
-            .push(Container::new(
-                toggler("Hi Res".to_owned(), self.controls.hi_res, HiRes).text_size(TEXT_SIZE),
+            .push(
+                row!(
+                    text_input("Width", &self.controls.width, WidthSet)
+                        .size(15)
+                        .width(90)
+                        .on_submit(Width),
+                    text_input("Height", &self.controls.height, HeightSet)
+                        .size(15)
+                        .width(90)
+                        .on_submit(Height),
+                )
+                .spacing(15),
+            )
+            .push(lpicklist::LPickList::new(
+                "Preset".to_string(),
+                vec![
+                    Slinky,
+                    RustyRibbons,
+                    Solar,
+                    RiverStones,
+                    Purple,
+                    Canyon,
+                    Stripes,
+                    Splat,
+                    Tubes,
+                    Ducts,
+                    Ridges,
+                ],
+                self.controls.preset,
+                |x| x.map_or(Preset(RustyRibbons), Preset),
             ))
             .push(lpicklist::LPickList::new(
                 "Curve Style".to_string(),
@@ -351,82 +293,17 @@ impl Application for Xtrusion {
                     crate::CurveStyle::Extrusion,
                 ],
                 self.controls.curve_style,
-                |x| x.map_or(CurveStyle(common::CurveStyle::Dots), |v| CurveStyle(v)),
-                Rand(RandomCurveStyle),
-            ))
-            .push(
-                LSlider::new(
-                    "Density".to_string(),
-                    self.controls.density,
-                    5.0..=100.0,
-                    1.0,
-                    Density,
-                    Some(Rand(RandomDensity)),
-                    Draw,
-                )
-                .decimals(0),
-            )
-            .push(
-                LSlider::new(
-                    "Point Spacing".to_string(),
-                    self.controls.spacing,
-                    1.0..=50.0,
-                    1.0,
-                    Space,
-                    Some(Rand(RandomSpacing)),
-                    Draw,
-                )
-                .decimals(0),
-            )
-            .push(LSlider::new(
-                "Curve Length".to_string(),
-                self.controls.curve_length,
-                10..=1000,
-                1,
-                CurveLength,
-                Some(Rand(RandomLength)),
-                Draw,
+                |x| x.map_or(CurveStyle(common::CurveStyle::Dots), CurveStyle),
             ))
             .push(lpicklist::LPickList::new(
                 "Flow Field".to_string(),
                 vec![
                     Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
+                    Sinusoidal,
                 ],
                 self.controls.noise_function,
-                |x| x.map_or(Noise(Fbm), |v| Noise(v)),
-                Rand(RandomNoiseFunction),
-            ));
-        left_panel = left_panel
-            .push(LSlider::new(
-                "Noise Scale".to_string(),
-                self.controls.noise_scale,
-                0.5..=20.0,
-                0.1,
-                Scale,
-                Some(Rand(RandomNoiseScale)),
-                Draw,
+                |x| x.map_or(Noise(Fbm), Noise),
             ))
-            .push(LSlider::new(
-                "Noise Factor".to_string(),
-                self.controls.noise_factor,
-                0.5..=20.0,
-                0.1,
-                Factor,
-                Some(Rand(RandomNoiseFactor)),
-                Draw,
-            ))
-            .push(
-                LSlider::new(
-                    "Convergence Speed".to_string(),
-                    self.controls.speed,
-                    0.01..=1.00,
-                    0.01,
-                    Speed,
-                    Some(Rand(RandomSpeed)),
-                    Draw,
-                )
-                .decimals(2),
-            )
             .push(lpicklist::LPickList::new(
                 "Curve Locations".to_string(),
                 vec![
@@ -438,14 +315,75 @@ impl Application for Xtrusion {
                     Location::Lissajous,
                 ],
                 self.controls.location,
-                |x| x.map_or(Loc(Location::Grid), |x| Loc(x)),
-                Rand(RandomLocation),
+                |x| x.map_or(Loc(Location::Grid), Loc),
             ))
+            .push(lpicklist::LPickList::new(
+                "Background Style".to_string(),
+                vec![Grain, Clouds, DarkGrain, DarkClouds],
+                self.controls.background,
+                |x| x.map_or(Background(Grain), Background),
+            ))
+            .push(
+                LSlider::new(
+                    "Density".to_string(),
+                    self.controls.density,
+                    5.0..=100.0,
+                    5.0,
+                    Density,
+                    Draw,
+                )
+                .decimals(0),
+            )
+            .push(
+                LSlider::new(
+                    "Point Spacing".to_string(),
+                    self.controls.spacing,
+                    1.0..=100.0,
+                    1.0,
+                    Space,
+                    Draw,
+                )
+                .decimals(0),
+            )
+            .push(LSlider::new(
+                "Curve Length".to_string(),
+                self.controls.curve_length,
+                0..=500,
+                1,
+                CurveLength,
+                Draw,
+            ));
+        left_panel = left_panel
+            .push(LSlider::new(
+                "Noise Scale".to_string(),
+                self.controls.noise_scale,
+                0.5..=20.0,
+                0.1,
+                NoiseScale,
+                Draw,
+            ))
+            .push(LSlider::new(
+                "Noise Factor".to_string(),
+                self.controls.noise_factor,
+                0.5..=20.0,
+                0.1,
+                Factor,
+                Draw,
+            ))
+            .push(
+                LSlider::new(
+                    "Convergence Speed".to_string(),
+                    self.controls.speed,
+                    0.01..=1.00,
+                    0.01,
+                    Speed,
+                    Draw,
+                )
+                .decimals(2),
+            )
             .push(
                 row![
                     color_picker1,
-                    button(text("Random").size(15))
-                        .on_press(Rand(RandomColor(ColorChooser::Color1))),
                     text(format!(
                         "{:3} {:3} {:3}",
                         (self.controls.color1.r * 255.0) as u8,
@@ -460,8 +398,6 @@ impl Application for Xtrusion {
             .push(
                 row![
                     color_picker2,
-                    button(text("Random").size(15))
-                        .on_press(Rand(RandomColor(ColorChooser::Color2))),
                     text(format!(
                         "{:3} {:3} {:3}",
                         (self.controls.color2.r * 255.0) as u8,
@@ -479,14 +415,21 @@ impl Application for Xtrusion {
                 self.controls.size_fn,
                 self.controls.size,
                 self.controls.direction,
+                self.controls.size_scale,
+                self.controls.min_size,
                 self.controls.grad_style,
             );
             right_panel = right_panel.push(extrusion.show())
         } else if self.controls.curve_style == Some(crate::CurveStyle::Dots) {
-            let dot = Dot::new(
+            let dot = crate::Dot::new(
+                self.controls.dot_style,
                 self.controls.size_fn,
                 self.controls.size,
                 self.controls.direction,
+                self.controls.size_scale,
+                self.controls.min_size,
+                self.controls.pearl_sides,
+                self.controls.pearl_smoothness,
             );
             right_panel = right_panel.push(dot.show())
         };
@@ -504,6 +447,17 @@ impl Application for Xtrusion {
                 .show(),
             )
         }
+        if self.controls.noise_function == Some(Sinusoidal) {
+            right_panel = right_panel.push(
+                Sine::new(
+                    self.controls.sin_xfreq,
+                    self.controls.sin_yfreq,
+                    self.controls.sin_xexp,
+                    self.controls.sin_yexp,
+                )
+                .show(),
+            )
+        }
         left_panel = left_panel
             .push(
                 LSlider::new(
@@ -512,18 +466,10 @@ impl Application for Xtrusion {
                     0.0..=25.0,
                     0.5,
                     StrokeWidth,
-                    Some(Rand(RandomStrokeWidth)),
                     Draw,
                 )
                 .decimals(1),
             )
-            .push(lpicklist::LPickList::new(
-                "Background Style".to_string(),
-                vec![Grain, Clouds, DarkGrain, DarkClouds],
-                self.controls.background,
-                |x| x.map_or(Background(Grain), |v| Background(v)),
-                Rand(RandomBackground),
-            ))
             .push(Container::new(
                 toggler("Border".to_owned(), self.controls.border, Border).text_size(TEXT_SIZE),
             ))
@@ -531,28 +477,17 @@ impl Application for Xtrusion {
             .spacing(15)
             .width(250);
 
-        let rand_button = button(text("Random").size(15)).on_press(Randomize);
         let export_button = if self.controls.exporting {
             button(text("Export").size(15))
         } else {
             button(text("Export").size(15)).on_press(Export)
         };
-        left_panel = left_panel
-            .push(row!(rand_button, export_button).spacing(20))
-            .push(
-                row!(
-                    text_input("Export Width", &self.controls.export_width, ExportWidth)
-                        .size(15)
-                        .width(90),
-                    text_input("Export Height", &self.controls.export_height, ExportHeight)
-                        .size(15)
-                        .width(90)
-                )
-                .spacing(15),
-            );
-        let image_panel = iced::widget::column!(vertical_space(25), img_view, vertical_space(5),)
-            .spacing(15)
-            .align_items(Alignment::Center);
+        left_panel = left_panel.push(export_button).spacing(15);
+        let img_container = Container::new(img_view).width(self.width).height(1000);
+        let image_panel =
+            iced::widget::column!(vertical_space(25), img_container, vertical_space(5),)
+                .spacing(15)
+                .align_items(Alignment::Center);
 
         right_panel = right_panel.padding(20).spacing(15).width(250);
         row![left_panel, image_panel, right_panel].into()

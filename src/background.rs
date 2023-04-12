@@ -1,3 +1,4 @@
+use rand::RngCore;
 use wassily::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -6,19 +7,6 @@ pub enum Background {
     Clouds,
     DarkGrain,
     DarkClouds,
-}
-
-impl Distribution<Background> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Background {
-        let index: u8 = rng.gen_range(0..4);
-        match index {
-            0 => Background::Grain,
-            1 => Background::Clouds,
-            2 => Background::DarkGrain,
-            3 => Background::DarkClouds,
-            _ => unreachable!(),
-        }
-    }
 }
 
 impl std::fmt::Display for Background {
@@ -38,10 +26,9 @@ impl std::fmt::Display for Background {
 pub struct BG(Canvas);
 
 impl BG {
-    pub fn dark_grain(width: u32, height: u32) -> Self {
+    pub fn dark_grain<R: RngCore>(width: u32, height: u32, rng: &mut R) -> Self {
         let mut canvas = Canvas::new(width, height);
         canvas.fill(*WHITE);
-        let mut rng = SmallRng::from_entropy();
         for i in 0..width {
             for j in 0..height {
                 let alpha = rng.gen_range(200..=240);
@@ -59,10 +46,9 @@ impl BG {
         BG(canvas)
     }
 
-    pub fn grain(width: u32, height: u32) -> Self {
+    pub fn grain<R: RngCore>(width: u32, height: u32, rng: &mut R) -> Self {
         let mut canvas = Canvas::new(width, height);
         canvas.fill(*WHITE);
-        let mut rng = SmallRng::from_entropy();
         for i in 0..width {
             for j in 0..height {
                 let brt = rng.gen_range(0..=255);
