@@ -21,7 +21,9 @@ use crate::art::print;
 use crate::background::Background;
 use crate::common::*;
 use crate::gradient::GradStyle;
-use crate::gui::{dot::Dot, extrude::Extrude, fractal::Fractal, lpicklist, lslider::LSlider};
+use crate::gui::{
+    dot::Dot, extrude::Extrude, fractal::Fractal, lpicklist, lslider::LSlider, sine::Sine,
+};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
@@ -85,6 +87,10 @@ pub enum Message {
     Color2(ColorMessage),
     Background(Background),
     Border(bool),
+    XFreq(f32),
+    YFreq(f32),
+    XExp(f32),
+    YExp(f32),
     Null,
 }
 
@@ -207,6 +213,10 @@ impl Application for Xtrusion {
                 self.draw();
             }
             Null => {}
+            XFreq(f) => self.controls.sin_xfreq = f,
+            YFreq(f) => self.controls.sin_yfreq = f,
+            XExp(e) => self.controls.sin_xexp = e,
+            YExp(e) => self.controls.sin_yexp = e,
         }
         Command::none()
     }
@@ -286,6 +296,7 @@ impl Application for Xtrusion {
                 "Flow Field".to_string(),
                 vec![
                     Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
+                    Sinusoidal,
                 ],
                 self.controls.noise_function,
                 |x| x.map_or(Noise(Fbm), Noise),
@@ -429,6 +440,17 @@ impl Application for Xtrusion {
                     self.controls.persistence,
                     self.controls.lacunarity,
                     self.controls.frequency,
+                )
+                .show(),
+            )
+        }
+        if self.controls.noise_function == Some(Sinusoidal) {
+            right_panel = right_panel.push(
+                Sine::new(
+                    self.controls.sin_xfreq,
+                    self.controls.sin_yfreq,
+                    self.controls.sin_xexp,
+                    self.controls.sin_yexp,
                 )
                 .show(),
             )

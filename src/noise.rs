@@ -11,6 +11,7 @@ pub enum NoiseFunction {
     Curl,
     Magnet,
     Gravity,
+    Sinusoidal,
 }
 
 impl std::fmt::Display for NoiseFunction {
@@ -28,6 +29,7 @@ impl std::fmt::Display for NoiseFunction {
                 NoiseFunction::Curl => "Curl",
                 NoiseFunction::Magnet => "Magnet",
                 NoiseFunction::Gravity => "Gravity",
+                NoiseFunction::Sinusoidal => "Sinusoidal",
             }
         )
     }
@@ -58,5 +60,32 @@ impl NoiseFn<f64, 2> for Magnet {
             return 0.0;
         }
         (p.y as f64 - point[1]).atan2(p.x as f64 - point[0]) / std::f64::consts::PI
+    }
+}
+
+pub struct Sinusoidal {
+    x_freq: f64,
+    y_freq: f64,
+    x_exp: f64,
+    y_exp: f64,
+}
+
+impl Sinusoidal {
+    pub fn new(x_freq: f64, y_freq: f64, x_exp: f64, y_exp: f64) -> Self {
+        Self {
+            x_freq,
+            y_freq,
+            x_exp,
+            y_exp,
+        }
+    }
+}
+
+impl NoiseFn<f64, 2> for Sinusoidal {
+    fn get(&self, point: [f64; 2]) -> f64 {
+        std::f64::consts::PI
+            * (2.0
+                + (self.x_freq * point[0]).sin().powf(self.x_exp)
+                + (self.y_freq * point[1]).sin().powf(self.y_exp))
     }
 }

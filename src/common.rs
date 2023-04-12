@@ -155,6 +155,10 @@ pub struct Controls {
     pub width: String,
     pub height: String,
     pub border: bool,
+    pub sin_xfreq: f32,
+    pub sin_yfreq: f32,
+    pub sin_xexp: f32,
+    pub sin_yexp: f32,
 }
 
 impl Controls {
@@ -194,6 +198,10 @@ impl Controls {
             width: String::new(),
             height: String::new(),
             border: true,
+            sin_xfreq: 1.0,
+            sin_yfreq: 1.0,
+            sin_xexp: 2.0,
+            sin_yexp: 2.0,
         }
     }
 }

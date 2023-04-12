@@ -66,6 +66,12 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                     pt(r5 * w, r6 * h),
                 ])))
             }
+            NoiseFunction::Sinusoidal => Box::new(Sinusoidal::new(
+                controls.sin_xfreq as f64,
+                controls.sin_yfreq as f64,
+                controls.sin_xexp as f64,
+                controls.sin_yexp as f64,
+            )),
         },
         noise_opts: opts,
         step_size: controls.spacing,
