@@ -153,10 +153,10 @@ impl Application for Xtrusion {
             Persistence(p) => self.controls.fractal_controls.persistence = p,
             Lacunarity(l) => self.controls.fractal_controls.lacunarity = l,
             Frequency(f) => self.controls.fractal_controls.frequency = f,
-            Factor(f) => self.controls.noise_factor = f,
-            NoiseScale(s) => self.controls.noise_scale = s,
+            Factor(f) => self.controls.noise_controls.noise_factor = f,
+            NoiseScale(s) => self.controls.noise_controls.noise_scale = s,
             Noise(n) => {
-                self.controls.noise_function = Some(n);
+                self.controls.noise_controls.noise_function = Some(n);
                 self.draw();
             }
             Speed(s) => self.controls.speed = s,
@@ -311,7 +311,7 @@ impl Application for Xtrusion {
                     Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
                     Sinusoidal,
                 ],
-                self.controls.noise_function,
+                self.controls.noise_controls.noise_function,
                 |x| x.map_or(Noise(Fbm), Noise),
             ))
             .push(lpicklist::LPickList::new(
@@ -366,7 +366,7 @@ impl Application for Xtrusion {
         left_panel = left_panel
             .push(LSlider::new(
                 "Noise Scale".to_string(),
-                self.controls.noise_scale,
+                self.controls.noise_controls.noise_scale,
                 0.5..=20.0,
                 0.1,
                 NoiseScale,
@@ -374,7 +374,7 @@ impl Application for Xtrusion {
             ))
             .push(LSlider::new(
                 "Noise Factor".to_string(),
-                self.controls.noise_factor,
+                self.controls.noise_controls.noise_factor,
                 0.5..=20.0,
                 0.1,
                 Factor,
@@ -445,9 +445,9 @@ impl Application for Xtrusion {
             );
             right_panel = right_panel.push(dot.show())
         };
-        if self.controls.noise_function == Some(Fbm)
-            || self.controls.noise_function == Some(Billow)
-            || self.controls.noise_function == Some(Ridged)
+        if self.controls.noise_controls.noise_function == Some(Fbm)
+            || self.controls.noise_controls.noise_function == Some(Billow)
+            || self.controls.noise_controls.noise_function == Some(Ridged)
         {
             right_panel = right_panel.push(
                 Fractal::new(
@@ -459,7 +459,7 @@ impl Application for Xtrusion {
                 .show(),
             )
         }
-        if self.controls.noise_function == Some(Sinusoidal) {
+        if self.controls.noise_controls.noise_function == Some(Sinusoidal) {
             right_panel = right_panel.push(
                 Sine::new(
                     self.controls.sin_xfreq,

@@ -11,10 +11,10 @@ use crate::noise::*;
 
 fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     let mut opts = NoiseOpts::with_wh(w, h)
-        .scales(controls.noise_scale)
-        .factor(controls.noise_factor);
+        .scales(controls.noise_controls.noise_scale)
+        .factor(controls.noise_controls.noise_factor);
     Field {
-        noise_function: match controls.noise_function.unwrap() {
+        noise_function: match controls.noise_controls.noise_function.unwrap() {
             NoiseFunction::Fbm => Box::new(
                 Fbm::<Perlin>::default()
                     .set_octaves(controls.fractal_controls.octaves as usize)

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::art::draw;
 use crate::background::Background;
 use crate::gradient::GradStyle;
@@ -134,10 +136,8 @@ pub struct Controls {
     pub show_color_picker3: bool,
     pub location: Option<Location>,
     pub density: f32,
-    pub noise_factor: f32,
-    pub noise_scale: f32,
+    pub noise_controls: NoiseControls,
     pub fractal_controls: FractalControls,
-    pub noise_function: Option<NoiseFunction>,
     pub speed: f32,
     pub size_controls: SizeControls,
     pub grad_style: Option<GradStyle>,
@@ -145,7 +145,6 @@ pub struct Controls {
     pub pearl_sides: u32,
     pub pearl_smoothness: u32,
     pub exporting: bool,
-    pub worley_dist: bool,
     pub stroke_width: f32,
     pub dot_stroke_color: Color,
     pub background: Option<Background>,
@@ -177,11 +176,9 @@ impl Default for Controls {
             show_color_picker2: false,
             show_color_picker3: false,
             location: Some(Location::Halton),
+            noise_controls: NoiseControls::default(),
             density: 50.0,
-            noise_factor: 1.0,
-            noise_scale: 4.0,
             fractal_controls: FractalControls::default(),
-            noise_function: Some(NoiseFunction::Fbm),
             speed: 1.0,
             size_controls: SizeControls::default(),
             grad_style: Some(GradStyle::None),
@@ -189,7 +186,6 @@ impl Default for Controls {
             pearl_sides: 4,
             pearl_smoothness: 3,
             exporting: false,
-            worley_dist: false,
             stroke_width: 1.0,
             dot_stroke_color: Color::from_rgb8(255, 255, 255),
             background: Some(Background::Clouds),
@@ -224,8 +220,13 @@ impl Default for FractalControls {
 }
 
 impl FractalControls {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
+        Self {
+            octaves,
+            persistence,
+            lacunarity,
+            frequency,
+        }
     }
 
     pub fn set_octaves(mut self, octaves: u8) -> Self {
@@ -271,10 +272,15 @@ impl Default for SizeControls {
 }
 
 impl SizeControls {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(size_fn: SizeFn, size: f32, direction: Dir, size_scale: f32, min_size: f32) -> Self {
+        Self {
+            size_fn: Some(size_fn),
+            size,
+            direction: Some(direction),
+            size_scale,
+            min_size,
+        }
     }
-
     pub fn set_size_fn(mut self, size_fn: Option<SizeFn>) -> Self {
         self.size_fn = size_fn;
         self
@@ -298,5 +304,47 @@ impl SizeControls {
     pub fn set_min_size(mut self, min_size: f32) -> Self {
         self.min_size = min_size;
         self
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NoiseControls {
+    pub noise_function: Option<NoiseFunction>,
+    pub noise_factor: f32,
+    pub noise_scale: f32,
+}
+
+impl NoiseControls {
+    pub fn new(noise_function: NoiseFunction, noise_scale: f32, noise_factor: f32) -> Self {
+        Self {
+            noise_function: Some(noise_function),
+            noise_factor,
+            noise_scale,
+        }
+    }
+
+    pub fn set_noise_function(mut self, noise_function: NoiseFunction) -> Self {
+        self.noise_function = Some(noise_function);
+        self
+    }
+
+    pub fn set_noise_factor(mut self, noise_factor: f32) -> Self {
+        self.noise_factor = noise_factor;
+        self
+    }
+
+    pub fn set_noise_scale(mut self, noise_scale: f32) -> Self {
+        self.noise_scale = noise_scale;
+        self
+    }
+}
+
+impl Default for NoiseControls {
+    fn default() -> Self {
+        Self {
+            noise_function: Some(NoiseFunction::Fbm),
+            noise_factor: 1.0,
+            noise_scale: 4.0,
+        }
     }
 }
