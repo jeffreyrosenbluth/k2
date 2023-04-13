@@ -17,18 +17,18 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
         noise_function: match controls.noise_function.unwrap() {
             NoiseFunction::Fbm => Box::new(
                 Fbm::<Perlin>::default()
-                    .set_octaves(controls.octaves as usize)
-                    .set_persistence(controls.persistence as f64),
+                    .set_octaves(controls.fractal_controls.octaves as usize)
+                    .set_persistence(controls.fractal_controls.persistence as f64),
             ),
             NoiseFunction::Billow => Box::new(
                 Billow::<Perlin>::default()
-                    .set_octaves(controls.octaves as usize)
-                    .set_persistence(controls.persistence as f64),
+                    .set_octaves(controls.fractal_controls.octaves as usize)
+                    .set_persistence(controls.fractal_controls.persistence as f64),
             ),
             NoiseFunction::Ridged => Box::new(
                 RidgedMulti::<Perlin>::default()
-                    .set_octaves(controls.octaves as usize)
-                    .set_persistence(controls.persistence as f64),
+                    .set_octaves(controls.fractal_controls.octaves as usize)
+                    .set_persistence(controls.fractal_controls.persistence as f64),
             ),
             NoiseFunction::Value => Box::<Value>::default(),
             NoiseFunction::Worley => {
@@ -36,7 +36,8 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             }
             NoiseFunction::Cylinders => Box::new(
                 TranslatePoint::new(
-                    Cylinders::default().set_frequency(controls.octaves as f64 / 2.0),
+                    Cylinders::default()
+                        .set_frequency(controls.fractal_controls.octaves as f64 / 2.0),
                 )
                 .set_x_translation(w as f64 / 2.0)
                 .set_y_translation(h as f64 / 2.0),
@@ -127,13 +128,13 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
         8,
     ));
 
-    let len_fn = controls.size_fn.unwrap().calc(
+    let len_fn = controls.size_controls.size_fn.unwrap().calc(
         canvas.w_f32(),
         canvas.h_f32(),
-        controls.size,
-        controls.direction.unwrap(),
-        controls.size_scale,
-        controls.min_size,
+        controls.size_controls.size,
+        controls.size_controls.direction.unwrap(),
+        controls.size_controls.size_scale,
+        controls.size_controls.min_size,
     );
 
     for p in starts {
@@ -142,6 +143,13 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
 
         match controls.curve_style.unwrap() {
             CurveStyle::Dots => {
+                let sc = Color::from_rgba(
+                    controls.dot_stroke_color.r,
+                    controls.dot_stroke_color.g,
+                    controls.dot_stroke_color.b,
+                    1.0,
+                )
+                .unwrap();
                 for p in pts {
                     let r = len_fn(p);
                     let mut sb = match controls.dot_style.unwrap() {
@@ -159,9 +167,7 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
                     if controls.stroke_width < 0.5 {
                         sb = sb.no_stroke();
                     } else {
-                        sb = sb
-                            .stroke_weight(controls.stroke_width)
-                            .stroke_color(Color::WHITE)
+                        sb = sb.stroke_weight(controls.stroke_width).stroke_color(sc)
                     }
                     sb.fill_color(c).build().draw(&mut canvas);
                 }

@@ -27,7 +27,7 @@ impl<'a> Sine {
                 LSlider::new(
                     "X Frequency".to_string(),
                     self.xfreq,
-                    0.1..=4.0,
+                    0.1..=10.0,
                     0.1,
                     XFreq,
                     Draw,
@@ -38,7 +38,7 @@ impl<'a> Sine {
                 LSlider::new(
                     "Y Frequency".to_string(),
                     self.yfreq,
-                    0.1..=4.0,
+                    0.1..=10.0,
                     0.1,
                     YFreq,
                     Draw,

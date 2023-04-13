@@ -92,6 +92,7 @@ pub enum Message {
     YFreq(f32),
     XExp(f32),
     YExp(f32),
+    DotStrokeColor(ColorMessage),
     Null,
 }
 
@@ -148,10 +149,10 @@ impl Application for Xtrusion {
             Draw => {
                 self.draw();
             }
-            Octaves(o) => self.controls.octaves = o,
-            Persistence(p) => self.controls.persistence = p,
-            Lacunarity(l) => self.controls.lacunarity = l,
-            Frequency(f) => self.controls.frequency = f,
+            Octaves(o) => self.controls.fractal_controls.octaves = o,
+            Persistence(p) => self.controls.fractal_controls.persistence = p,
+            Lacunarity(l) => self.controls.fractal_controls.lacunarity = l,
+            Frequency(f) => self.controls.fractal_controls.frequency = f,
             Factor(f) => self.controls.noise_factor = f,
             NoiseScale(s) => self.controls.noise_scale = s,
             Noise(n) => {
@@ -160,16 +161,16 @@ impl Application for Xtrusion {
             }
             Speed(s) => self.controls.speed = s,
             Length(l) => {
-                self.controls.size_fn = Some(l);
+                self.controls.size_controls.size_fn = Some(l);
                 self.draw();
             }
-            LengthSize(s) => self.controls.size = s,
+            LengthSize(s) => self.controls.size_controls.size = s,
             LengthDir(d) => {
-                self.controls.direction = Some(d);
+                self.controls.size_controls.direction = Some(d);
                 self.draw();
             }
-            SizeScale(s) => self.controls.size_scale = s,
-            MinSize(m) => self.controls.min_size = m,
+            SizeScale(s) => self.controls.size_controls.size_scale = s,
+            MinSize(m) => self.controls.size_controls.min_size = m,
             Grad(c) => {
                 self.controls.grad_style = Some(c);
                 self.draw();
@@ -205,6 +206,15 @@ impl Application for Xtrusion {
                     self.draw()
                 }
                 ColorMessage::Cancel => self.controls.show_color_picker2 = false,
+            },
+            Message::DotStrokeColor(c) => match c {
+                ColorMessage::Choose => self.controls.show_color_picker3 = true,
+                ColorMessage::Submit(k) => {
+                    self.controls.dot_stroke_color = k;
+                    self.controls.show_color_picker3 = false;
+                    self.draw()
+                }
+                ColorMessage::Cancel => self.controls.show_color_picker3 = false,
             },
             Message::Background(b) => {
                 self.controls.background = Some(b);
@@ -412,24 +422,26 @@ impl Application for Xtrusion {
 
         if self.controls.curve_style == Some(crate::CurveStyle::Extrusion) {
             let extrusion = Extrude::new(
-                self.controls.size_fn,
-                self.controls.size,
-                self.controls.direction,
-                self.controls.size_scale,
-                self.controls.min_size,
+                self.controls.size_controls.size_fn,
+                self.controls.size_controls.size,
+                self.controls.size_controls.direction,
+                self.controls.size_controls.size_scale,
+                self.controls.size_controls.min_size,
                 self.controls.grad_style,
             );
             right_panel = right_panel.push(extrusion.show())
         } else if self.controls.curve_style == Some(crate::CurveStyle::Dots) {
             let dot = crate::Dot::new(
                 self.controls.dot_style,
-                self.controls.size_fn,
-                self.controls.size,
-                self.controls.direction,
-                self.controls.size_scale,
-                self.controls.min_size,
+                self.controls.size_controls.size_fn,
+                self.controls.size_controls.size,
+                self.controls.size_controls.direction,
+                self.controls.size_controls.size_scale,
+                self.controls.size_controls.min_size,
                 self.controls.pearl_sides,
                 self.controls.pearl_smoothness,
+                self.controls.show_color_picker3,
+                self.controls.dot_stroke_color,
             );
             right_panel = right_panel.push(dot.show())
         };
@@ -439,10 +451,10 @@ impl Application for Xtrusion {
         {
             right_panel = right_panel.push(
                 Fractal::new(
-                    self.controls.octaves,
-                    self.controls.persistence,
-                    self.controls.lacunarity,
-                    self.controls.frequency,
+                    self.controls.fractal_controls.octaves,
+                    self.controls.fractal_controls.persistence,
+                    self.controls.fractal_controls.lacunarity,
+                    self.controls.fractal_controls.frequency,
                 )
                 .show(),
             )

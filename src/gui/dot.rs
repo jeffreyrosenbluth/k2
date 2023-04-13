@@ -2,8 +2,11 @@ use crate::common::DotStyle;
 use crate::gui::lpicklist::LPickList;
 use crate::gui::lslider::LSlider;
 use crate::size::{Dir, SizeFn};
+use crate::ColorMessage;
 use crate::Message::{self, *};
-use iced::widget::Column;
+use iced::widget::{button, row, text, Column};
+use iced::{Alignment::Center, Color};
+use iced_aw::ColorPicker;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dot {
@@ -15,6 +18,8 @@ pub struct Dot {
     pub min_size: f32,
     pub pearl_sides: u32,
     pub pearl_smoothness: u32,
+    pub show_color_picker: bool,
+    pub dot_stroke_color: Color,
 }
 
 impl<'a> Dot {
@@ -27,6 +32,8 @@ impl<'a> Dot {
         min_size: f32,
         pearl_sides: u32,
         pearl_smoothness: u32,
+        show_color_picker: bool,
+        dot_stroke_color: Color,
     ) -> Self {
         Self {
             dot_style,
@@ -37,10 +44,21 @@ impl<'a> Dot {
             min_size,
             pearl_sides,
             pearl_smoothness,
+            show_color_picker,
+            dot_stroke_color,
         }
     }
 
     pub fn show(&self) -> Column<'a, Message> {
+        let color_button = button(text("Dot Stroke Color").size(15))
+            .on_press(Message::DotStrokeColor(ColorMessage::Choose));
+        let color_picker = ColorPicker::new(
+            self.show_color_picker,
+            self.dot_stroke_color,
+            color_button,
+            Message::DotStrokeColor(ColorMessage::Cancel),
+            |c| Message::DotStrokeColor(ColorMessage::Submit(c)),
+        );
         let mut col = Column::new()
             .push(LPickList::new(
                 "Dot Style".to_string(),
@@ -69,6 +87,20 @@ impl<'a> Dot {
                     Draw,
                 )
                 .decimals(0),
+            )
+            .push(
+                row![
+                    color_picker,
+                    text(format!(
+                        "{:3} {:3} {:3}",
+                        (self.dot_stroke_color.r * 255.0) as u8,
+                        (self.dot_stroke_color.g * 255.0) as u8,
+                        (self.dot_stroke_color.b * 255.0) as u8
+                    ))
+                    .size(15)
+                ]
+                .spacing(15)
+                .align_items(Center),
             )
             .spacing(15);
         if self.size_fn == Some(SizeFn::Expanding) || self.size_fn == Some(SizeFn::Contracting) {

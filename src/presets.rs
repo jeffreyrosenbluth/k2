@@ -12,8 +12,8 @@ pub fn rusty_ribbons() -> Controls {
         spacing: 2.0,
         stroke_width: 4.0,
         curve_length: 175,
-        size: 200.0,
-        octaves: 1,
+        size_controls: SizeControls::default().set_size(200.0),
+        fractal_controls: FractalControls::default().set_octaves(1),
         density: 65.0,
         color1: Color::from_rgb8(185, 95, 25),
         grad_style: Some(GradStyle::Fiber),
@@ -31,11 +31,12 @@ pub fn ridges() -> Controls {
         spacing: 10.0,
         stroke_width: 0.5,
         curve_length: 55,
-        size: 5.0,
-        size_fn: Some(SizeFn::Periodic),
-        size_scale: 3.0,
-        min_size: 1.0,
-        octaves: 2,
+        size_controls: SizeControls::default()
+            .set_size(5.0)
+            .set_size_fn(Some(SizeFn::Periodic))
+            .set_size_scale(3.0)
+            .set_min_size(1.0),
+        fractal_controls: FractalControls::default().set_octaves(2),
         density: 100.0,
         color1: Color::from_rgb8(111, 171, 181),
         background: Some(Background::DarkGrain),
@@ -74,8 +75,9 @@ pub fn river_stones() -> Controls {
         noise_function: Some(NoiseFunction::Magnet),
         location: Some(Location::Poisson),
         dot_style: Some(DotStyle::Pearl),
-        size_fn: Some(SizeFn::Constant),
-        size: 100.0,
+        size_controls: SizeControls::default()
+            .set_size_fn(Some(SizeFn::Constant))
+            .set_size(100.0),
         pearl_sides: 3,
         pearl_smoothness: 3,
         noise_scale: 3.0,
@@ -100,11 +102,12 @@ pub fn purple() -> Controls {
         spacing: 1.0,
         stroke_width: 2.0,
         curve_length: 200,
-        size: 80.0,
-        size_fn: Some(SizeFn::Constant),
+        size_controls: SizeControls::default()
+            .set_size_fn(Some(SizeFn::Constant))
+            .set_size(80.0),
         noise_scale: 3.0,
         noise_factor: 1.0,
-        octaves: 1,
+        fractal_controls: FractalControls::default().set_octaves(1),
         density: 72.0,
         color1: Color::from_rgb8(121, 72, 141),
         color2: Color::from_rgb8(71, 76, 141),
@@ -123,7 +126,7 @@ pub fn canyon() -> Controls {
         location: Some(Location::Poisson),
         noise_scale: 3.0,
         noise_factor: 2.0,
-        octaves: 6,
+        fractal_controls: FractalControls::default().set_octaves(6),
         spacing: 5.0,
         stroke_width: 2.5,
         curve_length: 75,
@@ -147,12 +150,14 @@ pub fn stripes() -> Controls {
         spacing: 20.0,
         stroke_width: 12.5,
         curve_length: 150,
-        size: 200.0,
-        size_fn: Some(SizeFn::Periodic),
-        min_size: 25.0,
-        size_scale: 5.0,
-        octaves: 6,
-        persistence: 0.3,
+        size_controls: SizeControls::default()
+            .set_size_fn(Some(SizeFn::Periodic))
+            .set_size(200.0)
+            .set_min_size(25.0)
+            .set_size_scale(5.0),
+        fractal_controls: FractalControls::default()
+            .set_octaves(6)
+            .set_persistence(0.3),
         density: 65.0,
         color1: Color::from_rgb8(70, 185, 25),
         color2: Color::from_rgb8(50, 50, 50),
@@ -174,14 +179,15 @@ pub fn splat() -> Controls {
         spacing: 7.0,
         stroke_width: 0.0,
         curve_length: 50,
-        size: 40.0,
-        size_fn: Some(SizeFn::Periodic),
-        min_size: 6.0,
-        size_scale: 10.0,
+        size_controls: SizeControls::default()
+            .set_size_fn(Some(SizeFn::Periodic))
+            .set_size(40.0)
+            .set_min_size(6.0)
+            .set_size_scale(10.0),
         dot_style: Some(DotStyle::Pearl),
         pearl_sides: 5,
         pearl_smoothness: 3,
-        octaves: 1,
+        fractal_controls: FractalControls::default().set_octaves(1),
         density: 60.0,
         color1: Color::from_rgb8(30, 25, 180),
         color2: Color::from_rgb8(90, 175, 185),
@@ -201,10 +207,11 @@ pub fn tubes() -> Controls {
         spacing: 1.0,
         stroke_width: 1.0,
         curve_length: 0,
-        size: 235.0,
-        size_fn: Some(SizeFn::Periodic),
-        size_scale: 3.0,
-        min_size: 10.0,
+        size_controls: SizeControls::default()
+            .set_size_fn(Some(SizeFn::Periodic))
+            .set_size(235.0)
+            .set_min_size(10.0)
+            .set_size_scale(3.0),
         density: 65.0,
         color1: Color::from_rgb8(187, 42, 20),
         color2: Color::from_rgb8(155, 21, 48),
@@ -226,10 +233,11 @@ pub fn ducts() -> Controls {
         spacing: 2.0,
         stroke_width: 0.5,
         curve_length: 150,
-        size: 100.0,
-        size_fn: Some(SizeFn::Periodic),
-        size_scale: 10.0,
-        min_size: 10.0,
+        size_controls: SizeControls::default()
+            .set_size_fn(Some(SizeFn::Periodic))
+            .set_size(100.0)
+            .set_min_size(10.0)
+            .set_size_scale(10.0),
         density: 50.0,
         color1: Color::from_rgb8(218, 187, 55),
         color2: Color::from_rgb8(229, 15, 15),
