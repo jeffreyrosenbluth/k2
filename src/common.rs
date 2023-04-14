@@ -5,6 +5,7 @@ use crate::background::Background;
 use crate::gradient::GradStyle;
 use crate::location::Location;
 use crate::noise::NoiseFunction;
+use crate::presets::rusty_ribbons;
 use crate::size::{Dir, SizeFn};
 use iced::widget::image;
 use iced::Color;
@@ -13,17 +14,23 @@ pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
 pub const SEED: u64 = 98713;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PresetState {
+    Set,
+    NotSet,
+}
+
 #[derive(Clone)]
-pub struct Xtrusion {
+pub struct K2 {
     pub controls: Controls,
     pub image: image::Handle,
     pub width: u16,
     pub height: u16,
 }
 
-impl Xtrusion {
+impl K2 {
     pub fn new() -> Self {
-        let controls = Controls::new();
+        let controls = rusty_ribbons();
         let canvas = draw(&controls, false);
         Self {
             controls,
@@ -33,7 +40,7 @@ impl Xtrusion {
         }
     }
 
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self, preset_state: PresetState) {
         let canvas = draw(&self.controls, false);
         self.width = canvas.width() as u16;
         self.height = canvas.height() as u16;
@@ -42,11 +49,84 @@ impl Xtrusion {
             canvas.pixmap.height(),
             canvas.pixmap.take(),
         );
+        if preset_state == PresetState::NotSet {
+            self.controls.preset = None;
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Controls {
+    pub preset: Option<Preset>,
+    pub curve_style: Option<CurveStyle>,
+    pub spacing: f32,
+    pub curve_length: u32,
+    pub color1: Color,
+    pub color2: Color,
+    pub show_color_picker1: bool,
+    pub show_color_picker2: bool,
+    pub show_color_picker3: bool,
+    pub location: Option<Location>,
+    pub density: f32,
+    pub noise_controls: NoiseControls,
+    pub fractal_controls: FractalControls,
+    pub speed: f32,
+    pub size_controls: SizeControls,
+    pub grad_style: Option<GradStyle>,
+    pub dot_style: Option<DotStyle>,
+    pub pearl_sides: u32,
+    pub pearl_smoothness: u32,
+    pub exporting: bool,
+    pub stroke_width: f32,
+    pub dot_stroke_color: Color,
+    pub background: Option<Background>,
+    pub width: String,
+    pub height: String,
+    pub border: bool,
+    pub sin_controls: SinControls,
+}
+
+impl Controls {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for Controls {
+    fn default() -> Self {
+        Self {
+            preset: Some(Preset::RustyRibbons),
+            curve_style: Some(CurveStyle::Dots),
+            spacing: 4.0,
+            curve_length: 50,
+            color1: Color::from_rgb8(20, 134, 187),
+            color2: Color::from_rgb8(0, 0, 0),
+            show_color_picker1: false,
+            show_color_picker2: false,
+            show_color_picker3: false,
+            location: Some(Location::Halton),
+            noise_controls: NoiseControls::default(),
+            density: 50.0,
+            fractal_controls: FractalControls::default(),
+            speed: 1.0,
+            size_controls: SizeControls::default(),
+            grad_style: Some(GradStyle::None),
+            dot_style: Some(DotStyle::Circle),
+            pearl_sides: 4,
+            pearl_smoothness: 3,
+            exporting: false,
+            stroke_width: 1.0,
+            dot_stroke_color: Color::from_rgb8(255, 255, 255),
+            background: Some(Background::LightClouds),
+            width: String::new(),
+            height: String::new(),
+            border: true,
+            sin_controls: SinControls::default(),
+        }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Preset {
-    Slinky,
     RustyRibbons,
     Solar,
     RiverStones,
@@ -65,7 +145,6 @@ impl std::fmt::Display for Preset {
             f,
             "{}",
             match self {
-                Preset::Slinky => "Slinky",
                 Preset::RustyRibbons => "Rusty Ribbons",
                 Preset::Solar => "Solar",
                 Preset::RiverStones => "River Stones",
@@ -120,83 +199,6 @@ impl std::fmt::Display for DotStyle {
                 DotStyle::Pearl => "Pearl",
             }
         )
-    }
-}
-
-#[derive(Clone)]
-pub struct Controls {
-    pub preset: Option<Preset>,
-    pub curve_style: Option<CurveStyle>,
-    pub spacing: f32,
-    pub curve_length: u32,
-    pub color1: Color,
-    pub color2: Color,
-    pub show_color_picker1: bool,
-    pub show_color_picker2: bool,
-    pub show_color_picker3: bool,
-    pub location: Option<Location>,
-    pub density: f32,
-    pub noise_controls: NoiseControls,
-    pub fractal_controls: FractalControls,
-    pub speed: f32,
-    pub size_controls: SizeControls,
-    pub grad_style: Option<GradStyle>,
-    pub dot_style: Option<DotStyle>,
-    pub pearl_sides: u32,
-    pub pearl_smoothness: u32,
-    pub exporting: bool,
-    pub stroke_width: f32,
-    pub dot_stroke_color: Color,
-    pub background: Option<Background>,
-    pub width: String,
-    pub height: String,
-    pub border: bool,
-    pub sin_xfreq: f32,
-    pub sin_yfreq: f32,
-    pub sin_xexp: f32,
-    pub sin_yexp: f32,
-}
-
-impl Controls {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for Controls {
-    fn default() -> Self {
-        Self {
-            preset: Some(Preset::Slinky),
-            curve_style: Some(CurveStyle::Dots),
-            spacing: 4.0,
-            curve_length: 50,
-            color1: Color::from_rgb8(20, 134, 187),
-            color2: Color::from_rgb8(0, 0, 0),
-            show_color_picker1: false,
-            show_color_picker2: false,
-            show_color_picker3: false,
-            location: Some(Location::Halton),
-            noise_controls: NoiseControls::default(),
-            density: 50.0,
-            fractal_controls: FractalControls::default(),
-            speed: 1.0,
-            size_controls: SizeControls::default(),
-            grad_style: Some(GradStyle::None),
-            dot_style: Some(DotStyle::Circle),
-            pearl_sides: 4,
-            pearl_smoothness: 3,
-            exporting: false,
-            stroke_width: 1.0,
-            dot_stroke_color: Color::from_rgb8(255, 255, 255),
-            background: Some(Background::Clouds),
-            width: String::new(),
-            height: String::new(),
-            border: true,
-            sin_xfreq: 1.0,
-            sin_yfreq: 1.0,
-            sin_xexp: 2.0,
-            sin_yexp: 2.0,
-        }
     }
 }
 
@@ -345,6 +347,56 @@ impl Default for NoiseControls {
             noise_function: Some(NoiseFunction::Fbm),
             noise_factor: 1.0,
             noise_scale: 4.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SinControls {
+    pub sin_xfreq: f32,
+    pub sin_yfreq: f32,
+    pub sin_xexp: f32,
+    pub sin_yexp: f32,
+}
+
+impl SinControls {
+    pub fn new(sin_xfreq: f32, sin_yfreq: f32, sin_xexp: f32, sin_yexp: f32) -> Self {
+        Self {
+            sin_xfreq,
+            sin_yfreq,
+            sin_xexp,
+            sin_yexp,
+        }
+    }
+
+    pub fn set_xfreq(mut self, sin_xfreq: f32) -> Self {
+        self.sin_xfreq = sin_xfreq;
+        self
+    }
+
+    pub fn set_yfreq(mut self, sin_yfreq: f32) -> Self {
+        self.sin_yfreq = sin_yfreq;
+        self
+    }
+
+    pub fn set_xexp(mut self, sin_xexp: f32) -> Self {
+        self.sin_xexp = sin_xexp;
+        self
+    }
+
+    pub fn set_yexp(mut self, sin_yexp: f32) -> Self {
+        self.sin_yexp = sin_yexp;
+        self
+    }
+}
+
+impl Default for SinControls {
+    fn default() -> Self {
+        Self {
+            sin_xfreq: 1.0,
+            sin_yfreq: 1.0,
+            sin_xexp: 2.0,
+            sin_yexp: 2.0,
         }
     }
 }

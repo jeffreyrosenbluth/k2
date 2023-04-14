@@ -1,4 +1,4 @@
-use crate::common::DotStyle;
+use crate::common::{DotStyle, PresetState::NotSet};
 use crate::gui::lpicklist::LPickList;
 use crate::gui::lslider::LSlider;
 use crate::size::{Dir, SizeFn};
@@ -64,7 +64,7 @@ impl<'a> Dot {
                 "Dot Style".to_string(),
                 vec![DotStyle::Circle, DotStyle::Square, DotStyle::Pearl],
                 self.dot_style,
-                |x| x.map_or(Dot(DotStyle::Circle), Dot),
+                |x| x.map_or(Null, Dot),
             ))
             .push(LPickList::new(
                 "Size Function".to_string(),
@@ -84,7 +84,7 @@ impl<'a> Dot {
                     5.0..=500.0,
                     5.0,
                     LengthSize,
-                    Draw,
+                    Draw(NotSet),
                 )
                 .decimals(0),
             )
@@ -109,7 +109,7 @@ impl<'a> Dot {
                     "Direction".to_string(),
                     vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
                     self.direction,
-                    |x| x.map_or(LengthDir(Dir::Both), LengthDir),
+                    |x| x.map_or(Null, LengthDir),
                 ))
                 .push(LSlider::new(
                     "Min Size".to_string(),
@@ -117,7 +117,7 @@ impl<'a> Dot {
                     1.0..=50.0,
                     1.0,
                     MinSize,
-                    Draw,
+                    Draw(NotSet),
                 ))
         } else if self.size_fn == Some(SizeFn::Periodic) {
             col = col
@@ -127,7 +127,7 @@ impl<'a> Dot {
                     1.0..=30.0,
                     1.0,
                     SizeScale,
-                    Draw,
+                    Draw(NotSet),
                 ))
                 .push(LSlider::new(
                     "Min Size".to_string(),
@@ -135,7 +135,7 @@ impl<'a> Dot {
                     1.0..=50.0,
                     1.0,
                     MinSize,
-                    Draw,
+                    Draw(NotSet),
                 ))
         }
         if self.dot_style == Some(DotStyle::Pearl) {
@@ -146,7 +146,7 @@ impl<'a> Dot {
                     3..=8,
                     1,
                     PearlSides,
-                    Draw,
+                    Draw(NotSet),
                 ))
                 .push(LSlider::new(
                     "Pearl Smoothness".to_string(),
@@ -154,7 +154,7 @@ impl<'a> Dot {
                     0..=5,
                     1,
                     PearlSmoothness,
-                    Draw,
+                    Draw(NotSet),
                 ))
         }
         col

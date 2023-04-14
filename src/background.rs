@@ -3,8 +3,8 @@ use wassily::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Background {
-    Grain,
-    Clouds,
+    LightGrain,
+    LightClouds,
     DarkGrain,
     DarkClouds,
 }
@@ -15,8 +15,8 @@ impl std::fmt::Display for Background {
             f,
             "{}",
             match self {
-                Background::Grain => "Light Grain",
-                Background::Clouds => "Light Clouds",
+                Background::LightGrain => "Light Grain",
+                Background::LightClouds => "Light Clouds",
                 Background::DarkGrain => "Dark Grain",
                 Background::DarkClouds => "Dark Clouds ",
             }
@@ -46,7 +46,7 @@ impl BG {
         BG(canvas)
     }
 
-    pub fn grain<R: RngCore>(width: u32, height: u32, rng: &mut R) -> Self {
+    pub fn light_grain<R: RngCore>(width: u32, height: u32, rng: &mut R) -> Self {
         let mut canvas = Canvas::new(width, height);
         canvas.fill(*WHITE);
         for i in 0..width {
@@ -67,7 +67,7 @@ impl BG {
         BG(canvas)
     }
 
-    pub fn clouds(width: u32, height: u32) -> Self {
+    pub fn light_clouds(width: u32, height: u32) -> Self {
         let mut canvas = Canvas::new(width, height);
         let nf = Fbm::<Perlin>::default().set_octaves(4);
         let opts = NoiseOpts::default();

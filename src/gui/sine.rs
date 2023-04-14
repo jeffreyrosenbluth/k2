@@ -1,6 +1,15 @@
+use crate::common::PresetState::NotSet;
 use crate::gui::lslider::LSlider;
 use crate::Message::{self, *};
 use iced::widget::{Column, Rule};
+
+#[derive(Debug, Clone, Copy)]
+pub enum SineMessage {
+    XFreq,
+    YFreq,
+    XExp,
+    YExp,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sine {
@@ -30,7 +39,7 @@ impl<'a> Sine {
                     0.1..=10.0,
                     0.1,
                     XFreq,
-                    Draw,
+                    Draw(NotSet),
                 )
                 .decimals(1),
             )
@@ -41,7 +50,7 @@ impl<'a> Sine {
                     0.1..=10.0,
                     0.1,
                     YFreq,
-                    Draw,
+                    Draw(NotSet),
                 )
                 .decimals(1),
             )
@@ -52,7 +61,7 @@ impl<'a> Sine {
                     1.0..=4.0,
                     1.0,
                     XExp,
-                    Draw,
+                    Draw(NotSet),
                 )
                 .decimals(0),
             )
@@ -63,7 +72,7 @@ impl<'a> Sine {
                     1.0..=4.0,
                     1.0,
                     YExp,
-                    Draw,
+                    Draw(NotSet),
                 )
                 .decimals(0),
             )

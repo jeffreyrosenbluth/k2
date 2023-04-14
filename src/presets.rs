@@ -17,7 +17,7 @@ pub fn rusty_ribbons() -> Controls {
         density: 65.0,
         color1: Color::from_rgb8(185, 95, 25),
         grad_style: Some(GradStyle::Fiber),
-        background: Some(Background::Grain),
+        background: Some(Background::LightGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
@@ -104,7 +104,7 @@ pub fn purple() -> Controls {
         color1: Color::from_rgb8(121, 72, 141),
         color2: Color::from_rgb8(71, 76, 141),
         grad_style: Some(GradStyle::None),
-        background: Some(Background::Clouds),
+        background: Some(Background::LightClouds),
         width: "1000".to_string(),
         height: "1200".to_string(),
         ..Default::default()
@@ -176,7 +176,7 @@ pub fn splat() -> Controls {
         color1: Color::from_rgb8(30, 25, 180),
         color2: Color::from_rgb8(90, 175, 185),
         grad_style: Some(GradStyle::None),
-        background: Some(Background::Grain),
+        background: Some(Background::LightGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
@@ -214,6 +214,7 @@ pub fn ducts() -> Controls {
         noise_controls: NoiseControls::new(NoiseFunction::Sinusoidal, 4.0, 4.0),
         location: Some(Location::Halton),
         dot_style: Some(DotStyle::Square),
+        dot_stroke_color: Color::from_rgb8(0, 0, 0),
         spacing: 2.0,
         stroke_width: 0.5,
         curve_length: 150,
@@ -227,11 +228,8 @@ pub fn ducts() -> Controls {
         density: 50.0,
         color1: Color::from_rgb8(218, 187, 55),
         color2: Color::from_rgb8(229, 15, 15),
-        sin_xfreq: 2.0,
-        sin_yfreq: 2.0,
-        sin_xexp: 1.0,
-        sin_yexp: 3.0,
-        background: Some(Background::Grain),
+        sin_controls: SinControls::new(2.0, 2.0, 1.0, 3.0),
+        background: Some(Background::LightGrain),
         ..Default::default()
     }
 }

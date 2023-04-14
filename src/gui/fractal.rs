@@ -1,3 +1,4 @@
+use crate::common::PresetState::NotSet;
 use crate::gui::lslider::LSlider;
 use crate::Message::{self, *};
 use iced::widget::{Column, Rule};
@@ -24,8 +25,15 @@ impl<'a> Fractal {
             .push(Rule::horizontal(10))
             .push("Fractal Noise")
             .push(
-                LSlider::new("Octaves".to_string(), self.octaves, 1..=8, 1, Octaves, Draw)
-                    .decimals(0),
+                LSlider::new(
+                    "Octaves".to_string(),
+                    self.octaves,
+                    1..=8,
+                    1,
+                    Octaves,
+                    Draw(NotSet),
+                )
+                .decimals(0),
             )
             .spacing(15);
         if self.octaves > 1 {
@@ -37,7 +45,7 @@ impl<'a> Fractal {
                         0.05..=0.95,
                         0.05,
                         Persistence,
-                        Draw,
+                        Draw(NotSet),
                     )
                     .decimals(2),
                 )
@@ -48,7 +56,7 @@ impl<'a> Fractal {
                         0.1..=4.00,
                         0.1,
                         Lacunarity,
-                        Draw,
+                        Draw(NotSet),
                     )
                     .decimals(2),
                 )
@@ -59,7 +67,7 @@ impl<'a> Fractal {
                         0.1..=4.00,
                         0.1,
                         Frequency,
-                        Draw,
+                        Draw(NotSet),
                     )
                     .decimals(2),
                 )

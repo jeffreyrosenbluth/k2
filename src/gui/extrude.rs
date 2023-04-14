@@ -1,3 +1,4 @@
+use crate::common::PresetState::NotSet;
 use crate::gradient::GradStyle;
 use crate::gui::lpicklist::LPickList;
 use crate::gui::lslider::LSlider;
@@ -54,7 +55,7 @@ impl<'a> Extrude {
                     5.0..=500.0,
                     5.0,
                     LengthSize,
-                    Draw,
+                    Draw(NotSet),
                 )
                 .decimals(0),
             );
@@ -64,7 +65,7 @@ impl<'a> Extrude {
                     "Direction".to_string(),
                     vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
                     self.direction,
-                    |x| x.map_or(LengthDir(Dir::Both), LengthDir),
+                    |x| x.map_or(Null, LengthDir),
                 ))
                 .push(LSlider::new(
                     "Min Size".to_string(),
@@ -72,7 +73,7 @@ impl<'a> Extrude {
                     1.0..=50.0,
                     1.0,
                     MinSize,
-                    Draw,
+                    Draw(NotSet),
                 ))
         } else if self.style == Some(SizeFn::Periodic) {
             col = col
@@ -82,7 +83,7 @@ impl<'a> Extrude {
                     1.0..=30.0,
                     1.0,
                     SizeScale,
-                    Draw,
+                    Draw(NotSet),
                 ))
                 .push(LSlider::new(
                     "Min Size".to_string(),
@@ -90,7 +91,7 @@ impl<'a> Extrude {
                     1.0..=50.0,
                     1.0,
                     MinSize,
-                    Draw,
+                    Draw(NotSet),
                 ))
         }
         col = col
@@ -105,7 +106,7 @@ impl<'a> Extrude {
                     GradStyle::DarkFiber,
                 ],
                 self.grad_style,
-                |x| x.map_or(Grad(GradStyle::None), Grad),
+                |x| x.map_or(Null, Grad),
             ))
             .spacing(15);
         col

@@ -1,4 +1,5 @@
 use directories::UserDirs;
+use std::path::PathBuf;
 use wassily::prelude::*;
 
 use crate::background::*;
@@ -68,10 +69,10 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                 ])))
             }
             NoiseFunction::Sinusoidal => Box::new(Sinusoidal::new(
-                controls.sin_xfreq as f64,
-                controls.sin_yfreq as f64,
-                controls.sin_xexp as f64,
-                controls.sin_yexp as f64,
+                controls.sin_controls.sin_xfreq as f64,
+                controls.sin_controls.sin_yfreq as f64,
+                controls.sin_controls.sin_xexp as f64,
+                controls.sin_controls.sin_yexp as f64,
             )),
         },
         noise_opts: opts,
@@ -106,8 +107,8 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     let mut rng = SmallRng::seed_from_u64(SEED);
 
     let bg = match controls.background.unwrap() {
-        Background::Clouds => BG::clouds(canvas.width, canvas.height),
-        Background::Grain => BG::grain(canvas.width, canvas.height, &mut rng),
+        Background::LightClouds => BG::light_clouds(canvas.width, canvas.height),
+        Background::LightGrain => BG::light_grain(canvas.width, canvas.height, &mut rng),
         Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, &mut rng),
         Background::DarkClouds => BG::dark_clouds(canvas.width, canvas.height),
     };
@@ -211,7 +212,15 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
 pub async fn print(controls: Controls) {
     let canvas = draw(&controls, true);
     let dirs = UserDirs::new().unwrap();
-    let name = dirs.download_dir().unwrap();
-    let file_name = name.join("image.png");
-    canvas.save_png(file_name);
+    let dir = dirs.download_dir().unwrap();
+    let path = format!(r"{}/{}", dir.to_string_lossy(), "k2");
+    let mut num = 0;
+    let mut sketch = PathBuf::from(format!(r"{path}_{num}"));
+    sketch.set_extension("png");
+    while sketch.exists() {
+        num += 1;
+        sketch = PathBuf::from(format!(r"{path}_{num}"));
+        sketch.set_extension("png");
+    }
+    canvas.save_png(&sketch);
 }
