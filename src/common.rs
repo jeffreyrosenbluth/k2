@@ -4,10 +4,12 @@ use crate::art::draw;
 use crate::background::Background;
 use crate::gui::dot::DotControls;
 use crate::gui::extrude::ExtrudeControls;
-use crate::gui::sine::SineControls;
-use crate::location::Location;
-use crate::noise::NoiseFunction;
-use crate::presets::rusty_ribbons;
+use crate::noise::NoiseControls;
+use crate::{
+    gui::{fractal::FractalControls, sine::SineControls},
+    location::Location,
+    presets::rusty_ribbons,
+};
 use iced::widget::image;
 use iced::Color;
 
@@ -171,97 +173,5 @@ impl std::fmt::Display for CurveStyle {
                 CurveStyle::Extrusion => "Extrusion",
             }
         )
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FractalControls {
-    pub octaves: u8,
-    pub persistence: f32,
-    pub lacunarity: f32,
-    pub frequency: f32,
-}
-
-impl Default for FractalControls {
-    fn default() -> Self {
-        Self {
-            octaves: 4,
-            persistence: 0.5,
-            lacunarity: 2.094395,
-            frequency: 1.0,
-        }
-    }
-}
-
-impl FractalControls {
-    pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
-        Self {
-            octaves,
-            persistence,
-            lacunarity,
-            frequency,
-        }
-    }
-
-    pub fn set_octaves(mut self, octaves: u8) -> Self {
-        self.octaves = octaves;
-        self
-    }
-
-    pub fn set_persistence(mut self, persistence: f32) -> Self {
-        self.persistence = persistence;
-        self
-    }
-
-    pub fn set_lacunarity(mut self, lacunarity: f32) -> Self {
-        self.lacunarity = lacunarity;
-        self
-    }
-
-    pub fn set_frequency(mut self, frequency: f32) -> Self {
-        self.frequency = frequency;
-        self
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct NoiseControls {
-    pub noise_function: Option<NoiseFunction>,
-    pub noise_factor: f32,
-    pub noise_scale: f32,
-}
-
-impl NoiseControls {
-    pub fn new(noise_function: NoiseFunction, noise_scale: f32, noise_factor: f32) -> Self {
-        Self {
-            noise_function: Some(noise_function),
-            noise_factor,
-            noise_scale,
-        }
-    }
-
-    pub fn set_noise_function(mut self, noise_function: NoiseFunction) -> Self {
-        self.noise_function = Some(noise_function);
-        self
-    }
-
-    pub fn set_noise_factor(mut self, noise_factor: f32) -> Self {
-        self.noise_factor = noise_factor;
-        self
-    }
-
-    pub fn set_noise_scale(mut self, noise_scale: f32) -> Self {
-        self.noise_scale = noise_scale;
-        self
-    }
-}
-
-impl Default for NoiseControls {
-    fn default() -> Self {
-        Self {
-            noise_function: Some(NoiseFunction::Fbm),
-            noise_factor: 1.0,
-            noise_scale: 4.0,
-        }
     }
 }

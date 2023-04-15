@@ -4,10 +4,11 @@ use crate::gradient::GradStyle;
 use crate::gui::{
     dot::{DotControls, DotStyle},
     extrude::ExtrudeControls,
+    fractal::FractalControls,
     sine::SineControls,
 };
 use crate::location::Location;
-use crate::noise::NoiseFunction;
+use crate::noise::{NoiseControls, NoiseFunction};
 use crate::size::{SizeControls, SizeFn};
 use iced::Color;
 

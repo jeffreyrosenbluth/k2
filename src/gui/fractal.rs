@@ -4,6 +4,56 @@ use crate::Message::{self, *};
 use iced::widget::{Column, Rule};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FractalControls {
+    pub octaves: u8,
+    pub persistence: f32,
+    pub lacunarity: f32,
+    pub frequency: f32,
+}
+
+impl Default for FractalControls {
+    fn default() -> Self {
+        Self {
+            octaves: 4,
+            persistence: 0.5,
+            lacunarity: 2.094395,
+            frequency: 1.0,
+        }
+    }
+}
+
+impl FractalControls {
+    pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
+        Self {
+            octaves,
+            persistence,
+            lacunarity,
+            frequency,
+        }
+    }
+
+    pub fn set_octaves(mut self, octaves: u8) -> Self {
+        self.octaves = octaves;
+        self
+    }
+
+    pub fn set_persistence(mut self, persistence: f32) -> Self {
+        self.persistence = persistence;
+        self
+    }
+
+    pub fn set_lacunarity(mut self, lacunarity: f32) -> Self {
+        self.lacunarity = lacunarity;
+        self
+    }
+
+    pub fn set_frequency(mut self, frequency: f32) -> Self {
+        self.frequency = frequency;
+        self
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Fractal {
     pub octaves: u8,
     pub persistence: f32,
