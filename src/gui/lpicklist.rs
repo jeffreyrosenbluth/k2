@@ -68,6 +68,7 @@ where
         + scrollable::StyleSheet
         + container::StyleSheet
         + overlay::menu::StyleSheet,
+    <Renderer as iced_native::Renderer>::Theme: iced::overlay::menu::StyleSheet,
 {
     type State = ();
     type Event = Event<T>;
@@ -104,8 +105,9 @@ where
         + pick_list::StyleSheet
         + text::StyleSheet
         + scrollable::StyleSheet
-        + container::StyleSheet
-        + overlay::menu::StyleSheet,
+        + container::StyleSheet,
+    <Renderer as iced_native::Renderer>::Theme:
+        iced::overlay::menu::StyleSheet + overlay::menu::StyleSheet,
     Message: 'a + Clone,
 {
     fn from(numeric_input: LPickList<T, Message>) -> Self {

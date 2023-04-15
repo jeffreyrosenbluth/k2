@@ -101,7 +101,7 @@ impl Default for Controls {
             curve_length: 50,
             anchor1: Color::from_rgb8(20, 134, 187),
             anchor2: Color::from_rgb8(0, 0, 0),
-            grain_color: Color::from_rgb8(200, 100, 0),
+            grain_color: Color::from_rgb8(150, 100, 50),
             show_color_picker1: false,
             show_color_picker2: false,
             show_grain_color_picker: false,

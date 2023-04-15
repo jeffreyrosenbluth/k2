@@ -1,5 +1,5 @@
 use iced::{
-    widget::{button, image, row, text, text_input, toggler, vertical_space, Container},
+    widget::{button, image, row, text, text_input, toggler, vertical_space, Container, Rule},
     Alignment::{self, Center},
     Application, Command, Element, Settings, Theme,
 };
@@ -248,11 +248,20 @@ impl Application for K2 {
             .push(vertical_space(5.0))
             .push(
                 row!(
-                    text_input("Width", &self.controls.width, WidthSet)
+                    text("Width").size(15).width(90),
+                    text("Height").size(15).width(90)
+                )
+                .spacing(15),
+            )
+            .push(
+                row!(
+                    text_input("1000", &self.controls.width)
+                        .on_input(WidthSet)
                         .size(15)
                         .width(90)
                         .on_submit(Width),
-                    text_input("Height", &self.controls.height, HeightSet)
+                    text_input("1000", &self.controls.height)
+                        .on_input(HeightSet)
                         .size(15)
                         .width(90)
                         .on_submit(Height),
@@ -447,7 +456,7 @@ impl Application for K2 {
             )
         }
         if self.controls.background == Some(ColorGrain) {
-            right_panel = right_panel.push(
+            right_panel = right_panel.push(Rule::horizontal(15)).push(
                 row![
                     grain_color_picker,
                     text(format!(

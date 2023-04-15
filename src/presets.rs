@@ -39,7 +39,7 @@ impl std::fmt::Display for Preset {
                 Preset::Splat => "Splat",
                 Preset::Tubes => "Tubes",
                 Preset::Ducts => "Ducts",
-                Preset::Ridges => "Ridges",
+                Preset::Ridges => "Ridges (slow!)",
             }
         )
     }
@@ -60,8 +60,6 @@ pub fn rusty_ribbons() -> Controls {
         density: 65.0,
         anchor1: Color::from_rgb8(185, 95, 25),
         background: Some(Background::LightGrain),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
         ..Default::default()
     }
 }
@@ -187,7 +185,7 @@ pub fn stripes() -> Controls {
         curve_style: Some(CurveStyle::Extrusion),
         noise_controls: NoiseControls::new(NoiseFunction::Fbm, 4.0, 1.0),
         location: Some(Location::Rand),
-        spacing: 20.0,
+        spacing: 15.0,
         stroke_width: 12.5,
         curve_length: 150,
         extrude_controls: ExtrudeControls::new(
@@ -205,10 +203,11 @@ pub fn stripes() -> Controls {
         fractal_controls: FractalControls::default()
             .set_octaves(6)
             .set_persistence(0.3),
-        density: 65.0,
+        density: 40.0,
         anchor1: Color::from_rgb8(70, 185, 25),
         anchor2: Color::from_rgb8(50, 50, 50),
-        background: Some(Background::DarkClouds),
+        background: Some(Background::ColorGrain),
+        grain_color: Color::from_rgb8(60, 100, 60),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
@@ -297,7 +296,7 @@ pub fn ducts() -> Controls {
         anchor1: Color::from_rgb8(218, 187, 55),
         anchor2: Color::from_rgb8(229, 15, 15),
         sin_controls: SineControls::new(2.0, 2.0, 1.0, 3.0),
-        background: Some(Background::LightGrain),
+        background: Some(Background::ColorGrain),
         ..Default::default()
     }
 }
