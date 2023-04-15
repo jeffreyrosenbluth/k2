@@ -69,6 +69,7 @@ pub enum Message {
     Height,
     Color1(ColorMessage),
     Color2(ColorMessage),
+    GrainColor(ColorMessage),
     Background(Background),
     Border(bool),
     Sinusoid(SineMessage),
@@ -164,7 +165,7 @@ impl Application for K2 {
             Message::Color1(c) => match c {
                 ColorMessage::Choose => self.controls.show_color_picker1 = true,
                 ColorMessage::Submit(k) => {
-                    self.controls.color1 = k;
+                    self.controls.anchor1 = k;
                     self.controls.show_color_picker1 = false;
                     self.draw(NotSet)
                 }
@@ -173,11 +174,20 @@ impl Application for K2 {
             Message::Color2(c) => match c {
                 ColorMessage::Choose => self.controls.show_color_picker2 = true,
                 ColorMessage::Submit(k) => {
-                    self.controls.color2 = k;
+                    self.controls.anchor2 = k;
                     self.controls.show_color_picker2 = false;
                     self.draw(NotSet)
                 }
                 ColorMessage::Cancel => self.controls.show_color_picker2 = false,
+            },
+            Message::GrainColor(c) => match c {
+                ColorMessage::Choose => self.controls.show_grain_color_picker = true,
+                ColorMessage::Submit(k) => {
+                    self.controls.grain_color = k;
+                    self.controls.show_grain_color_picker = false;
+                    self.draw(NotSet)
+                }
+                ColorMessage::Cancel => self.controls.show_grain_color_picker = false,
             },
             Message::Background(b) => {
                 self.controls.background = Some(b);
@@ -208,20 +218,29 @@ impl Application for K2 {
             button(text("Anchor 1 Color").size(15)).on_press(Message::Color1(ColorMessage::Choose));
         let color_button2 =
             button(text("Anchor 2 Color").size(15)).on_press(Message::Color2(ColorMessage::Choose));
+        let grain_color_button = button(text("Grain Color").size(15))
+            .on_press(Message::GrainColor(ColorMessage::Choose));
 
         let color_picker1 = ColorPicker::new(
             self.controls.show_color_picker1,
-            self.controls.color1,
+            self.controls.anchor1,
             color_button1,
             Message::Color1(ColorMessage::Cancel),
             |c| Message::Color1(ColorMessage::Submit(c)),
         );
         let color_picker2 = ColorPicker::new(
             self.controls.show_color_picker2,
-            self.controls.color2,
+            self.controls.anchor2,
             color_button2,
             Message::Color2(ColorMessage::Cancel),
             |c| Message::Color2(ColorMessage::Submit(c)),
+        );
+        let grain_color_picker = ColorPicker::new(
+            self.controls.show_grain_color_picker,
+            self.controls.grain_color,
+            grain_color_button,
+            Message::GrainColor(ColorMessage::Cancel),
+            |c| Message::GrainColor(ColorMessage::Submit(c)),
         );
 
         right_panel = right_panel.push(vertical_space(5.0));
@@ -291,7 +310,7 @@ impl Application for K2 {
             ))
             .push(lpicklist::LPickList::new(
                 "Background Style".to_string(),
-                vec![LightGrain, LightClouds, DarkGrain, DarkClouds],
+                vec![LightGrain, LightClouds, DarkGrain, DarkClouds, ColorGrain],
                 self.controls.background,
                 |x| x.map_or(Null, Background),
             ))
@@ -358,9 +377,9 @@ impl Application for K2 {
                     color_picker1,
                     text(format!(
                         "{:3} {:3} {:3}",
-                        (self.controls.color1.r * 255.0) as u8,
-                        (self.controls.color1.g * 255.0) as u8,
-                        (self.controls.color1.b * 255.0) as u8
+                        (self.controls.anchor1.r * 255.0) as u8,
+                        (self.controls.anchor1.g * 255.0) as u8,
+                        (self.controls.anchor1.b * 255.0) as u8
                     ))
                     .size(15)
                 ]
@@ -372,9 +391,9 @@ impl Application for K2 {
                     color_picker2,
                     text(format!(
                         "{:3} {:3} {:3}",
-                        (self.controls.color2.r * 255.0) as u8,
-                        (self.controls.color2.g * 255.0) as u8,
-                        (self.controls.color2.b * 255.0) as u8
+                        (self.controls.anchor2.r * 255.0) as u8,
+                        (self.controls.anchor2.g * 255.0) as u8,
+                        (self.controls.anchor2.b * 255.0) as u8
                     ))
                     .size(15)
                 ]
@@ -426,6 +445,22 @@ impl Application for K2 {
                 .view()
                 .map(Message::Sinusoid),
             )
+        }
+        if self.controls.background == Some(ColorGrain) {
+            right_panel = right_panel.push(
+                row![
+                    grain_color_picker,
+                    text(format!(
+                        "{:3} {:3} {:3}",
+                        (self.controls.grain_color.r * 255.0) as u8,
+                        (self.controls.grain_color.g * 255.0) as u8,
+                        (self.controls.grain_color.b * 255.0) as u8
+                    ))
+                    .size(15)
+                ]
+                .spacing(15)
+                .align_items(Center),
+            );
         }
         left_panel = left_panel
             .push(

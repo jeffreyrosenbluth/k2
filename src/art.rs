@@ -111,6 +111,9 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
         Background::LightGrain => BG::light_grain(canvas.width, canvas.height, &mut rng),
         Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, &mut rng),
         Background::DarkClouds => BG::dark_clouds(canvas.width, canvas.height),
+        Background::ColorGrain => {
+            BG::color_grain(canvas.width, canvas.height, &mut rng, controls.grain_color)
+        }
     };
     bg.canvas_bg(&mut canvas);
 
@@ -124,8 +127,20 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     );
 
     let mut palette = Palette::new(color_scale(
-        Color::from_rgba(controls.color1.r, controls.color1.g, controls.color1.b, 1.0).unwrap(),
-        Color::from_rgba(controls.color2.r, controls.color2.g, controls.color2.b, 1.0).unwrap(),
+        Color::from_rgba(
+            controls.anchor1.r,
+            controls.anchor1.g,
+            controls.anchor1.b,
+            1.0,
+        )
+        .unwrap(),
+        Color::from_rgba(
+            controls.anchor2.r,
+            controls.anchor2.g,
+            controls.anchor2.b,
+            1.0,
+        )
+        .unwrap(),
         8,
     ));
 

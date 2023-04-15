@@ -7,6 +7,7 @@ pub enum Background {
     LightClouds,
     DarkGrain,
     DarkClouds,
+    ColorGrain,
 }
 
 impl std::fmt::Display for Background {
@@ -19,6 +20,7 @@ impl std::fmt::Display for Background {
                 Background::LightClouds => "Light Clouds",
                 Background::DarkGrain => "Dark Grain",
                 Background::DarkClouds => "Dark Clouds ",
+                Background::ColorGrain => "Color Grain",
             }
         )
     }
@@ -26,6 +28,30 @@ impl std::fmt::Display for Background {
 pub struct BG(Canvas);
 
 impl BG {
+    pub fn color_grain<R: RngCore>(
+        width: u32,
+        height: u32,
+        rng: &mut R,
+        color: iced::Color,
+    ) -> Self {
+        let mut canvas = Canvas::new(width, height);
+        canvas.fill(*BLACK);
+        for i in 0..width {
+            for j in 0..height {
+                let alpha = rng.gen_range(0.8..=0.95);
+                let c = Color::from_rgba(color.r, color.g, color.b, alpha).unwrap();
+                let mut paint = Paint::default();
+                paint.set_color(c);
+                ShapeBuilder::new()
+                    .rect_xywh(pt(i, j), pt(1, 1))
+                    .fill_paint(&paint)
+                    .no_stroke()
+                    .build()
+                    .draw(&mut canvas);
+            }
+        }
+        BG(canvas)
+    }
     pub fn dark_grain<R: RngCore>(width: u32, height: u32, rng: &mut R) -> Self {
         let mut canvas = Canvas::new(width, height);
         canvas.fill(*WHITE);
