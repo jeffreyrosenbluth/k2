@@ -2,14 +2,13 @@
 
 use crate::art::draw;
 use crate::background::Background;
-use crate::gui::dot::DotControls;
-use crate::gui::extrude::ExtrudeControls;
+use crate::dot::DotControls;
+use crate::extrude::ExtrudeControls;
+use crate::fractal::FractalControls;
 use crate::noise::NoiseControls;
-use crate::{
-    gui::{fractal::FractalControls, sine::SineControls},
-    location::Location,
-    presets::rusty_ribbons,
-};
+use crate::sine::SineControls;
+
+use crate::{location::Location, presets::rusty_ribbons};
 use iced::widget::image;
 use iced::Color;
 

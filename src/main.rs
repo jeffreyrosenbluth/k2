@@ -1,4 +1,3 @@
-use gui::extrude::ExtrudeMessage;
 use iced::{
     widget::{button, image, row, text, text_input, toggler, vertical_space, Container},
     Alignment::{self, Center},
@@ -10,28 +9,29 @@ mod art;
 mod background;
 mod color;
 mod common;
+mod dot;
+mod extrude;
 mod field;
+mod fractal;
 mod gradient;
 mod gui;
 mod location;
 mod noise;
 mod presets;
+mod sine;
 mod size;
 
 use crate::art::print;
 use crate::background::Background;
 use crate::common::{PresetState::NotSet, *};
-use crate::gui::{
-    dot::{DotControls, DotMessage},
-    extrude::ExtrudeControls,
-    fractal::Fractal,
-    lpicklist,
-    lslider::LSlider,
-    sine::{SineControls, SineMessage},
-};
+use crate::dot::{DotControls, DotMessage};
+use crate::extrude::{ExtrudeControls, ExtrudeMessage};
+use crate::fractal::Fractal;
+use crate::gui::{lpicklist, lslider::LSlider};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
+use crate::sine::{SineControls, SineMessage};
 
 const TEXT_SIZE: u16 = 15;
 
@@ -73,12 +73,6 @@ pub enum Message {
     Frequency(f32),
     Noise(NoiseFunction),
     Speed(f32),
-    // Length(SizeFn),
-    // LengthSize(f32),
-    // LengthDir(Dir),
-    // SizeScale(f32),
-    // MinSize(f32),
-    // Grad(GradStyle),
     ExportComplete(()),
     StrokeWidth(f32),
     WidthSet(String),

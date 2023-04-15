@@ -3,12 +3,11 @@ use std::path::PathBuf;
 use wassily::prelude::*;
 
 use crate::background::*;
-use crate::color::*;
-use crate::common::SEED;
-use crate::common::{Controls, CurveStyle, HEIGHT, WIDTH};
-use crate::field::*;
-use crate::gradient::*;
-use crate::gui::dot::DotStyle;
+use crate::color::color_scale;
+use crate::common::{Controls, CurveStyle, HEIGHT, SEED, WIDTH};
+use crate::dot::DotStyle;
+use crate::field::Field;
+use crate::gradient::paint_lg;
 use crate::noise::*;
 
 fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {

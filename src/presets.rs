@@ -1,14 +1,12 @@
 use crate::background::Background;
 use crate::common::*;
+use crate::dot::{DotControls, DotStyle};
+use crate::extrude::ExtrudeControls;
+use crate::fractal::FractalControls;
 use crate::gradient::GradStyle;
-use crate::gui::{
-    dot::{DotControls, DotStyle},
-    extrude::ExtrudeControls,
-    fractal::FractalControls,
-    sine::SineControls,
-};
 use crate::location::Location;
 use crate::noise::{NoiseControls, NoiseFunction};
+use crate::sine::SineControls;
 use crate::size::{SizeControls, SizeFn};
 use iced::Color;
 

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::common::PresetState::NotSet;
 use crate::gui::lslider::LSlider;
 use crate::Message::{self, *};
