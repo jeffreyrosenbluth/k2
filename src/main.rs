@@ -1,3 +1,4 @@
+use gui::extrude::ExtrudeMessage;
 use iced::{
     widget::{button, image, row, text, text_input, toggler, vertical_space, Container},
     Alignment::{self, Center},
@@ -20,14 +21,17 @@ mod size;
 use crate::art::print;
 use crate::background::Background;
 use crate::common::{PresetState::NotSet, *};
-use crate::gradient::GradStyle;
 use crate::gui::{
-    dot::Dot, extrude::Extrude, fractal::Fractal, lpicklist, lslider::LSlider, sine::Sine,
+    dot::{DotControls, DotMessage},
+    extrude::ExtrudeControls,
+    fractal::Fractal,
+    lpicklist,
+    lslider::LSlider,
+    sine::{SineControls, SineMessage},
 };
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
-use crate::size::{Dir, SizeFn};
 
 const TEXT_SIZE: u16 = 15;
 
@@ -69,15 +73,12 @@ pub enum Message {
     Frequency(f32),
     Noise(NoiseFunction),
     Speed(f32),
-    Length(SizeFn),
-    LengthSize(f32),
-    LengthDir(Dir),
-    SizeScale(f32),
-    MinSize(f32),
-    Grad(GradStyle),
-    Dot(DotStyle),
-    PearlSides(u32),
-    PearlSmoothness(u32),
+    // Length(SizeFn),
+    // LengthSize(f32),
+    // LengthDir(Dir),
+    // SizeScale(f32),
+    // MinSize(f32),
+    // Grad(GradStyle),
     ExportComplete(()),
     StrokeWidth(f32),
     WidthSet(String),
@@ -88,11 +89,9 @@ pub enum Message {
     Color2(ColorMessage),
     Background(Background),
     Border(bool),
-    XFreq(f32),
-    YFreq(f32),
-    XExp(f32),
-    YExp(f32),
-    DotStrokeColor(ColorMessage),
+    Sinusoid(SineMessage),
+    Dot(DotMessage),
+    Extrude(ExtrudeMessage),
     Null,
 }
 
@@ -160,27 +159,18 @@ impl Application for K2 {
                 self.draw(NotSet);
             }
             Speed(s) => self.controls.speed = s,
-            Length(l) => {
-                self.controls.size_controls.size_fn = Some(l);
-                self.draw(NotSet);
-            }
-            LengthSize(s) => self.controls.size_controls.size = s,
-            LengthDir(d) => {
-                self.controls.size_controls.direction = Some(d);
-                self.draw(NotSet);
-            }
-            SizeScale(s) => self.controls.size_controls.size_scale = s,
-            MinSize(m) => self.controls.size_controls.min_size = m,
-            Grad(c) => {
-                self.controls.grad_style = Some(c);
-                self.draw(NotSet);
-            }
             Dot(d) => {
-                self.controls.dot_style = Some(d);
-                self.draw(NotSet);
+                self.controls.dot_controls.update(d);
+                if self.controls.dot_controls.dirty {
+                    self.draw(NotSet)
+                };
             }
-            PearlSides(s) => self.controls.pearl_sides = s,
-            PearlSmoothness(s) => self.controls.pearl_smoothness = s,
+            Extrude(e) => {
+                self.controls.extrude_controls.update(e);
+                if self.controls.extrude_controls.dirty {
+                    self.draw(NotSet)
+                };
+            }
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
             WidthSet(w) => {
@@ -207,15 +197,6 @@ impl Application for K2 {
                 }
                 ColorMessage::Cancel => self.controls.show_color_picker2 = false,
             },
-            Message::DotStrokeColor(c) => match c {
-                ColorMessage::Choose => self.controls.show_color_picker3 = true,
-                ColorMessage::Submit(k) => {
-                    self.controls.dot_stroke_color = k;
-                    self.controls.show_color_picker3 = false;
-                    self.draw(NotSet)
-                }
-                ColorMessage::Cancel => self.controls.show_color_picker3 = false,
-            },
             Message::Background(b) => {
                 self.controls.background = Some(b);
                 self.draw(NotSet);
@@ -225,10 +206,10 @@ impl Application for K2 {
                 self.draw(NotSet);
             }
             Null => {}
-            XFreq(f) => self.controls.sin_controls.sin_xfreq = f,
-            YFreq(f) => self.controls.sin_controls.sin_yfreq = f,
-            XExp(e) => self.controls.sin_controls.sin_xexp = e,
-            YExp(e) => self.controls.sin_controls.sin_yexp = e,
+            Sinusoid(s) => match s {
+                SineMessage::Draw => self.draw(NotSet),
+                _ => self.controls.sin_controls.update(s),
+            },
         }
         Command::none()
     }
@@ -420,29 +401,23 @@ impl Application for K2 {
             );
 
         if self.controls.curve_style == Some(crate::CurveStyle::Extrusion) {
-            let extrusion = Extrude::new(
-                self.controls.size_controls.size_fn,
-                self.controls.size_controls.size,
-                self.controls.size_controls.direction,
-                self.controls.size_controls.size_scale,
-                self.controls.size_controls.min_size,
-                self.controls.grad_style,
+            let extrusion = ExtrudeControls::new(
+                self.controls.extrude_controls.size_controls,
+                self.controls.extrude_controls.grad_style,
+                self.controls.extrude_controls.dirty,
             );
-            right_panel = right_panel.push(extrusion.show())
+            right_panel = right_panel.push(extrusion.view().map(Message::Extrude));
         } else if self.controls.curve_style == Some(crate::CurveStyle::Dots) {
-            let dot = crate::Dot::new(
-                self.controls.dot_style,
-                self.controls.size_controls.size_fn,
-                self.controls.size_controls.size,
-                self.controls.size_controls.direction,
-                self.controls.size_controls.size_scale,
-                self.controls.size_controls.min_size,
-                self.controls.pearl_sides,
-                self.controls.pearl_smoothness,
-                self.controls.show_color_picker3,
-                self.controls.dot_stroke_color,
+            let dot = crate::DotControls::new(
+                self.controls.dot_controls.dot_style,
+                self.controls.dot_controls.size_controls,
+                self.controls.dot_controls.pearl_sides,
+                self.controls.dot_controls.pearl_smoothness,
+                self.controls.dot_controls.show_color_picker,
+                self.controls.dot_controls.dot_stroke_color,
+                self.controls.dot_controls.dirty,
             );
-            right_panel = right_panel.push(dot.show())
+            right_panel = right_panel.push(dot.view().map(Message::Dot))
         };
         if self.controls.noise_controls.noise_function == Some(Fbm)
             || self.controls.noise_controls.noise_function == Some(Billow)
@@ -460,13 +435,14 @@ impl Application for K2 {
         }
         if self.controls.noise_controls.noise_function == Some(Sinusoidal) {
             right_panel = right_panel.push(
-                Sine::new(
-                    self.controls.sin_controls.sin_xfreq,
-                    self.controls.sin_controls.sin_yfreq,
-                    self.controls.sin_controls.sin_xexp,
-                    self.controls.sin_controls.sin_yexp,
+                SineControls::new(
+                    self.controls.sin_controls.xfreq,
+                    self.controls.sin_controls.yfreq,
+                    self.controls.sin_controls.xexp,
+                    self.controls.sin_controls.yexp,
                 )
-                .show(),
+                .view()
+                .map(Message::Sinusoid),
             )
         }
         left_panel = left_panel

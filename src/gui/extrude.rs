@@ -1,114 +1,80 @@
-use crate::common::PresetState::NotSet;
-use crate::gradient::GradStyle;
+use crate::gradient::{GradStyle, GradStyle::None};
 use crate::gui::lpicklist::LPickList;
-use crate::gui::lslider::LSlider;
-use crate::size::{Dir, SizeFn};
-use crate::Message::{self, *};
+use crate::size::{SizeControls, SizeMessage};
 use iced::widget::Column;
+use iced::Element;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Extrude {
-    pub style: Option<SizeFn>,
-    pub size: f32,
-    pub direction: Option<Dir>,
-    pub size_scale: f32,
-    pub min_size: f32,
-    pub grad_style: Option<GradStyle>,
+#[derive(Debug, Clone)]
+pub enum ExtrudeMessage {
+    Size(SizeMessage),
+    GradStyle(GradStyle),
+    Null,
 }
 
-impl<'a> Extrude {
-    pub fn new(
-        style: Option<SizeFn>,
-        size: f32,
-        direction: Option<Dir>,
-        size_scale: f32,
-        min_size: f32,
-        grad_style: Option<GradStyle>,
-    ) -> Self {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ExtrudeControls {
+    pub size_controls: SizeControls,
+    pub grad_style: Option<GradStyle>,
+    pub dirty: bool,
+}
+
+impl Default for ExtrudeControls {
+    fn default() -> Self {
         Self {
-            style,
-            size,
-            direction,
-            size_scale,
-            min_size,
+            size_controls: SizeControls::default(),
+            grad_style: Some(None),
+            dirty: false,
+        }
+    }
+}
+
+impl<'a> ExtrudeControls {
+    pub fn new(size_controls: SizeControls, grad_style: Option<GradStyle>, dirty: bool) -> Self {
+        Self {
+            size_controls,
             grad_style,
+            dirty,
         }
     }
 
-    pub fn show(&self) -> Column<'a, Message> {
-        let mut col = Column::new()
-            .push(LPickList::new(
-                "Size Function".to_string(),
-                vec![
-                    SizeFn::Constant,
-                    SizeFn::Expanding,
-                    SizeFn::Contracting,
-                    SizeFn::Periodic,
-                ],
-                self.style,
-                |x| x.map_or(Length(SizeFn::Constant), Length),
-            ))
-            .push(
-                LSlider::new(
-                    "Size".to_string(),
-                    self.size,
-                    5.0..=500.0,
-                    5.0,
-                    LengthSize,
-                    Draw(NotSet),
-                )
-                .decimals(0),
-            );
-        if self.style == Some(SizeFn::Expanding) || self.style == Some(SizeFn::Contracting) {
-            col = col
-                .push(LPickList::new(
-                    "Direction".to_string(),
-                    vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
-                    self.direction,
-                    |x| x.map_or(Null, LengthDir),
-                ))
-                .push(LSlider::new(
-                    "Min Size".to_string(),
-                    self.min_size,
-                    1.0..=50.0,
-                    1.0,
-                    MinSize,
-                    Draw(NotSet),
-                ))
-        } else if self.style == Some(SizeFn::Periodic) {
-            col = col
-                .push(LSlider::new(
-                    "Size Scale".to_string(),
-                    self.size_scale,
-                    1.0..=30.0,
-                    1.0,
-                    SizeScale,
-                    Draw(NotSet),
-                ))
-                .push(LSlider::new(
-                    "Min Size".to_string(),
-                    self.min_size,
-                    1.0..=50.0,
-                    1.0,
-                    MinSize,
-                    Draw(NotSet),
-                ))
+    pub fn update(&mut self, message: ExtrudeMessage) {
+        use self::ExtrudeMessage::*;
+        match message {
+            Size(x) => {
+                self.size_controls.update(x);
+                self.dirty = self.size_controls.dirty;
+            }
+            GradStyle(grad_style) => {
+                self.grad_style = Some(grad_style);
+                self.dirty = true;
+            }
+            Null => (),
         }
+    }
+
+    pub fn view(&self) -> Element<'a, ExtrudeMessage> {
+        use self::GradStyle::*;
+        use ExtrudeMessage::*;
+        let mut col = Column::new().push(
+            SizeControls::new(
+                self.size_controls.size_fn,
+                self.size_controls.size,
+                self.size_controls.direction,
+                self.size_controls.size_scale,
+                self.size_controls.min_size,
+                self.size_controls.dirty,
+            )
+            .view()
+            .map(ExtrudeMessage::Size),
+        );
         col = col
             .push(LPickList::new(
                 "Gradient Style".to_string(),
-                vec![
-                    GradStyle::None,
-                    GradStyle::Light,
-                    GradStyle::Dark,
-                    GradStyle::Fiber,
-                    GradStyle::LightFiber,
-                    GradStyle::DarkFiber,
-                ],
+                vec![None, Light, Dark, Fiber, LightFiber, DarkFiber],
                 self.grad_style,
-                |x| x.map_or(Null, Grad),
+                |x| x.map_or(Null, GradStyle),
             ))
             .spacing(15);
-        col
+        col.into()
     }
 }

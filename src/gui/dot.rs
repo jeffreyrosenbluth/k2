@@ -1,93 +1,139 @@
-use crate::common::{DotStyle, PresetState::NotSet};
 use crate::gui::lpicklist::LPickList;
 use crate::gui::lslider::LSlider;
-use crate::size::{Dir, SizeFn};
+use crate::size::{SizeControls, SizeMessage};
 use crate::ColorMessage;
-use crate::Message::{self, *};
 use iced::widget::{button, row, text, Column};
+use iced::Element;
 use iced::{Alignment::Center, Color};
 use iced_aw::ColorPicker;
 
+#[derive(Debug, Clone)]
+pub enum DotMessage {
+    DotStyle(DotStyle),
+    Size(SizeMessage),
+    PearlSides(u32),
+    PearlSmoothness(u32),
+    DotStrokeColor(ColorMessage),
+    Null,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DotStyle {
+    Circle,
+    Square,
+    Pearl,
+}
+
+impl std::fmt::Display for DotStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                DotStyle::Circle => "Circle",
+                DotStyle::Square => "Square",
+                DotStyle::Pearl => "Pearl",
+            }
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Dot {
+pub struct DotControls {
     pub dot_style: Option<DotStyle>,
-    pub size_fn: Option<SizeFn>,
-    pub size: f32,
-    pub direction: Option<Dir>,
-    pub size_scale: f32,
-    pub min_size: f32,
+    pub size_controls: SizeControls,
     pub pearl_sides: u32,
     pub pearl_smoothness: u32,
     pub show_color_picker: bool,
     pub dot_stroke_color: Color,
+    pub dirty: bool,
 }
 
-impl<'a> Dot {
+impl Default for DotControls {
+    fn default() -> Self {
+        Self {
+            dot_style: Some(DotStyle::Circle),
+            size_controls: SizeControls::default(),
+            pearl_sides: 4,
+            pearl_smoothness: 3,
+            show_color_picker: false,
+            dot_stroke_color: Color::WHITE,
+            dirty: false,
+        }
+    }
+}
+
+impl<'a> DotControls {
     pub fn new(
         dot_style: Option<DotStyle>,
-        size_fn: Option<SizeFn>,
-        size: f32,
-        direction: Option<Dir>,
-        size_scale: f32,
-        min_size: f32,
+        size_controls: SizeControls,
         pearl_sides: u32,
         pearl_smoothness: u32,
         show_color_picker: bool,
         dot_stroke_color: Color,
+        dirty: bool,
     ) -> Self {
         Self {
             dot_style,
-            size_fn,
-            size,
-            direction,
-            size_scale,
-            min_size,
+            size_controls,
             pearl_sides,
             pearl_smoothness,
             show_color_picker,
             dot_stroke_color,
+            dirty,
         }
     }
 
-    pub fn show(&self) -> Column<'a, Message> {
+    pub fn update(&mut self, message: DotMessage) {
+        use self::DotMessage::*;
+        match message {
+            DotStyle(x) => {
+                self.dot_style = Some(x);
+                self.dirty = true
+            }
+            Size(x) => {
+                self.size_controls.update(x);
+                self.dirty = self.size_controls.dirty
+            }
+            PearlSides(x) => {
+                self.pearl_sides = x;
+                self.dirty = false
+            }
+            PearlSmoothness(x) => {
+                self.pearl_smoothness = x;
+                self.dirty = false
+            }
+            DotStrokeColor(x) => match x {
+                ColorMessage::Choose => self.show_color_picker = true,
+                ColorMessage::Submit(c) => {
+                    self.dot_stroke_color = c;
+                    self.show_color_picker = false;
+                }
+                ColorMessage::Cancel => self.show_color_picker = false,
+            },
+            Null => self.dirty = true,
+        }
+    }
+
+    pub fn view(&self) -> Element<'a, DotMessage> {
+        use self::DotStyle::*;
+        use DotMessage::*;
         let color_button = button(text("Dot Stroke Color").size(15))
-            .on_press(Message::DotStrokeColor(ColorMessage::Choose));
+            .on_press(DotStrokeColor(ColorMessage::Choose));
         let color_picker = ColorPicker::new(
             self.show_color_picker,
             self.dot_stroke_color,
             color_button,
-            Message::DotStrokeColor(ColorMessage::Cancel),
-            |c| Message::DotStrokeColor(ColorMessage::Submit(c)),
+            DotStrokeColor(ColorMessage::Cancel),
+            |c| DotStrokeColor(ColorMessage::Submit(c)),
         );
         let mut col = Column::new()
             .push(LPickList::new(
                 "Dot Style".to_string(),
-                vec![DotStyle::Circle, DotStyle::Square, DotStyle::Pearl],
+                vec![Circle, Square, Pearl],
                 self.dot_style,
-                |x| x.map_or(Null, Dot),
+                |x| x.map_or(Null, DotStyle),
             ))
-            .push(LPickList::new(
-                "Size Function".to_string(),
-                vec![
-                    SizeFn::Constant,
-                    SizeFn::Expanding,
-                    SizeFn::Contracting,
-                    SizeFn::Periodic,
-                ],
-                self.size_fn,
-                |x| x.map_or(Length(SizeFn::Constant), Length),
-            ))
-            .push(
-                LSlider::new(
-                    "Size".to_string(),
-                    self.size,
-                    5.0..=500.0,
-                    5.0,
-                    LengthSize,
-                    Draw(NotSet),
-                )
-                .decimals(0),
-            )
             .push(
                 row![
                     color_picker,
@@ -102,43 +148,20 @@ impl<'a> Dot {
                 .spacing(15)
                 .align_items(Center),
             )
+            .push(
+                SizeControls::new(
+                    self.size_controls.size_fn,
+                    self.size_controls.size,
+                    self.size_controls.direction,
+                    self.size_controls.size_scale,
+                    self.size_controls.min_size,
+                    self.size_controls.dirty,
+                )
+                .view()
+                .map(DotMessage::Size),
+            )
             .spacing(15);
-        if self.size_fn == Some(SizeFn::Expanding) || self.size_fn == Some(SizeFn::Contracting) {
-            col = col
-                .push(LPickList::new(
-                    "Direction".to_string(),
-                    vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
-                    self.direction,
-                    |x| x.map_or(Null, LengthDir),
-                ))
-                .push(LSlider::new(
-                    "Min Size".to_string(),
-                    self.min_size,
-                    1.0..=50.0,
-                    1.0,
-                    MinSize,
-                    Draw(NotSet),
-                ))
-        } else if self.size_fn == Some(SizeFn::Periodic) {
-            col = col
-                .push(LSlider::new(
-                    "Size Scale".to_string(),
-                    self.size_scale,
-                    1.0..=30.0,
-                    1.0,
-                    SizeScale,
-                    Draw(NotSet),
-                ))
-                .push(LSlider::new(
-                    "Min Size".to_string(),
-                    self.min_size,
-                    1.0..=50.0,
-                    1.0,
-                    MinSize,
-                    Draw(NotSet),
-                ))
-        }
-        if self.dot_style == Some(DotStyle::Pearl) {
+        if self.dot_style == Some(Pearl) {
             col = col
                 .push(LSlider::new(
                     "Pearl Sides".to_string(),
@@ -146,7 +169,7 @@ impl<'a> Dot {
                     3..=8,
                     1,
                     PearlSides,
-                    Draw(NotSet),
+                    Null,
                 ))
                 .push(LSlider::new(
                     "Pearl Smoothness".to_string(),
@@ -154,9 +177,9 @@ impl<'a> Dot {
                     0..=5,
                     1,
                     PearlSmoothness,
-                    Draw(NotSet),
+                    Null,
                 ))
         }
-        col
+        col.into()
     }
 }

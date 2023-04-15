@@ -5,9 +5,10 @@ use wassily::prelude::*;
 use crate::background::*;
 use crate::color::*;
 use crate::common::SEED;
-use crate::common::{Controls, CurveStyle, DotStyle, HEIGHT, WIDTH};
+use crate::common::{Controls, CurveStyle, HEIGHT, WIDTH};
 use crate::field::*;
 use crate::gradient::*;
+use crate::gui::dot::DotStyle;
 use crate::noise::*;
 
 fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
@@ -69,10 +70,10 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                 ])))
             }
             NoiseFunction::Sinusoidal => Box::new(Sinusoidal::new(
-                controls.sin_controls.sin_xfreq as f64,
-                controls.sin_controls.sin_yfreq as f64,
-                controls.sin_controls.sin_xexp as f64,
-                controls.sin_controls.sin_yexp as f64,
+                controls.sin_controls.xfreq as f64,
+                controls.sin_controls.yfreq as f64,
+                controls.sin_controls.xexp as f64,
+                controls.sin_controls.yexp as f64,
             )),
         },
         noise_opts: opts,
@@ -129,14 +130,30 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
         8,
     ));
 
-    let len_fn = controls.size_controls.size_fn.unwrap().calc(
-        canvas.w_f32(),
-        canvas.h_f32(),
-        controls.size_controls.size,
-        controls.size_controls.direction.unwrap(),
-        controls.size_controls.size_scale,
-        controls.size_controls.min_size,
-    );
+    let len_fn = if controls.curve_style == Some(CurveStyle::Dots) {
+        controls.dot_controls.size_controls.size_fn.unwrap().calc(
+            canvas.w_f32(),
+            canvas.h_f32(),
+            controls.dot_controls.size_controls.size,
+            controls.dot_controls.size_controls.direction.unwrap(),
+            controls.dot_controls.size_controls.size_scale,
+            controls.dot_controls.size_controls.min_size,
+        )
+    } else {
+        controls
+            .extrude_controls
+            .size_controls
+            .size_fn
+            .unwrap()
+            .calc(
+                canvas.w_f32(),
+                canvas.h_f32(),
+                controls.extrude_controls.size_controls.size,
+                controls.extrude_controls.size_controls.direction.unwrap(),
+                controls.extrude_controls.size_controls.size_scale,
+                controls.extrude_controls.size_controls.min_size,
+            )
+    };
 
     for p in starts {
         let pts = flow.curve(p.x, p.y);
@@ -145,23 +162,23 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
         match controls.curve_style.unwrap() {
             CurveStyle::Dots => {
                 let sc = Color::from_rgba(
-                    controls.dot_stroke_color.r,
-                    controls.dot_stroke_color.g,
-                    controls.dot_stroke_color.b,
+                    controls.dot_controls.dot_stroke_color.r,
+                    controls.dot_controls.dot_stroke_color.g,
+                    controls.dot_controls.dot_stroke_color.b,
                     1.0,
                 )
                 .unwrap();
                 for p in pts {
                     let r = len_fn(p);
-                    let mut sb = match controls.dot_style.unwrap() {
+                    let mut sb = match controls.dot_controls.dot_style.unwrap() {
                         DotStyle::Circle => ShapeBuilder::new().circle(p, r),
                         DotStyle::Square => ShapeBuilder::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
                         DotStyle::Pearl => ShapeBuilder::new().pearl(
                             p,
                             r,
                             r,
-                            controls.pearl_sides,
-                            controls.pearl_smoothness,
+                            controls.dot_controls.pearl_sides,
+                            controls.dot_controls.pearl_smoothness,
                             &mut rng,
                         ),
                     };
@@ -185,7 +202,15 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
                     let r = len_fn(p);
                     let y0 = p.y - r;
                     let y1 = p.y + r;
-                    let lg = paint_lg(p.x, y0, p.x, y1, c, controls.grad_style.unwrap(), &mut rng);
+                    let lg = paint_lg(
+                        p.x,
+                        y0,
+                        p.x,
+                        y1,
+                        c,
+                        controls.extrude_controls.grad_style.unwrap(),
+                        &mut rng,
+                    );
                     ShapeBuilder::new()
                         .line(pt(p.x, y0), pt(p.x, y1))
                         .stroke_weight(controls.stroke_width)

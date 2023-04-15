@@ -2,11 +2,12 @@
 
 use crate::art::draw;
 use crate::background::Background;
-use crate::gradient::GradStyle;
+use crate::gui::dot::DotControls;
+use crate::gui::extrude::ExtrudeControls;
+use crate::gui::sine::SineControls;
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::rusty_ribbons;
-use crate::size::{Dir, SizeFn};
 use iced::widget::image;
 use iced::Color;
 
@@ -71,19 +72,15 @@ pub struct Controls {
     pub noise_controls: NoiseControls,
     pub fractal_controls: FractalControls,
     pub speed: f32,
-    pub size_controls: SizeControls,
-    pub grad_style: Option<GradStyle>,
-    pub dot_style: Option<DotStyle>,
-    pub pearl_sides: u32,
-    pub pearl_smoothness: u32,
     pub exporting: bool,
     pub stroke_width: f32,
-    pub dot_stroke_color: Color,
     pub background: Option<Background>,
     pub width: String,
     pub height: String,
     pub border: bool,
-    pub sin_controls: SinControls,
+    pub sin_controls: SineControls,
+    pub dot_controls: DotControls,
+    pub extrude_controls: ExtrudeControls,
 }
 
 impl Controls {
@@ -109,19 +106,15 @@ impl Default for Controls {
             density: 50.0,
             fractal_controls: FractalControls::default(),
             speed: 1.0,
-            size_controls: SizeControls::default(),
-            grad_style: Some(GradStyle::None),
-            dot_style: Some(DotStyle::Circle),
-            pearl_sides: 4,
-            pearl_smoothness: 3,
             exporting: false,
             stroke_width: 1.0,
-            dot_stroke_color: Color::from_rgb8(255, 255, 255),
             background: Some(Background::LightClouds),
             width: String::new(),
             height: String::new(),
             border: true,
-            sin_controls: SinControls::default(),
+            sin_controls: SineControls::default(),
+            dot_controls: DotControls::default(),
+            extrude_controls: ExtrudeControls::default(),
         }
     }
 }
@@ -181,27 +174,6 @@ impl std::fmt::Display for CurveStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum DotStyle {
-    Circle,
-    Square,
-    Pearl,
-}
-
-impl std::fmt::Display for DotStyle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                DotStyle::Circle => "Circle",
-                DotStyle::Square => "Square",
-                DotStyle::Pearl => "Pearl",
-            }
-        )
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FractalControls {
     pub octaves: u8,
@@ -253,63 +225,6 @@ impl FractalControls {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SizeControls {
-    pub size_fn: Option<SizeFn>,
-    pub size: f32,
-    pub direction: Option<Dir>,
-    pub size_scale: f32,
-    pub min_size: f32,
-}
-
-impl Default for SizeControls {
-    fn default() -> Self {
-        Self {
-            size_fn: Some(SizeFn::Contracting),
-            size: 100.0,
-            direction: Some(Dir::Both),
-            size_scale: 10.0,
-            min_size: 25.0,
-        }
-    }
-}
-
-impl SizeControls {
-    pub fn new(size_fn: SizeFn, size: f32, direction: Dir, size_scale: f32, min_size: f32) -> Self {
-        Self {
-            size_fn: Some(size_fn),
-            size,
-            direction: Some(direction),
-            size_scale,
-            min_size,
-        }
-    }
-    pub fn set_size_fn(mut self, size_fn: Option<SizeFn>) -> Self {
-        self.size_fn = size_fn;
-        self
-    }
-
-    pub fn set_size(mut self, size: f32) -> Self {
-        self.size = size;
-        self
-    }
-
-    pub fn set_direction(mut self, direction: Option<Dir>) -> Self {
-        self.direction = direction;
-        self
-    }
-
-    pub fn set_size_scale(mut self, size_scale: f32) -> Self {
-        self.size_scale = size_scale;
-        self
-    }
-
-    pub fn set_min_size(mut self, min_size: f32) -> Self {
-        self.min_size = min_size;
-        self
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NoiseControls {
     pub noise_function: Option<NoiseFunction>,
     pub noise_factor: f32,
@@ -347,56 +262,6 @@ impl Default for NoiseControls {
             noise_function: Some(NoiseFunction::Fbm),
             noise_factor: 1.0,
             noise_scale: 4.0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SinControls {
-    pub sin_xfreq: f32,
-    pub sin_yfreq: f32,
-    pub sin_xexp: f32,
-    pub sin_yexp: f32,
-}
-
-impl SinControls {
-    pub fn new(sin_xfreq: f32, sin_yfreq: f32, sin_xexp: f32, sin_yexp: f32) -> Self {
-        Self {
-            sin_xfreq,
-            sin_yfreq,
-            sin_xexp,
-            sin_yexp,
-        }
-    }
-
-    pub fn set_xfreq(mut self, sin_xfreq: f32) -> Self {
-        self.sin_xfreq = sin_xfreq;
-        self
-    }
-
-    pub fn set_yfreq(mut self, sin_yfreq: f32) -> Self {
-        self.sin_yfreq = sin_yfreq;
-        self
-    }
-
-    pub fn set_xexp(mut self, sin_xexp: f32) -> Self {
-        self.sin_xexp = sin_xexp;
-        self
-    }
-
-    pub fn set_yexp(mut self, sin_yexp: f32) -> Self {
-        self.sin_yexp = sin_yexp;
-        self
-    }
-}
-
-impl Default for SinControls {
-    fn default() -> Self {
-        Self {
-            sin_xfreq: 1.0,
-            sin_yfreq: 1.0,
-            sin_xexp: 2.0,
-            sin_yexp: 2.0,
         }
     }
 }
