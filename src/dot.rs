@@ -107,6 +107,7 @@ impl<'a> DotControls {
                 ColorMessage::Submit(c) => {
                     self.dot_stroke_color = c;
                     self.show_color_picker = false;
+                    self.dirty = true;
                 }
                 ColorMessage::Cancel => self.show_color_picker = false,
             },
