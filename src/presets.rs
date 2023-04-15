@@ -10,6 +10,41 @@ use crate::sine::SineControls;
 use crate::size::{SizeControls, SizeFn};
 use iced::Color;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Preset {
+    RustyRibbons,
+    Solar,
+    RiverStones,
+    Purple,
+    Canyon,
+    Stripes,
+    Splat,
+    Tubes,
+    Ducts,
+    Ridges,
+}
+
+impl std::fmt::Display for Preset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Preset::RustyRibbons => "Rusty Ribbons",
+                Preset::Solar => "Solar",
+                Preset::RiverStones => "River Stones",
+                Preset::Purple => "Purple",
+                Preset::Canyon => "Canyon",
+                Preset::Stripes => "Stripes",
+                Preset::Splat => "Splat",
+                Preset::Tubes => "Tubes",
+                Preset::Ducts => "Ducts",
+                Preset::Ridges => "Ridges",
+            }
+        )
+    }
+}
+
 pub fn rusty_ribbons() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Extrusion),

@@ -1,6 +1,6 @@
+use crate::color::ColorMessage;
 use crate::gui::{lpicklist::LPickList, lslider::LSlider};
 use crate::size::{SizeControls, SizeMessage};
-use crate::ColorMessage;
 use iced::widget::{button, row, text, Column};
 use iced::Element;
 use iced::{Alignment::Center, Color};

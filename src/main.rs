@@ -1,7 +1,7 @@
 use iced::{
     widget::{button, image, row, text, text_input, toggler, vertical_space, Container},
     Alignment::{self, Center},
-    Application, Color, Command, Element, Settings, Theme,
+    Application, Command, Element, Settings, Theme,
 };
 use iced_aw::ColorPicker;
 
@@ -23,6 +23,7 @@ mod size;
 
 use crate::art::print;
 use crate::background::Background;
+use crate::color::ColorMessage;
 use crate::common::{PresetState::NotSet, *};
 use crate::dot::{DotControls, DotMessage};
 use crate::extrude::{ExtrudeControls, ExtrudeMessage};
@@ -40,19 +41,6 @@ pub fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.window.size = (1480, 1100);
     K2::run(settings)
-}
-
-#[derive(Debug, Clone)]
-pub enum ColorChooser {
-    Color1,
-    Color2,
-}
-
-#[derive(Debug, Clone)]
-pub enum ColorMessage {
-    Choose,
-    Submit(Color),
-    Cancel,
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +92,7 @@ impl Application for K2 {
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
-        use crate::common::Preset::*;
+        use crate::presets::Preset::*;
         use Message::*;
         use PresetState::*;
         match message {

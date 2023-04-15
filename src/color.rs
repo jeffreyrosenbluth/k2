@@ -1,4 +1,11 @@
-use wassily::prelude::{palette::LuvHue, palette::Saturate, palette::Shade, *};
+use wassily::prelude::{palette::LuvHue, palette::Saturate, palette::Shade, Color, *};
+
+#[derive(Debug, Clone)]
+pub enum ColorMessage {
+    Choose,
+    Submit(iced::Color),
+    Cancel,
+}
 
 pub fn color_scale(color1: Color, color2: Color, n: u8) -> Vec<Color> {
     let c1 = Hsluv::from_color(&color1);
