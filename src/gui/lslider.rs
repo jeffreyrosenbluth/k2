@@ -2,6 +2,7 @@ use iced::widget::{button, row, slider, text};
 use iced::{Alignment, Color};
 use iced_lazy::{self, Component};
 use iced_native::Element;
+use iced_native::Renderer;
 use std::ops::RangeInclusive;
 
 pub struct LSlider<T, Message>
@@ -73,7 +74,8 @@ impl<'a, T, Message, Renderer> Component<Message, Renderer> for LSlider<T, Messa
 where
     T: Copy + From<u8> + PartialOrd + num_traits::FromPrimitive + std::fmt::Display + 'static,
     f64: From<T>,
-    Renderer: iced_native::text::Renderer + 'static,
+    Renderer: Renderer,
+    // Renderer: iced_native::text::Renderer + 'static,
     Renderer::Theme: button::StyleSheet + text::StyleSheet + slider::StyleSheet,
     <<Renderer as iced_native::Renderer>::Theme as iced::widget::text::StyleSheet>::Style:
         From<iced::Color>,
