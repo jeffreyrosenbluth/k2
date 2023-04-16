@@ -46,26 +46,24 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             NoiseFunction::Curl => Box::new(Curl::new(Perlin::default())),
             NoiseFunction::Magnet => {
                 opts = NoiseOpts::default();
-                let mut rng = SmallRng::seed_from_u64(SEED);
-                let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
                 let w = w as f32;
                 let h = h as f32;
                 Box::new(Magnet::new(vec![
-                    pt(r1 * w, r2 * h),
-                    pt(r3 * w, r4 * h),
-                    pt(r5 * w, r6 * h),
+                    pt(0.25 * w, 0.25 * h),
+                    pt(0.25 * w, 0.75 * h),
+                    pt(0.75 * w, 0.25 * h),
+                    pt(0.75 * w, 0.75 * h),
                 ]))
             }
             NoiseFunction::Gravity => {
                 opts = NoiseOpts::default();
-                let mut rng = SmallRng::seed_from_u64(SEED);
-                let (r1, r2, r3, r4, r5, r6): (f32, f32, f32, f32, f32, f32) = rng.gen();
                 let w = w as f32;
                 let h = h as f32;
                 Box::new(Curl::new(Magnet::new(vec![
-                    pt(r1 * w, r2 * h),
-                    pt(r3 * w, r4 * h),
-                    pt(r5 * w, r6 * h),
+                    pt(0.25 * w, 0.25 * h),
+                    pt(0.25 * w, 0.75 * h),
+                    pt(0.75 * w, 0.25 * h),
+                    pt(0.75 * w, 0.75 * h),
                 ])))
             }
             NoiseFunction::Sinusoidal => Box::new(Sinusoidal::new(
