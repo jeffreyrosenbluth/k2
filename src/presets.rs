@@ -16,12 +16,14 @@ pub enum Preset {
     Ribbons,
     Solar,
     RiverStones,
-    Purple,
+    Vortex,
     Canyon,
-    Stripes,
+    Fence,
     Splat,
     Tubes,
     Ducts,
+    Symmetry,
+    PomPom,
     Ridges,
 }
 
@@ -34,19 +36,21 @@ impl std::fmt::Display for Preset {
                 Preset::Ribbons => "Ribbons",
                 Preset::Solar => "Solar",
                 Preset::RiverStones => "River Stones",
-                Preset::Purple => "Purple",
+                Preset::Vortex => "Vortex",
                 Preset::Canyon => "Canyon",
-                Preset::Stripes => "Stripes",
+                Preset::Fence => "Fence",
                 Preset::Splat => "Splat",
                 Preset::Tubes => "Tubes",
                 Preset::Ducts => "Ducts",
+                Preset::Symmetry => "Symmetry",
+                Preset::PomPom => "Pom Pom",
                 Preset::Ridges => "Ridges (slow!)",
             }
         )
     }
 }
 
-pub fn rusty_ribbons() -> Controls {
+pub fn ribbons() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Extrusion),
         spacing: 2.0,
@@ -63,6 +67,8 @@ pub fn rusty_ribbons() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_num(0),
         background: Some(Background::LightGrain),
+        width: "1080".to_string(),
+        height: "1080".to_string(),
         ..Default::default()
     }
 }
@@ -104,8 +110,8 @@ pub fn solar() -> Controls {
         density: 100.0,
         speed: 0.1,
         color_mode_controls: ColorControls::default()
-            .set_anchor1(Color::from_rgb8(255, 108, 10))
-            .set_anchor2(Color::from_rgb8(155, 153, 0)),
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(2),
         background: Some(Background::LightClouds),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -116,30 +122,32 @@ pub fn solar() -> Controls {
 pub fn river_stones() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Dots),
-        noise_controls: NoiseControls::new(NoiseFunction::Magnet, 3.0, 3.4),
+        noise_controls: NoiseControls::new(NoiseFunction::Cylinders, 3.0, 3.4),
         location: Some(Location::Poisson),
         dot_controls: DotControls {
             dot_style: Some(DotStyle::Pearl),
             size_controls: SizeControls::default()
-                .set_size(100.0)
-                .set_size_fn(Some(SizeFn::Constant)),
-            pearl_sides: 3,
+                .set_size(165.0)
+                .set_size_fn(Some(SizeFn::Periodic))
+                .set_size_scale(5.0)
+                .set_min_size(25.0),
+            pearl_sides: 5,
             pearl_smoothness: 3,
             ..Default::default()
         },
         spacing: 100.0,
         stroke_width: 0.0,
         curve_length: 1,
-        density: 35.0,
+        density: 45.0,
         color_mode_controls: ColorControls::default().set_anchor1(Color::from_rgb8(45, 10, 65)),
-        background: Some(Background::DarkClouds),
+        background: Some(Background::ColorGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
     }
 }
 
-pub fn purple() -> Controls {
+pub fn vortex() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Extrusion),
         noise_controls: NoiseControls::new(NoiseFunction::Curl, 3.0, 1.0),
@@ -157,8 +165,8 @@ pub fn purple() -> Controls {
         fractal_controls: FractalControls::default().set_octaves(1),
         density: 72.0,
         color_mode_controls: ColorControls::default()
-            .set_anchor1(Color::from_rgb8(121, 72, 141))
-            .set_anchor2(Color::from_rgb8(71, 76, 141)),
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(1),
         background: Some(Background::LightClouds),
         width: "1000".to_string(),
         height: "1200".to_string(),
@@ -177,8 +185,8 @@ pub fn canyon() -> Controls {
         curve_length: 75,
         density: 100.0,
         color_mode_controls: ColorControls::default()
-            .set_anchor1(Color::from_rgb8(108, 82, 42))
-            .set_anchor2(Color::from_rgb8(203, 137, 137)),
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(7),
         background: Some(Background::DarkGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -186,7 +194,7 @@ pub fn canyon() -> Controls {
     }
 }
 
-pub fn stripes() -> Controls {
+pub fn fence() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Extrusion),
         noise_controls: NoiseControls::new(NoiseFunction::Fbm, 4.0, 1.0),
@@ -211,10 +219,10 @@ pub fn stripes() -> Controls {
             .set_persistence(0.3),
         density: 40.0,
         color_mode_controls: ColorControls::default()
-            .set_anchor1(Color::from_rgb8(70, 185, 25))
-            .set_anchor2(Color::from_rgb8(50, 50, 50)),
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(3),
         background: Some(Background::ColorGrain),
-        grain_color: Color::from_rgb8(60, 100, 60),
+        grain_color: Color::from_rgb8(152, 194, 152),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
@@ -244,8 +252,8 @@ pub fn splat() -> Controls {
         fractal_controls: FractalControls::default().set_octaves(1),
         density: 60.0,
         color_mode_controls: ColorControls::default()
-            .set_anchor1(Color::from_rgb8(30, 25, 180))
-            .set_anchor2(Color::from_rgb8(90, 175, 185)),
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(8),
         background: Some(Background::LightGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -273,8 +281,8 @@ pub fn tubes() -> Controls {
         },
         density: 85.0,
         color_mode_controls: ColorControls::default()
-            .set_anchor1(Color::from_rgb8(187, 42, 20))
-            .set_anchor2(Color::from_rgb8(155, 21, 48)),
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(10),
         background: Some(Background::DarkClouds),
         width: "1000".to_string(),
         height: "1200".to_string(),
@@ -303,10 +311,50 @@ pub fn ducts() -> Controls {
         curve_length: 150,
         density: 50.0,
         color_mode_controls: ColorControls::default()
-            .set_anchor1(Color::from_rgb8(218, 187, 55))
-            .set_anchor2(Color::from_rgb8(229, 15, 15)),
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(5),
         sin_controls: SineControls::new(2.0, 2.0, 1.0, 3.0),
         background: Some(Background::ColorGrain),
+        grain_color: Color::from_rgb8(195, 130, 65),
+        ..Default::default()
+    }
+}
+
+pub fn symmetry() -> Controls {
+    Controls {
+        curve_style: Some(CurveStyle::Line),
+        noise_controls: NoiseControls::new(NoiseFunction::Gravity, 1.0, 1.0),
+        location: Some(Location::Rand),
+        spacing: 1.0,
+        stroke_width: 1.5,
+        curve_length: 100,
+        density: 100.0,
+        color_mode_controls: ColorControls::default()
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(11),
+        background: Some(Background::ColorGrain),
+        grain_color: Color::from_rgb8(215, 155, 190),
+        width: "1080".to_string(),
+        height: "1080".to_string(),
+        ..Default::default()
+    }
+}
+
+pub fn pompom() -> Controls {
+    Controls {
+        curve_style: Some(CurveStyle::Line),
+        noise_controls: NoiseControls::new(NoiseFunction::Magnet, 1.0, 1.0),
+        location: Some(Location::Poisson),
+        spacing: 80.0,
+        stroke_width: 0.5,
+        curve_length: 25,
+        density: 100.0,
+        color_mode_controls: ColorControls::default()
+            .set_mode(ColorMode::Palette)
+            .set_palette_num(10),
+        background: Some(Background::DarkGrain),
+        width: "1080".to_string(),
+        height: "1080".to_string(),
         ..Default::default()
     }
 }

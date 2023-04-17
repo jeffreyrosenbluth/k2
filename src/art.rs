@@ -19,16 +19,22 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             NoiseFunction::Fbm => Box::new(
                 Fbm::<Perlin>::default()
                     .set_octaves(controls.fractal_controls.octaves as usize)
-                    .set_persistence(controls.fractal_controls.persistence as f64),
+                    .set_persistence(controls.fractal_controls.persistence as f64)
+                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
+                    .set_frequency(controls.fractal_controls.frequency as f64),
             ),
             NoiseFunction::Billow => Box::new(
                 Billow::<Perlin>::default()
                     .set_octaves(controls.fractal_controls.octaves as usize)
+                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
+                    .set_frequency(controls.fractal_controls.frequency as f64)
                     .set_persistence(controls.fractal_controls.persistence as f64),
             ),
             NoiseFunction::Ridged => Box::new(
                 RidgedMulti::<Perlin>::default()
                     .set_octaves(controls.fractal_controls.octaves as usize)
+                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
+                    .set_frequency(controls.fractal_controls.frequency as f64)
                     .set_persistence(controls.fractal_controls.persistence as f64),
             ),
             NoiseFunction::Value => Box::<Value>::default(),

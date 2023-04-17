@@ -98,15 +98,17 @@ impl Application for K2 {
         match message {
             Preset(p) => {
                 self.controls = match p {
-                    Ribbons => rusty_ribbons(),
+                    Ribbons => ribbons(),
                     Solar => solar(),
                     RiverStones => river_stones(),
-                    Purple => purple(),
+                    Vortex => vortex(),
                     Canyon => canyon(),
-                    Stripes => stripes(),
+                    Fence => fence(),
                     Splat => splat(),
                     Tubes => tubes(),
                     Ducts => ducts(),
+                    Symmetry => symmetry(),
+                    PomPoms => pompom(),
                     Ridges => ridges(),
                 };
                 self.controls.preset = Some(p);
@@ -253,12 +255,14 @@ impl Application for K2 {
                     Ribbons,
                     Solar,
                     RiverStones,
-                    Purple,
+                    Vortex,
                     Canyon,
-                    Stripes,
+                    Fence,
                     Splat,
                     Tubes,
                     Ducts,
+                    Symmetry,
+                    PomPom,
                     Ridges,
                 ],
                 self.controls.preset,

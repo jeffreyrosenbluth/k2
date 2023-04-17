@@ -10,7 +10,7 @@ use crate::noise::NoiseControls;
 use crate::presets::Preset;
 use crate::sine::SineControls;
 
-use crate::{location::Location, presets::rusty_ribbons};
+use crate::{location::Location, presets::ribbons};
 use iced::widget::image;
 use iced::Color;
 
@@ -34,7 +34,7 @@ pub struct K2 {
 
 impl K2 {
     pub fn new() -> Self {
-        let controls = rusty_ribbons();
+        let controls = ribbons();
         let canvas = draw(&controls, false);
         Self {
             controls,
@@ -65,7 +65,6 @@ pub struct Controls {
     pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
     pub curve_length: u32,
-    // pub anchor1: Color
     pub grain_color: Color,
     pub show_grain_color_picker: bool,
     pub location: Option<Location>,
@@ -98,7 +97,7 @@ impl Default for Controls {
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
-            grain_color: Color::from_rgb8(150, 100, 50),
+            grain_color: Color::from_rgb8(128, 128, 128),
             show_grain_color_picker: false,
             location: Some(Location::Halton),
             noise_controls: NoiseControls::default(),
