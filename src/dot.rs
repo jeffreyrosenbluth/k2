@@ -1,4 +1,4 @@
-use crate::color::ColorMessage;
+use crate::color::ColorPickerMessage;
 use crate::gui::{lpicklist::LPickList, lslider::LSlider};
 use crate::size::{SizeControls, SizeMessage};
 use iced::widget::{button, row, text, Column};
@@ -12,7 +12,7 @@ pub enum DotMessage {
     Size(SizeMessage),
     PearlSides(u32),
     PearlSmoothness(u32),
-    DotStrokeColor(ColorMessage),
+    DotStrokeColor(ColorPickerMessage),
     Null,
 }
 
@@ -103,13 +103,13 @@ impl<'a> DotControls {
                 self.dirty = false
             }
             DotStrokeColor(x) => match x {
-                ColorMessage::Choose => self.show_color_picker = true,
-                ColorMessage::Submit(c) => {
+                ColorPickerMessage::Choose => self.show_color_picker = true,
+                ColorPickerMessage::Submit(c) => {
                     self.dot_stroke_color = c;
                     self.show_color_picker = false;
                     self.dirty = true;
                 }
-                ColorMessage::Cancel => self.show_color_picker = false,
+                ColorPickerMessage::Cancel => self.show_color_picker = false,
             },
             Null => self.dirty = true,
         }
@@ -119,13 +119,13 @@ impl<'a> DotControls {
         use self::DotStyle::*;
         use DotMessage::*;
         let color_button = button(text("Dot Stroke Color").size(15))
-            .on_press(DotStrokeColor(ColorMessage::Choose));
+            .on_press(DotStrokeColor(ColorPickerMessage::Choose));
         let color_picker = ColorPicker::new(
             self.show_color_picker,
             self.dot_stroke_color,
             color_button,
-            DotStrokeColor(ColorMessage::Cancel),
-            |c| DotStrokeColor(ColorMessage::Submit(c)),
+            DotStrokeColor(ColorPickerMessage::Cancel),
+            |c| DotStrokeColor(ColorPickerMessage::Submit(c)),
         );
         let mut col = Column::new()
             .push(LPickList::new(

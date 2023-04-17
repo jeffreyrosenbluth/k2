@@ -2,6 +2,7 @@
 
 use crate::art::draw;
 use crate::background::Background;
+use crate::color::ColorControls;
 use crate::dot::DotControls;
 use crate::extrude::ExtrudeControls;
 use crate::fractal::FractalControls;
@@ -64,11 +65,8 @@ pub struct Controls {
     pub curve_style: Option<CurveStyle>,
     pub spacing: f32,
     pub curve_length: u32,
-    pub anchor1: Color,
-    pub anchor2: Color,
+    // pub anchor1: Color
     pub grain_color: Color,
-    pub show_color_picker1: bool,
-    pub show_color_picker2: bool,
     pub show_grain_color_picker: bool,
     pub location: Option<Location>,
     pub density: f32,
@@ -84,6 +82,7 @@ pub struct Controls {
     pub sin_controls: SineControls,
     pub dot_controls: DotControls,
     pub extrude_controls: ExtrudeControls,
+    pub color_mode_controls: ColorControls,
 }
 
 impl Controls {
@@ -95,15 +94,11 @@ impl Controls {
 impl Default for Controls {
     fn default() -> Self {
         Self {
-            preset: Some(Preset::RustyRibbons),
+            preset: Some(Preset::Ribbons),
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
-            anchor1: Color::from_rgb8(20, 134, 187),
-            anchor2: Color::from_rgb8(0, 0, 0),
             grain_color: Color::from_rgb8(150, 100, 50),
-            show_color_picker1: false,
-            show_color_picker2: false,
             show_grain_color_picker: false,
             location: Some(Location::Halton),
             noise_controls: NoiseControls::default(),
@@ -119,6 +114,7 @@ impl Default for Controls {
             sin_controls: SineControls::default(),
             dot_controls: DotControls::default(),
             extrude_controls: ExtrudeControls::default(),
+            color_mode_controls: ColorControls::default(),
         }
     }
 }

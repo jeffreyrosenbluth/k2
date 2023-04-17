@@ -23,7 +23,7 @@ mod size;
 
 use crate::art::print;
 use crate::background::Background;
-use crate::color::ColorMessage;
+use crate::color::{ColorControls, ColorMessage, ColorPickerMessage};
 use crate::common::{PresetState::NotSet, *};
 use crate::dot::{DotControls, DotMessage};
 use crate::extrude::{ExtrudeControls, ExtrudeMessage};
@@ -67,9 +67,8 @@ pub enum Message {
     Width,
     HeightSet(String),
     Height,
-    Color1(ColorMessage),
-    Color2(ColorMessage),
-    GrainColor(ColorMessage),
+    GrainColor(ColorPickerMessage),
+    ColorMode(ColorMessage),
     Background(Background),
     Border(bool),
     Sinusoid(SineMessage),
@@ -99,7 +98,7 @@ impl Application for K2 {
         match message {
             Preset(p) => {
                 self.controls = match p {
-                    RustyRibbons => rusty_ribbons(),
+                    Ribbons => rusty_ribbons(),
                     Solar => solar(),
                     RiverStones => river_stones(),
                     Purple => purple(),
@@ -162,32 +161,14 @@ impl Application for K2 {
             Width => self.draw(NotSet),
             HeightSet(h) => self.controls.height = h,
             Height => self.draw(NotSet),
-            Message::Color1(c) => match c {
-                ColorMessage::Choose => self.controls.show_color_picker1 = true,
-                ColorMessage::Submit(k) => {
-                    self.controls.anchor1 = k;
-                    self.controls.show_color_picker1 = false;
-                    self.draw(NotSet)
-                }
-                ColorMessage::Cancel => self.controls.show_color_picker1 = false,
-            },
-            Message::Color2(c) => match c {
-                ColorMessage::Choose => self.controls.show_color_picker2 = true,
-                ColorMessage::Submit(k) => {
-                    self.controls.anchor2 = k;
-                    self.controls.show_color_picker2 = false;
-                    self.draw(NotSet)
-                }
-                ColorMessage::Cancel => self.controls.show_color_picker2 = false,
-            },
             Message::GrainColor(c) => match c {
-                ColorMessage::Choose => self.controls.show_grain_color_picker = true,
-                ColorMessage::Submit(k) => {
+                ColorPickerMessage::Choose => self.controls.show_grain_color_picker = true,
+                ColorPickerMessage::Submit(k) => {
                     self.controls.grain_color = k;
                     self.controls.show_grain_color_picker = false;
                     self.draw(NotSet)
                 }
-                ColorMessage::Cancel => self.controls.show_grain_color_picker = false,
+                ColorPickerMessage::Cancel => self.controls.show_grain_color_picker = false,
             },
             Message::Background(b) => {
                 self.controls.background = Some(b);
@@ -202,6 +183,12 @@ impl Application for K2 {
                 SineMessage::Draw => self.draw(NotSet),
                 _ => self.controls.sin_controls.update(s),
             },
+            ColorMode(c) => {
+                self.controls.color_mode_controls.update(c);
+                if self.controls.color_mode_controls.dirty {
+                    self.draw(NotSet)
+                };
+            }
         }
         Command::none()
     }
@@ -214,34 +201,26 @@ impl Application for K2 {
         let img_view = image::viewer(self.image.clone()).min_scale(1.0);
         let mut left_panel = iced::widget::column![];
         let mut right_panel = iced::widget::column![];
-        let color_button1 =
-            button(text("Anchor 1 Color").size(15)).on_press(Message::Color1(ColorMessage::Choose));
-        let color_button2 =
-            button(text("Anchor 2 Color").size(15)).on_press(Message::Color2(ColorMessage::Choose));
         let grain_color_button = button(text("Grain Color").size(15))
-            .on_press(Message::GrainColor(ColorMessage::Choose));
-
-        let color_picker1 = ColorPicker::new(
-            self.controls.show_color_picker1,
-            self.controls.anchor1,
-            color_button1,
-            Message::Color1(ColorMessage::Cancel),
-            |c| Message::Color1(ColorMessage::Submit(c)),
-        );
-        let color_picker2 = ColorPicker::new(
-            self.controls.show_color_picker2,
-            self.controls.anchor2,
-            color_button2,
-            Message::Color2(ColorMessage::Cancel),
-            |c| Message::Color2(ColorMessage::Submit(c)),
-        );
+            .on_press(Message::GrainColor(ColorPickerMessage::Choose));
         let grain_color_picker = ColorPicker::new(
             self.controls.show_grain_color_picker,
             self.controls.grain_color,
             grain_color_button,
-            Message::GrainColor(ColorMessage::Cancel),
-            |c| Message::GrainColor(ColorMessage::Submit(c)),
+            Message::GrainColor(ColorPickerMessage::Cancel),
+            |c| Message::GrainColor(ColorPickerMessage::Submit(c)),
         );
+        let color_mode = crate::ColorControls::new(
+            self.controls.color_mode_controls.mode,
+            self.controls.color_mode_controls.anchor1,
+            self.controls.color_mode_controls.anchor2,
+            self.controls.color_mode_controls.show_picker_1,
+            self.controls.color_mode_controls.show_picker_2,
+            self.controls.color_mode_controls.palette_num,
+            self.controls.color_mode_controls.dirty,
+        )
+        .view()
+        .map(Message::ColorMode);
 
         right_panel = right_panel.push(vertical_space(5.0));
         left_panel = left_panel
@@ -271,7 +250,7 @@ impl Application for K2 {
             .push(lpicklist::LPickList::new(
                 "Preset".to_string(),
                 vec![
-                    RustyRibbons,
+                    Ribbons,
                     Solar,
                     RiverStones,
                     Purple,
@@ -381,35 +360,7 @@ impl Application for K2 {
                 )
                 .decimals(2),
             )
-            .push(
-                row![
-                    color_picker1,
-                    text(format!(
-                        "{:3} {:3} {:3}",
-                        (self.controls.anchor1.r * 255.0) as u8,
-                        (self.controls.anchor1.g * 255.0) as u8,
-                        (self.controls.anchor1.b * 255.0) as u8
-                    ))
-                    .size(15)
-                ]
-                .spacing(15)
-                .align_items(Center),
-            )
-            .push(
-                row![
-                    color_picker2,
-                    text(format!(
-                        "{:3} {:3} {:3}",
-                        (self.controls.anchor2.r * 255.0) as u8,
-                        (self.controls.anchor2.g * 255.0) as u8,
-                        (self.controls.anchor2.b * 255.0) as u8
-                    ))
-                    .size(15)
-                ]
-                .spacing(15)
-                .align_items(Center),
-            );
-
+            .push(color_mode);
         if self.controls.curve_style == Some(crate::CurveStyle::Extrusion) {
             let extrusion = ExtrudeControls::new(
                 self.controls.extrude_controls.size_controls,

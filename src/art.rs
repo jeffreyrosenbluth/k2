@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use wassily::prelude::*;
 
 use crate::background::*;
-use crate::color::color_scale;
+use crate::color::{color_palette, color_scale, ColorMode};
 use crate::common::{Controls, CurveStyle, HEIGHT, SEED, WIDTH};
 use crate::dot::DotStyle;
 use crate::field::Field;
@@ -124,23 +124,26 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
         &mut rng,
     );
 
-    let mut palette = Palette::new(color_scale(
-        Color::from_rgba(
-            controls.anchor1.r,
-            controls.anchor1.g,
-            controls.anchor1.b,
-            1.0,
-        )
-        .unwrap(),
-        Color::from_rgba(
-            controls.anchor2.r,
-            controls.anchor2.g,
-            controls.anchor2.b,
-            1.0,
-        )
-        .unwrap(),
-        8,
-    ));
+    let mut palette = match controls.color_mode_controls.mode.unwrap() {
+        ColorMode::Scale => Palette::new(color_scale(
+            Color::from_rgba(
+                controls.color_mode_controls.anchor1.r,
+                controls.color_mode_controls.anchor1.g,
+                controls.color_mode_controls.anchor1.b,
+                1.0,
+            )
+            .unwrap(),
+            Color::from_rgba(
+                controls.color_mode_controls.anchor2.r,
+                controls.color_mode_controls.anchor2.g,
+                controls.color_mode_controls.anchor2.b,
+                1.0,
+            )
+            .unwrap(),
+            8,
+        )),
+        ColorMode::Palette => color_palette(controls.color_mode_controls.palette_num),
+    };
 
     let len_fn = if controls.curve_style == Some(CurveStyle::Dots) {
         controls.dot_controls.size_controls.size_fn.unwrap().calc(
