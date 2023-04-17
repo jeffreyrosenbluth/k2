@@ -1,5 +1,7 @@
 use iced::{
-    widget::{button, image, row, text, text_input, toggler, vertical_space, Container, Rule},
+    widget::{
+        button, image, radio, row, text, text_input, toggler, vertical_space, Container, Rule,
+    },
     Alignment::{self, Center},
     Application, Command, Element, Settings, Theme,
 };
@@ -47,6 +49,7 @@ pub fn main() -> iced::Result {
 pub enum Message {
     Preset(Preset),
     CurveStyle(CurveStyle),
+    CurveDirection(CurveDirection),
     Space(f32),
     CurveLength(u32),
     Export,
@@ -108,7 +111,7 @@ impl Application for K2 {
                     Tubes => tubes(),
                     Ducts => ducts(),
                     Symmetry => symmetry(),
-                    PomPoms => pompom(),
+                    PomPom => pompom(),
                     Ridges => ridges(),
                 };
                 self.controls.preset = Some(p);
@@ -116,6 +119,10 @@ impl Application for K2 {
             }
             CurveStyle(cs) => {
                 self.controls.curve_style = Some(cs);
+                self.draw(NotSet);
+            }
+            CurveDirection(cd) => {
+                self.controls.curve_direction = Some(cd);
                 self.draw(NotSet);
             }
             Space(b) => self.controls.spacing = b,
@@ -218,7 +225,7 @@ impl Application for K2 {
             self.controls.color_mode_controls.anchor2,
             self.controls.color_mode_controls.show_picker_1,
             self.controls.color_mode_controls.show_picker_2,
-            self.controls.color_mode_controls.palette_num,
+            self.controls.color_mode_controls.palette_choice,
             self.controls.color_mode_controls.dirty,
         )
         .view()
@@ -278,6 +285,22 @@ impl Application for K2 {
                 self.controls.curve_style,
                 |x| x.map_or(CurveStyle(common::CurveStyle::Dots), CurveStyle),
             ))
+            .push(
+                row([
+                    common::CurveDirection::OneSided,
+                    common::CurveDirection::TwoSided,
+                ]
+                .iter()
+                .cloned()
+                .map(|d| {
+                    radio(d, d, self.controls.curve_direction, CurveDirection)
+                        .text_size(15)
+                        .size(15)
+                })
+                .map(Element::from)
+                .collect())
+                .spacing(15),
+            )
             .push(lpicklist::LPickList::new(
                 "Flow Field".to_string(),
                 vec![

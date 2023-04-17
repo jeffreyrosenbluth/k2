@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use iced::{
     widget::{button, radio, row, text, Column},
     Alignment::Center,
@@ -6,7 +8,7 @@ use iced::{
 use iced_aw::ColorPicker;
 use wassily::prelude::{palette::LuvHue, palette::Saturate, palette::Shade, Color, *};
 
-use crate::gui::lslider;
+use crate::gui::lpicklist;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ColorPickerMessage {
@@ -57,20 +59,56 @@ fn make_palette(hex: Vec<u32>) -> Palette {
     Palette::new(expand_palette(raw_palette))
 }
 
-pub fn color_palette(index: u8) -> Palette {
-    match index {
-        0 => make_palette(vec![0x1C4572, 0x84561B, 0x6D3E32, 0x0A0E20]),
-        1 => make_palette(vec![0x003566, 0x000000, 0x008080]),
-        2 => make_palette(vec![0x701C1C, 0x1A1717, 0x77806E]),
-        3 => make_palette(vec![0xA3B18A, 0x588157, 0x3A5A40, 0x344E41]),
-        4 => make_palette(vec![0xB7A635, 0x4E1406]),
-        5 => make_palette(vec![0x621708, 0x941B0C, 0xBC3908, 0xF6AA1C]),
-        6 => make_palette(vec![0xD9798B, 0x8C4962, 0x59364A, 0x594832]),
-        7 => make_palette(vec![0xBF2642, 0x731F2E, 0x400C16]),
-        8 => make_palette(vec![0x000000, 0xE6E6E6, 0xA0A0A0]),
-        9 => make_palette(vec![0x002B75, 0x862A23, 0xBD8878]),
-        10 => make_palette(vec![0xD9A404, 0xF2B988, 0xBF3030, 0x0D0D0D]),
-        _ => make_palette(vec![0x6A7AB2, 0xF27E9D, 0x454259, 0x9B8660]),
+pub fn color_palette(pal: Palettes) -> Palette {
+    use Palettes::*;
+    match pal {
+        Royalty => make_palette(vec![0x1C4572, 0x84561B, 0x6D3E32, 0x0A0E20]),
+        DeltaBlues => make_palette(vec![0x003566, 0x000000, 0x008080]),
+        PinotNoir => make_palette(vec![0x701C1C, 0x1A1717, 0x77806E]),
+        Algae => make_palette(vec![0xA3B18A, 0x588157, 0x3A5A40, 0x344E41]),
+        Scepter => make_palette(vec![0xB7A635, 0x4E1406]),
+        Fire => make_palette(vec![0x621708, 0x941B0C, 0xBC3908, 0xF6AA1C]),
+        Perfume => make_palette(vec![0xD9798B, 0x8C4962, 0x59364A, 0x594832]),
+        Rose => make_palette(vec![0xBF2642, 0x731F2E, 0x400C16]),
+        GrayScale => make_palette(vec![0x000000, 0xE6E6E6, 0xA0A0A0]),
+        PorcoRosso => make_palette(vec![0x002B75, 0x862A23, 0xBD8878]),
+        SpiritedAway => make_palette(vec![0xD9A404, 0xF2B988, 0xBF3030, 0x0D0D0D]),
+        Totoro => make_palette(vec![0x6A7AB2, 0xF27E9D, 0x454259, 0x9B8660]),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Palettes {
+    Royalty,
+    DeltaBlues,
+    PinotNoir,
+    Algae,
+    Scepter,
+    Fire,
+    Perfume,
+    Rose,
+    GrayScale,
+    PorcoRosso,
+    SpiritedAway,
+    Totoro,
+}
+
+impl std::fmt::Display for Palettes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Palettes::Royalty => write!(f, "Royalty"),
+            Palettes::DeltaBlues => write!(f, "Delta Blues"),
+            Palettes::PinotNoir => write!(f, "Pinot Noir"),
+            Palettes::Algae => write!(f, "Algae"),
+            Palettes::Scepter => write!(f, "Scepter"),
+            Palettes::Fire => write!(f, "Fire"),
+            Palettes::Perfume => write!(f, "Perfume"),
+            Palettes::Rose => write!(f, "Rose"),
+            Palettes::GrayScale => write!(f, "Gray Scale"),
+            Palettes::PorcoRosso => write!(f, "Porco Rosso"),
+            Palettes::SpiritedAway => write!(f, "Spirited Away"),
+            Palettes::Totoro => write!(f, "Totoro"),
+        }
     }
 }
 
@@ -95,7 +133,7 @@ pub enum ColorMessage {
     Mode(ColorMode),
     Anchor1(ColorPickerMessage),
     Anchor2(ColorPickerMessage),
-    PaletteNum(u8),
+    PaletteChoice(Palettes),
     Null,
 }
 
@@ -106,7 +144,7 @@ pub struct ColorControls {
     pub anchor2: iced::Color,
     pub show_picker_1: bool,
     pub show_picker_2: bool,
-    pub palette_num: u8,
+    pub palette_choice: Option<Palettes>,
     pub dirty: bool,
 }
 
@@ -118,7 +156,7 @@ impl Default for ColorControls {
             anchor2: iced::Color::from_rgb8(0, 0, 0),
             show_picker_1: false,
             show_picker_2: false,
-            palette_num: 0,
+            palette_choice: Some(Palettes::Royalty),
             dirty: false,
         }
     }
@@ -131,7 +169,7 @@ impl<'a> ColorControls {
         anchor2: iced::Color,
         show_picker_1: bool,
         show_picker_2: bool,
-        palette_num: u8,
+        palette_choice: Option<Palettes>,
         dirty: bool,
     ) -> Self {
         Self {
@@ -140,7 +178,7 @@ impl<'a> ColorControls {
             anchor2,
             show_picker_1,
             show_picker_2,
-            palette_num,
+            palette_choice,
             dirty,
         }
     }
@@ -160,8 +198,8 @@ impl<'a> ColorControls {
         self
     }
 
-    pub fn set_palette_num(mut self, num: u8) -> Self {
-        self.palette_num = num;
+    pub fn set_palette_choice(mut self, pal: Palettes) -> Self {
+        self.palette_choice = Some(pal);
         self
     }
 
@@ -174,7 +212,10 @@ impl<'a> ColorControls {
                 self.dirty = true;
             }
             Anchor1(message) => match message {
-                Choose => self.show_picker_1 = true,
+                Choose => {
+                    self.show_picker_1 = true;
+                    self.dirty = false;
+                }
                 Submit(color) => {
                     self.anchor1 = color;
                     self.show_picker_1 = false;
@@ -182,10 +223,14 @@ impl<'a> ColorControls {
                 }
                 Cancel => {
                     self.show_picker_1 = false;
+                    self.dirty = false;
                 }
             },
             Anchor2(message) => match message {
-                Choose => self.show_picker_2 = true,
+                Choose => {
+                    self.show_picker_2 = true;
+                    self.dirty = false;
+                }
                 Submit(color) => {
                     self.anchor2 = color;
                     self.show_picker_2 = false;
@@ -193,11 +238,12 @@ impl<'a> ColorControls {
                 }
                 Cancel => {
                     self.show_picker_2 = false;
+                    self.dirty = false;
                 }
             },
-            PaletteNum(num) => {
-                self.palette_num = num;
-                self.dirty = false;
+            PaletteChoice(c) => {
+                self.palette_choice = Some(c);
+                self.dirty = true;
             }
             Null => self.dirty = true,
         }
@@ -205,6 +251,7 @@ impl<'a> ColorControls {
 
     pub fn view(&mut self) -> Element<'a, ColorMessage> {
         use ColorMessage::*;
+        use Palettes::*;
         let mut col = Column::new();
         let mode = row([ColorMode::Palette, ColorMode::Scale]
             .iter()
@@ -264,16 +311,26 @@ impl<'a> ColorControls {
                 )
                 .spacing(15);
         } else {
-            let palette_num = lslider::LSlider::new(
-                "Palette Number".to_string(),
-                self.palette_num,
-                0..=11,
-                1,
-                PaletteNum,
-                Null,
-            )
-            .decimals(0);
-            col = col.push(palette_num);
+            let pc = lpicklist::LPickList::new(
+                "Palette".to_string(),
+                vec![
+                    Royalty,
+                    DeltaBlues,
+                    PinotNoir,
+                    Algae,
+                    Scepter,
+                    Fire,
+                    Perfume,
+                    Rose,
+                    GrayScale,
+                    PorcoRosso,
+                    SpiritedAway,
+                    Totoro,
+                ],
+                self.palette_choice,
+                |x| x.map_or(Null, PaletteChoice),
+            );
+            col = col.push(pc);
         }
         col.spacing(15).into()
     }

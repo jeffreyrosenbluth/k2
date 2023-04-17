@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use wassily::prelude::*;
 
 #[derive(Clone, Copy, Debug)]
@@ -28,7 +30,7 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn curve(&mut self, x: f32, y: f32) -> Vec<Point> {
+    pub fn curve1(&mut self, x: f32, y: f32) -> Vec<Point> {
         let mut vertices: Vec<Vertex> = Vec::new();
         let mut theta = noise2d(&self.noise_function, &self.noise_opts, x, y) * PI;
         let v = Vertex::new(x, y, theta);
@@ -45,6 +47,43 @@ impl Field {
                 + self.speed * noise2d(&self.noise_function, &self.noise_opts, x1, y1) * PI;
             v1 = Vertex::new(x1, y1, theta);
             vertices.push(v1);
+        }
+        vertices.into_iter().map(|v| v.to_point()).collect()
+    }
+
+    pub fn curve2(&mut self, x: f32, y: f32) -> Vec<Point> {
+        let mut vertices: VecDeque<Vertex> = VecDeque::new();
+        let mut theta_back = noise2d(&self.noise_function, &self.noise_opts, x, y) * PI;
+        let mut theta_front = theta_back;
+        let v = Vertex::new(x, y, theta_back);
+        vertices.push_back(v);
+        let mut v_back: Vertex;
+        let mut v_front: Vertex;
+        let mut x_back1: f32;
+        let mut y_back1: f32;
+        let mut x_front1: f32;
+        let mut y_front1: f32;
+        let mut v1: Vertex;
+        let mut v2: Vertex;
+        for _ in 0..self.curve_length / 2 {
+            v_back = *vertices.back().unwrap();
+            v_front = *vertices.front().unwrap();
+            x_back1 = v_back.x + self.step_size * v_back.theta.cos();
+            y_back1 = v_back.y + self.step_size * v_back.theta.sin();
+            x_front1 = v_front.x + self.step_size * (PI + v_front.theta).cos();
+            y_front1 = v_front.y + self.step_size * (PI + v_front.theta).sin();
+            theta_back = (1.0 - self.speed) * theta_back
+                + self.speed
+                    * noise2d(&self.noise_function, &self.noise_opts, x_back1, y_back1)
+                    * PI;
+            theta_front = (1.0 - self.speed) * theta_front
+                + self.speed
+                    * noise2d(&self.noise_function, &self.noise_opts, x_front1, y_front1)
+                    * PI;
+            v1 = Vertex::new(x_back1, y_back1, theta_back);
+            v2 = Vertex::new(x_front1, y_front1, theta_front);
+            vertices.push_back(v1);
+            vertices.push_front(v2);
         }
         vertices.into_iter().map(|v| v.to_point()).collect()
     }

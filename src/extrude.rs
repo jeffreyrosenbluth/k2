@@ -1,4 +1,4 @@
-use crate::gradient::{GradStyle, GradStyle::None};
+use crate::gradient::{GradStyle, GradStyle::Plain};
 use crate::gui::lpicklist::LPickList;
 use crate::size::{SizeControls, SizeMessage};
 use iced::widget::Column;
@@ -22,7 +22,7 @@ impl Default for ExtrudeControls {
     fn default() -> Self {
         Self {
             size_controls: SizeControls::default(),
-            grad_style: Some(None),
+            grad_style: Some(Plain),
             dirty: false,
         }
     }
@@ -70,7 +70,7 @@ impl<'a> ExtrudeControls {
         col = col
             .push(LPickList::new(
                 "Gradient Style".to_string(),
-                vec![None, Light, Dark, Fiber, LightFiber, DarkFiber],
+                vec![Plain, Light, Dark, Fiber, LightFiber, DarkFiber],
                 self.grad_style,
                 |x| x.map_or(Null, GradStyle),
             ))

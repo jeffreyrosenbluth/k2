@@ -1,5 +1,5 @@
 use crate::background::Background;
-use crate::color::{ColorControls, ColorMode};
+use crate::color::{ColorControls, ColorMode, Palettes};
 use crate::common::*;
 use crate::dot::{DotControls, DotStyle};
 use crate::extrude::ExtrudeControls;
@@ -53,6 +53,8 @@ impl std::fmt::Display for Preset {
 pub fn ribbons() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Extrusion),
+        curve_direction: Some(CurveDirection::TwoSided),
+        noise_controls: NoiseControls::new(NoiseFunction::Fbm, 3.5, 4.0),
         spacing: 2.0,
         stroke_width: 4.0,
         curve_length: 175,
@@ -62,10 +64,10 @@ pub fn ribbons() -> Controls {
             false,
         ),
         fractal_controls: FractalControls::default().set_octaves(1),
-        density: 65.0,
+        density: 70.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(0),
+            .set_palette_choice(Palettes::Royalty),
         background: Some(Background::LightGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -111,7 +113,7 @@ pub fn solar() -> Controls {
         speed: 0.1,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(2),
+            .set_palette_choice(Palettes::PinotNoir),
         background: Some(Background::LightClouds),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -150,6 +152,7 @@ pub fn river_stones() -> Controls {
 pub fn vortex() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Extrusion),
+        curve_direction: Some(CurveDirection::TwoSided),
         noise_controls: NoiseControls::new(NoiseFunction::Curl, 3.0, 1.0),
         location: Some(Location::Halton),
         spacing: 1.0,
@@ -159,14 +162,14 @@ pub fn vortex() -> Controls {
             SizeControls::default()
                 .set_size_fn(Some(SizeFn::Constant))
                 .set_size(80.0),
-            Some(GradStyle::None),
+            Some(GradStyle::Plain),
             false,
         ),
         fractal_controls: FractalControls::default().set_octaves(1),
         density: 72.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(1),
+            .set_palette_choice(Palettes::DeltaBlues),
         background: Some(Background::LightClouds),
         width: "1000".to_string(),
         height: "1200".to_string(),
@@ -186,7 +189,7 @@ pub fn canyon() -> Controls {
         density: 100.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(7),
+            .set_palette_choice(Palettes::Rose),
         background: Some(Background::DarkGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -197,6 +200,7 @@ pub fn canyon() -> Controls {
 pub fn fence() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Extrusion),
+        curve_direction: Some(CurveDirection::TwoSided),
         noise_controls: NoiseControls::new(NoiseFunction::Fbm, 4.0, 1.0),
         location: Some(Location::Rand),
         spacing: 15.0,
@@ -211,7 +215,7 @@ pub fn fence() -> Controls {
                 25.0,
                 false,
             ),
-            Some(GradStyle::None),
+            Some(GradStyle::Plain),
             false,
         ),
         fractal_controls: FractalControls::default()
@@ -220,7 +224,7 @@ pub fn fence() -> Controls {
         density: 40.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(3),
+            .set_palette_choice(Palettes::Algae),
         background: Some(Background::ColorGrain),
         grain_color: Color::from_rgb8(152, 194, 152),
         width: "1080".to_string(),
@@ -232,6 +236,7 @@ pub fn fence() -> Controls {
 pub fn splat() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Dots),
+        curve_direction: Some(CurveDirection::TwoSided),
         noise_controls: NoiseControls::new(NoiseFunction::Fbm, 2.0, 1.0),
         location: Some(Location::Halton),
         spacing: 7.0,
@@ -253,7 +258,7 @@ pub fn splat() -> Controls {
         density: 60.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(8),
+            .set_palette_choice(Palettes::GrayScale),
         background: Some(Background::LightGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -282,7 +287,7 @@ pub fn tubes() -> Controls {
         density: 85.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(10),
+            .set_palette_choice(Palettes::SpiritedAway),
         background: Some(Background::DarkClouds),
         width: "1000".to_string(),
         height: "1200".to_string(),
@@ -312,7 +317,7 @@ pub fn ducts() -> Controls {
         density: 50.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(5),
+            .set_palette_choice(Palettes::Fire),
         sin_controls: SineControls::new(2.0, 2.0, 1.0, 3.0),
         background: Some(Background::ColorGrain),
         grain_color: Color::from_rgb8(195, 130, 65),
@@ -331,7 +336,7 @@ pub fn symmetry() -> Controls {
         density: 100.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(11),
+            .set_palette_choice(Palettes::Totoro),
         background: Some(Background::ColorGrain),
         grain_color: Color::from_rgb8(215, 155, 190),
         width: "1080".to_string(),
@@ -351,7 +356,7 @@ pub fn pompom() -> Controls {
         density: 100.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
-            .set_palette_num(10),
+            .set_palette_choice(Palettes::SpiritedAway),
         background: Some(Background::DarkGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),

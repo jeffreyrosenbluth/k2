@@ -4,7 +4,7 @@ use wassily::prelude::*;
 
 use crate::background::*;
 use crate::color::{color_palette, color_scale, ColorMode};
-use crate::common::{Controls, CurveStyle, HEIGHT, SEED, WIDTH};
+use crate::common::{Controls, CurveDirection, CurveStyle, HEIGHT, SEED, WIDTH};
 use crate::dot::DotStyle;
 use crate::field::Field;
 use crate::gradient::paint_lg;
@@ -148,7 +148,7 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
             .unwrap(),
             8,
         )),
-        ColorMode::Palette => color_palette(controls.color_mode_controls.palette_num),
+        ColorMode::Palette => color_palette(controls.color_mode_controls.palette_choice.unwrap()),
     };
 
     let len_fn = if controls.curve_style == Some(CurveStyle::Dots) {
@@ -177,7 +177,11 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     };
 
     for p in starts {
-        let pts = flow.curve(p.x, p.y);
+        let pts = if controls.curve_direction == Some(CurveDirection::OneSided) {
+            flow.curve1(p.x, p.y)
+        } else {
+            flow.curve2(p.x, p.y)
+        };
         let c = palette.rand_color();
 
         match controls.curve_style.unwrap() {

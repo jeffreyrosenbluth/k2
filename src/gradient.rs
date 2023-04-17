@@ -3,7 +3,7 @@ use wassily::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GradStyle {
-    None,
+    Plain,
     Light,
     Dark,
     Fiber,
@@ -17,7 +17,7 @@ impl std::fmt::Display for GradStyle {
             f,
             "{}",
             match self {
-                GradStyle::None => "None",
+                GradStyle::Plain => "Plain",
                 GradStyle::Light => "Light",
                 GradStyle::Dark => "Dark",
                 GradStyle::Fiber => "Fiber",
@@ -46,16 +46,18 @@ pub fn paint_lg<'a, R: RngCore>(
             GradientStop::new(1.0, *WHITE),
         ],
         DarkFiber => vec![
-            GradientStop::new(0.0, *WHITE),
+            GradientStop::new(0.0, Color::from_rgba8(30, 30, 30, 255)),
+            GradientStop::new(rng.gen_range(0.05..0.25), *WHITE),
             GradientStop::new(rng.gen_range(0.7..1.0), color1),
-            GradientStop::new(1.0, *BLACK),
+            GradientStop::new(1.0, Color::from_rgba8(30, 30, 30, 255)),
         ],
         Fiber => vec![
             GradientStop::new(0.0, *WHITE),
             GradientStop::new(rng.gen_range(0.7..0.9), color1),
         ],
         Dark => vec![
-            GradientStop::new(0.0, color0),
+            GradientStop::new(0.0, Color::from_rgba8(30, 30, 30, 255)),
+            GradientStop::new(0.125, color0),
             GradientStop::new(0.875, color1),
             GradientStop::new(1.0, Color::from_rgba8(30, 30, 30, 255)),
         ],
@@ -65,7 +67,7 @@ pub fn paint_lg<'a, R: RngCore>(
             GradientStop::new(0.875, color1),
             GradientStop::new(1.0, *WHITE),
         ],
-        None => vec![
+        Plain => vec![
             GradientStop::new(0.0, color0),
             GradientStop::new(0.8, color1),
         ],

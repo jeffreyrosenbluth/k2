@@ -63,6 +63,7 @@ impl K2 {
 pub struct Controls {
     pub preset: Option<Preset>,
     pub curve_style: Option<CurveStyle>,
+    pub curve_direction: Option<CurveDirection>,
     pub spacing: f32,
     pub curve_length: u32,
     pub grain_color: Color,
@@ -97,6 +98,7 @@ impl Default for Controls {
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
+            curve_direction: Some(CurveDirection::OneSided),
             grain_color: Color::from_rgb8(128, 128, 128),
             show_grain_color_picker: false,
             location: Some(Location::Halton),
@@ -136,5 +138,20 @@ impl std::fmt::Display for CurveStyle {
                 CurveStyle::Extrusion => "Extrusion",
             }
         )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CurveDirection {
+    OneSided,
+    TwoSided,
+}
+
+impl From<CurveDirection> for String {
+    fn from(direction: CurveDirection) -> Self {
+        match direction {
+            CurveDirection::OneSided => "One Sided".to_string(),
+            CurveDirection::TwoSided => "Two Sided".to_string(),
+        }
     }
 }
