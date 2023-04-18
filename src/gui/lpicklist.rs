@@ -88,7 +88,8 @@ where
                 Event::PickListChanged
             )
             .text_size(self.text_size)
-            .width(self.width),
+            .width(self.width)
+            .placeholder("None"),
         ]
         .spacing(self.spacing)
         .into()

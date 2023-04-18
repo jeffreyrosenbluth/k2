@@ -42,7 +42,7 @@ pub fn expand_palette(palette: Vec<Color>) -> Vec<Color> {
             result.push(c);
         }
     }
-    return result;
+    result
 }
 
 fn hex_to_color(hex: Vec<u32>) -> Vec<Color> {

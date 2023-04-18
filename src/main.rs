@@ -1,3 +1,4 @@
+use directories::UserDirs;
 use iced::{
     widget::{
         button, image, radio, row, text, text_input, toggler, vertical_space, Container, Rule,
@@ -6,6 +7,7 @@ use iced::{
     Application, Command, Element, Settings, Theme,
 };
 use iced_aw::ColorPicker;
+use std::path::PathBuf;
 
 mod art;
 mod background;
@@ -23,7 +25,7 @@ mod presets;
 mod sine;
 mod size;
 
-use crate::art::print;
+use crate::art::draw;
 use crate::background::Background;
 use crate::color::{ColorControls, ColorMessage, ColorPickerMessage};
 use crate::common::{PresetState::NotSet, *};
@@ -43,6 +45,22 @@ pub fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.window.size = (1480, 1100);
     K2::run(settings)
+}
+
+pub async fn print(controls: Controls) {
+    let canvas = draw(&controls, true);
+    let dirs = UserDirs::new().unwrap();
+    let dir = dirs.download_dir().unwrap();
+    let path = format!(r"{}/{}", dir.to_string_lossy(), "k2");
+    let mut num = 0;
+    let mut sketch = PathBuf::from(format!(r"{path}_{num}"));
+    sketch.set_extension("png");
+    while sketch.exists() {
+        num += 1;
+        sketch = PathBuf::from(format!(r"{path}_{num}"));
+        sketch.set_extension("png");
+    }
+    canvas.save_png(&sketch);
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +130,7 @@ impl Application for K2 {
                     Ducts => ducts(),
                     Symmetry => symmetry(),
                     PomPom => pompom(),
+                    RedDwarf => red_dwarf(),
                     Ridges => ridges(),
                 };
                 self.controls.preset = Some(p);
@@ -270,6 +289,7 @@ impl Application for K2 {
                     Ducts,
                     Symmetry,
                     PomPom,
+                    RedDwarf,
                     Ridges,
                 ],
                 self.controls.preset,
@@ -473,7 +493,7 @@ impl Application for K2 {
         } else {
             button(text("Export").size(15)).on_press(Export)
         };
-        left_panel = left_panel.push(export_button).spacing(15);
+        left_panel = left_panel.push(export_button).spacing(12);
         let img_container = Container::new(img_view).width(self.width).height(1000);
         let image_panel =
             iced::widget::column!(vertical_space(25), img_container, vertical_space(5),)

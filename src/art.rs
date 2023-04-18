@@ -1,5 +1,3 @@
-use directories::UserDirs;
-use std::path::PathBuf;
 use wassily::prelude::*;
 
 use crate::background::*;
@@ -15,7 +13,11 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
         .scales(controls.noise_controls.noise_scale)
         .factor(controls.noise_controls.noise_factor);
     Field {
-        noise_function: match controls.noise_controls.noise_function.unwrap() {
+        noise_function: match controls
+            .noise_controls
+            .noise_function
+            .expect("controls.noise_function cannot be None")
+        {
             NoiseFunction::Fbm => Box::new(
                 Fbm::<Perlin>::default()
                     .set_octaves(controls.fractal_controls.octaves as usize)
@@ -123,14 +125,21 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
 
     let mut flow = choose_flow(controls, canvas.width, canvas.height);
 
-    let starts = controls.location.unwrap().starts(
-        canvas.w_f32(),
-        canvas.h_f32(),
-        105.0 - controls.density,
-        &mut rng,
-    );
+    let starts = controls
+        .location
+        .expect("controls.location cannot be None")
+        .starts(
+            canvas.w_f32(),
+            canvas.h_f32(),
+            105.0 - controls.density,
+            &mut rng,
+        );
 
-    let mut palette = match controls.color_mode_controls.mode.unwrap() {
+    let mut palette = match controls
+        .color_mode_controls
+        .mode
+        .expect("controls.mode cannot be None")
+    {
         ColorMode::Scale => Palette::new(color_scale(
             Color::from_rgba(
                 controls.color_mode_controls.anchor1.r,
@@ -165,26 +174,35 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
             .extrude_controls
             .size_controls
             .size_fn
-            .unwrap()
+            .expect("controls.size_fn cannot be None")
             .calc(
                 canvas.w_f32(),
                 canvas.h_f32(),
                 controls.extrude_controls.size_controls.size,
-                controls.extrude_controls.size_controls.direction.unwrap(),
+                controls
+                    .extrude_controls
+                    .size_controls
+                    .direction
+                    .expect("controls.direction cannot be None"),
                 controls.extrude_controls.size_controls.size_scale,
                 controls.extrude_controls.size_controls.min_size,
             )
     };
 
     for p in starts {
-        let pts = if controls.curve_direction == Some(CurveDirection::OneSided) {
-            flow.curve1(p.x, p.y)
-        } else {
-            flow.curve2(p.x, p.y)
+        let pts = match controls
+            .curve_direction
+            .expect("controls.curve_direction cannot be None")
+        {
+            CurveDirection::OneSided => flow.curve1(p.x, p.y),
+            CurveDirection::TwoSided => flow.curve2(p.x, p.y),
         };
         let c = palette.rand_color();
 
-        match controls.curve_style.unwrap() {
+        match controls
+            .curve_style
+            .expect("controls.curve_style cannot be None")
+        {
             CurveStyle::Dots => {
                 let sc = Color::from_rgba(
                     controls.dot_controls.dot_stroke_color.r,
@@ -195,7 +213,11 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
                 .unwrap();
                 for p in pts {
                     let r = len_fn(p);
-                    let mut sb = match controls.dot_controls.dot_style.unwrap() {
+                    let mut sb = match controls
+                        .dot_controls
+                        .dot_style
+                        .expect("controls.dot_style cannot be None")
+                    {
                         DotStyle::Circle => ShapeBuilder::new().circle(p, r),
                         DotStyle::Square => ShapeBuilder::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
                         DotStyle::Pearl => ShapeBuilder::new().pearl(
@@ -233,7 +255,10 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
                         p.x,
                         y1,
                         c,
-                        controls.extrude_controls.grad_style.unwrap(),
+                        controls
+                            .extrude_controls
+                            .grad_style
+                            .expect("controls.extrude_controls.grad_style cannot be None"),
                         &mut rng,
                     );
                     ShapeBuilder::new()
@@ -257,20 +282,4 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
             .draw(&mut canvas);
     }
     canvas
-}
-
-pub async fn print(controls: Controls) {
-    let canvas = draw(&controls, true);
-    let dirs = UserDirs::new().unwrap();
-    let dir = dirs.download_dir().unwrap();
-    let path = format!(r"{}/{}", dir.to_string_lossy(), "k2");
-    let mut num = 0;
-    let mut sketch = PathBuf::from(format!(r"{path}_{num}"));
-    sketch.set_extension("png");
-    while sketch.exists() {
-        num += 1;
-        sketch = PathBuf::from(format!(r"{path}_{num}"));
-        sketch.set_extension("png");
-    }
-    canvas.save_png(&sketch);
 }

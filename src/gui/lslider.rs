@@ -97,7 +97,6 @@ where
         };
 
         let r = row![text(self.label.clone()).size(self.text_size)];
-
         iced::widget::column![
             r.spacing(self.text_size),
             row![

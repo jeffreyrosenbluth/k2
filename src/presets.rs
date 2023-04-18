@@ -8,7 +8,7 @@ use crate::gradient::GradStyle;
 use crate::location::Location;
 use crate::noise::{NoiseControls, NoiseFunction};
 use crate::sine::SineControls;
-use crate::size::{SizeControls, SizeFn};
+use crate::size::{Dir, SizeControls, SizeFn};
 use iced::Color;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -24,6 +24,7 @@ pub enum Preset {
     Ducts,
     Symmetry,
     PomPom,
+    RedDwarf,
     Ridges,
 }
 
@@ -44,6 +45,7 @@ impl std::fmt::Display for Preset {
                 Preset::Ducts => "Ducts",
                 Preset::Symmetry => "Symmetry",
                 Preset::PomPom => "Pom Pom",
+                Preset::RedDwarf => "Red Dwarf",
                 Preset::Ridges => "Ridges (slow!)",
             }
         )
@@ -358,6 +360,37 @@ pub fn pompom() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::SpiritedAway),
         background: Some(Background::DarkGrain),
+        width: "1080".to_string(),
+        height: "1080".to_string(),
+        ..Default::default()
+    }
+}
+
+pub fn red_dwarf() -> Controls {
+    Controls {
+        curve_style: Some(CurveStyle::Extrusion),
+        curve_direction: Some(CurveDirection::TwoSided),
+        noise_controls: NoiseControls::new(NoiseFunction::Billow, 3.5, 4.0),
+        location: Some(Location::Circle),
+        spacing: 1.0,
+        stroke_width: 0.5,
+        curve_length: 180,
+        speed: 0.01,
+        extrude_controls: ExtrudeControls::new(
+            SizeControls::default()
+                .set_direction(Some(Dir::Both))
+                .set_size(150.0)
+                .set_min_size(1.0)
+                .set_size_fn(Some(SizeFn::Contracting)),
+            Some(GradStyle::Plain),
+            false,
+        ),
+        fractal_controls: FractalControls::default().set_octaves(1),
+        density: 65.0,
+        color_mode_controls: ColorControls::default()
+            .set_mode(ColorMode::Palette)
+            .set_palette_choice(Palettes::PorcoRosso),
+        background: Some(Background::DarkClouds),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
