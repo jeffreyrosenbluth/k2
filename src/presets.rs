@@ -275,7 +275,7 @@ pub fn tubes() -> Controls {
         location: Some(Location::Lissajous),
         spacing: 1.0,
         stroke_width: 0.5,
-        curve_length: 0,
+        curve_length: 15,
         dot_controls: DotControls {
             size_controls: SizeControls::default()
                 .set_size(235.0)

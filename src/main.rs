@@ -374,7 +374,7 @@ impl Application for K2 {
             .push(LSlider::new(
                 "Curve Length".to_string(),
                 self.controls.curve_length,
-                0..=500,
+                0..=400,
                 1,
                 CurveLength,
                 Draw(NotSet),
