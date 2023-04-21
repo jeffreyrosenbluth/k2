@@ -31,7 +31,7 @@ use crate::color::{ColorControls, ColorMessage, ColorPickerMessage};
 use crate::common::{PresetState::NotSet, *};
 use crate::dot::{DotControls, DotMessage};
 use crate::extrude::{ExtrudeControls, ExtrudeMessage};
-use crate::fractal::Fractal;
+use crate::fractal::{FractalControls, FractalMessage};
 use crate::gui::{lpicklist, lslider::LSlider};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
@@ -74,12 +74,9 @@ pub enum Message {
     Draw(PresetState),
     Loc(Location),
     Density(f32),
-    Octaves(u8),
+    Fractal(FractalMessage),
     Factor(f32),
     NoiseScale(f32),
-    Persistence(f32),
-    Lacunarity(f32),
-    Frequency(f32),
     Noise(NoiseFunction),
     Speed(f32),
     ExportComplete(()),
@@ -158,10 +155,12 @@ impl Application for K2 {
             Draw(state) => {
                 self.draw(state);
             }
-            Octaves(o) => self.controls.fractal_controls.octaves = o,
-            Persistence(p) => self.controls.fractal_controls.persistence = p,
-            Lacunarity(l) => self.controls.fractal_controls.lacunarity = l,
-            Frequency(f) => self.controls.fractal_controls.frequency = f,
+            Fractal(f) => {
+                self.controls.fractal_controls.update(f);
+                if self.controls.fractal_controls.dirty {
+                    self.draw(NotSet)
+                };
+            }
             Factor(f) => self.controls.noise_controls.noise_factor = f,
             NoiseScale(s) => self.controls.noise_controls.noise_scale = s,
             Noise(n) => {
@@ -430,15 +429,18 @@ impl Application for K2 {
         if self.controls.noise_controls.noise_function == Some(Fbm)
             || self.controls.noise_controls.noise_function == Some(Billow)
             || self.controls.noise_controls.noise_function == Some(Ridged)
+            || self.controls.noise_controls.noise_function == Some(Curl)
         {
             right_panel = right_panel.push(
-                Fractal::new(
+                FractalControls::new(
                     self.controls.fractal_controls.octaves,
                     self.controls.fractal_controls.persistence,
                     self.controls.fractal_controls.lacunarity,
                     self.controls.fractal_controls.frequency,
+                    self.controls.fractal_controls.dirty,
                 )
-                .show(),
+                .view()
+                .map(Message::Fractal),
             )
         }
         if self.controls.noise_controls.noise_function == Some(Sinusoidal) {

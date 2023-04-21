@@ -1,9 +1,16 @@
 #![allow(dead_code)]
 
-use crate::common::PresetState::NotSet;
 use crate::gui::lslider::LSlider;
-use crate::Message::{self, *};
 use iced::widget::{Column, Rule};
+use iced::Element;
+#[derive(Debug, Clone)]
+pub enum FractalMessage {
+    Octaves(u8),
+    Persistence(f32),
+    Lacunarity(f32),
+    Frequency(f32),
+    Null,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FractalControls {
@@ -11,6 +18,7 @@ pub struct FractalControls {
     pub persistence: f32,
     pub lacunarity: f32,
     pub frequency: f32,
+    pub dirty: bool,
 }
 
 impl Default for FractalControls {
@@ -20,17 +28,25 @@ impl Default for FractalControls {
             persistence: 0.5,
             lacunarity: 2.094395,
             frequency: 1.0,
+            dirty: false,
         }
     }
 }
 
-impl FractalControls {
-    pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
+impl<'a> FractalControls {
+    pub fn new(
+        octaves: u8,
+        persistence: f32,
+        lacunarity: f32,
+        frequency: f32,
+        dirty: bool,
+    ) -> Self {
         Self {
             octaves,
             persistence,
             lacunarity,
             frequency,
+            dirty,
         }
     }
 
@@ -53,39 +69,40 @@ impl FractalControls {
         self.frequency = frequency;
         self
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Fractal {
-    pub octaves: u8,
-    pub persistence: f32,
-    pub lacunarity: f32,
-    pub frequency: f32,
-}
-
-impl<'a> Fractal {
-    pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
-        Self {
-            octaves,
-            persistence,
-            lacunarity,
-            frequency,
+    pub fn update(&mut self, message: FractalMessage) {
+        use FractalMessage::*;
+        match message {
+            Octaves(octaves) => {
+                self.octaves = octaves;
+                self.dirty = false;
+            }
+            Persistence(persistence) => {
+                self.persistence = persistence;
+                self.dirty = false;
+            }
+            Lacunarity(lacunarity) => {
+                self.lacunarity = lacunarity;
+                self.dirty = false;
+            }
+            Frequency(frequency) => {
+                self.frequency = frequency;
+                self.dirty = false;
+            }
+            Null => {
+                self.dirty = true;
+            }
         }
     }
-    pub fn show(&self) -> Column<'a, Message> {
+
+    pub fn view(&self) -> Element<'a, FractalMessage> {
+        use FractalMessage::*;
         let mut col = Column::new()
             .push(Rule::horizontal(10))
             .push("Fractal Noise")
             .push(
-                LSlider::new(
-                    "Octaves".to_string(),
-                    self.octaves,
-                    1..=8,
-                    1,
-                    Octaves,
-                    Draw(NotSet),
-                )
-                .decimals(0),
+                LSlider::new("Octaves".to_string(), self.octaves, 1..=8, 1, Octaves, Null)
+                    .decimals(0),
             )
             .spacing(15);
         if self.octaves > 1 {
@@ -97,7 +114,7 @@ impl<'a> Fractal {
                         0.05..=0.95,
                         0.05,
                         Persistence,
-                        Draw(NotSet),
+                        Null,
                     )
                     .decimals(2),
                 )
@@ -108,7 +125,7 @@ impl<'a> Fractal {
                         0.1..=4.00,
                         0.1,
                         Lacunarity,
-                        Draw(NotSet),
+                        Null,
                     )
                     .decimals(2),
                 )
@@ -119,11 +136,11 @@ impl<'a> Fractal {
                         0.1..=4.00,
                         0.1,
                         Frequency,
-                        Draw(NotSet),
+                        Null,
                     )
                     .decimals(2),
                 )
         }
-        col
+        col.into()
     }
 }
