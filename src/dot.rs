@@ -1,5 +1,5 @@
 use crate::color::ColorPickerMessage;
-use crate::gui::{lpicklist::LPickList, lslider::LSlider};
+use crate::gui::{lpicklist::LPickList, lslider::LSlider, numeric_input::NumericInput};
 use crate::size::{SizeControls, SizeMessage};
 use iced::widget::{button, row, text, Column};
 use iced::Element;
@@ -92,7 +92,7 @@ impl<'a> DotControls {
             }
             Size(x) => {
                 self.size_controls.update(x);
-                self.dirty = self.size_controls.dirty
+                self.dirty = true;
             }
             PearlSides(x) => {
                 self.pearl_sides = x;
@@ -155,7 +155,6 @@ impl<'a> DotControls {
                     self.size_controls.direction,
                     self.size_controls.size_scale,
                     self.size_controls.min_size,
-                    self.size_controls.dirty,
                 )
                 .view()
                 .map(DotMessage::Size),

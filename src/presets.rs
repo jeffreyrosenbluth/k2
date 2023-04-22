@@ -59,14 +59,14 @@ pub fn ribbons() -> Controls {
         noise_controls: NoiseControls::new(NoiseFunction::Fbm, 3.5, 4.0),
         spacing: 2.0,
         stroke_width: 4.0,
-        curve_length: 175,
+        curve_length: 150,
         extrude_controls: ExtrudeControls::new(
             SizeControls::default().set_size(200.0),
             Some(GradStyle::Fiber),
-            false,
+            // false,
         ),
         fractal_controls: FractalControls::default().set_octaves(1),
-        density: 70.0,
+        density: 50.0,
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::Royalty),
@@ -165,7 +165,7 @@ pub fn vortex() -> Controls {
                 .set_size_fn(Some(SizeFn::Constant))
                 .set_size(80.0),
             Some(GradStyle::Plain),
-            false,
+            // false,
         ),
         fractal_controls: FractalControls::default().set_octaves(1),
         density: 72.0,
@@ -215,10 +215,9 @@ pub fn fence() -> Controls {
                 Some(crate::size::Dir::Both),
                 5.0,
                 25.0,
-                false,
             ),
             Some(GradStyle::Plain),
-            false,
+            // false,
         ),
         fractal_controls: FractalControls::default()
             .set_octaves(6)
@@ -383,7 +382,7 @@ pub fn red_dwarf() -> Controls {
                 .set_min_size(1.0)
                 .set_size_fn(Some(SizeFn::Contracting)),
             Some(GradStyle::Plain),
-            false,
+            // false,
         ),
         fractal_controls: FractalControls::default().set_octaves(1),
         density: 65.0,

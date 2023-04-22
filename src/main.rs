@@ -25,7 +25,6 @@ mod presets;
 mod sine;
 mod size;
 
-use crate::art::draw;
 use crate::background::Background;
 use crate::color::{ColorControls, ColorMessage, ColorPickerMessage};
 use crate::common::{PresetState::NotSet, *};
@@ -37,13 +36,14 @@ use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
 use crate::sine::{SineControls, SineMessage};
+use crate::{art::draw, gui::numeric_input::NumericInput};
 
 const TEXT_SIZE: u16 = 15;
 
 pub fn main() -> iced::Result {
     env_logger::init();
     let mut settings = Settings::default();
-    settings.window.size = (1480, 1100);
+    settings.window.size = (1500, 1100);
     K2::run(settings)
 }
 
@@ -157,12 +157,16 @@ impl Application for K2 {
             }
             Fractal(f) => {
                 self.controls.fractal_controls.update(f);
-                if self.controls.fractal_controls.dirty {
-                    self.draw(NotSet)
-                };
+                self.draw(NotSet);
             }
-            Factor(f) => self.controls.noise_controls.noise_factor = f,
-            NoiseScale(s) => self.controls.noise_controls.noise_scale = s,
+            Factor(f) => {
+                self.controls.noise_controls.noise_factor = f;
+                self.draw(NotSet)
+            }
+            NoiseScale(s) => {
+                self.controls.noise_controls.noise_scale = s;
+                self.draw(NotSet)
+            }
             Noise(n) => {
                 self.controls.noise_controls.noise_function = Some(n);
                 self.draw(NotSet);
@@ -176,9 +180,9 @@ impl Application for K2 {
             }
             Extrude(e) => {
                 self.controls.extrude_controls.update(e);
-                if self.controls.extrude_controls.dirty {
-                    self.draw(NotSet)
-                };
+                // if self.controls.extrude_controls.dirty {
+                self.draw(NotSet)
+                // };
             }
             ExportComplete(_) => self.controls.exporting = false,
             StrokeWidth(w) => self.controls.stroke_width = w,
@@ -379,21 +383,21 @@ impl Application for K2 {
                 Draw(NotSet),
             ));
         left_panel = left_panel
-            .push(LSlider::new(
+            .push(NumericInput::new(
                 "Noise Scale".to_string(),
                 self.controls.noise_controls.noise_scale,
                 0.5..=20.0,
                 0.1,
+                1,
                 NoiseScale,
-                Draw(NotSet),
             ))
-            .push(LSlider::new(
+            .push(NumericInput::new(
                 "Noise Factor".to_string(),
                 self.controls.noise_controls.noise_factor,
-                0.5..=20.0,
+                0.5..=10.0,
                 0.1,
+                1,
                 Factor,
-                Draw(NotSet),
             ))
             .push(
                 LSlider::new(
@@ -411,7 +415,7 @@ impl Application for K2 {
             let extrusion = ExtrudeControls::new(
                 self.controls.extrude_controls.size_controls,
                 self.controls.extrude_controls.grad_style,
-                self.controls.extrude_controls.dirty,
+                // self.controls.extrude_controls.dirty,
             );
             right_panel = right_panel.push(extrusion.view().map(Message::Extrude));
         } else if self.controls.curve_style == Some(crate::CurveStyle::Dots) {
@@ -437,7 +441,6 @@ impl Application for K2 {
                     self.controls.fractal_controls.persistence,
                     self.controls.fractal_controls.lacunarity,
                     self.controls.fractal_controls.frequency,
-                    self.controls.fractal_controls.dirty,
                 )
                 .view()
                 .map(Message::Fractal),

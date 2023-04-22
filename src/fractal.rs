@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::gui::lslider::LSlider;
+use crate::gui::numeric_input::NumericInput;
 use iced::widget::{Column, Rule};
 use iced::Element;
 #[derive(Debug, Clone)]
@@ -9,7 +9,6 @@ pub enum FractalMessage {
     Persistence(f32),
     Lacunarity(f32),
     Frequency(f32),
-    Null,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -18,7 +17,6 @@ pub struct FractalControls {
     pub persistence: f32,
     pub lacunarity: f32,
     pub frequency: f32,
-    pub dirty: bool,
 }
 
 impl Default for FractalControls {
@@ -26,27 +24,19 @@ impl Default for FractalControls {
         Self {
             octaves: 4,
             persistence: 0.5,
-            lacunarity: 2.094395,
+            lacunarity: 2.0,
             frequency: 1.0,
-            dirty: false,
         }
     }
 }
 
 impl<'a> FractalControls {
-    pub fn new(
-        octaves: u8,
-        persistence: f32,
-        lacunarity: f32,
-        frequency: f32,
-        dirty: bool,
-    ) -> Self {
+    pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
         Self {
             octaves,
             persistence,
             lacunarity,
             frequency,
-            dirty,
         }
     }
 
@@ -75,22 +65,15 @@ impl<'a> FractalControls {
         match message {
             Octaves(octaves) => {
                 self.octaves = octaves;
-                self.dirty = false;
             }
             Persistence(persistence) => {
                 self.persistence = persistence;
-                self.dirty = false;
             }
             Lacunarity(lacunarity) => {
                 self.lacunarity = lacunarity;
-                self.dirty = false;
             }
             Frequency(frequency) => {
                 self.frequency = frequency;
-                self.dirty = false;
-            }
-            Null => {
-                self.dirty = true;
             }
         }
     }
@@ -100,46 +83,41 @@ impl<'a> FractalControls {
         let mut col = Column::new()
             .push(Rule::horizontal(10))
             .push("Fractal Noise")
-            .push(
-                LSlider::new("Octaves".to_string(), self.octaves, 1..=8, 1, Octaves, Null)
-                    .decimals(0),
-            )
+            .push(NumericInput::new(
+                "Octaves".to_string(),
+                self.octaves,
+                1..=8,
+                1,
+                0,
+                Octaves,
+            ))
             .spacing(15);
         if self.octaves > 1 {
             col = col
-                .push(
-                    LSlider::new(
-                        "Persistence".to_string(),
-                        self.persistence,
-                        0.05..=0.95,
-                        0.05,
-                        Persistence,
-                        Null,
-                    )
-                    .decimals(2),
-                )
-                .push(
-                    LSlider::new(
-                        "Lacunarity".to_string(),
-                        self.lacunarity,
-                        0.1..=4.00,
-                        0.1,
-                        Lacunarity,
-                        Null,
-                    )
-                    .decimals(2),
-                )
-                .push(
-                    LSlider::new(
-                        "Frequency".to_string(),
-                        self.frequency,
-                        0.1..=4.00,
-                        0.1,
-                        Frequency,
-                        Null,
-                    )
-                    .decimals(2),
-                )
+                .push(NumericInput::new(
+                    "Persistence".to_string(),
+                    self.persistence,
+                    0.05..=0.95,
+                    0.05,
+                    1,
+                    Persistence,
+                ))
+                .push(NumericInput::new(
+                    "Lacunarity".to_string(),
+                    self.lacunarity,
+                    0.1..=4.00,
+                    0.1,
+                    1,
+                    Lacunarity,
+                ))
+                .push(NumericInput::new(
+                    "Frequency".to_string(),
+                    self.frequency,
+                    0.1..=4.00,
+                    0.1,
+                    1,
+                    Frequency,
+                ))
         }
         col.into()
     }

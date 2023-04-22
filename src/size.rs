@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::gui::{lpicklist::LPickList, lslider::LSlider};
+use crate::gui::{lpicklist::LPickList, lslider::LSlider, numeric_input::NumericInput};
 use iced::{
     widget::{Column, Rule},
     Element,
@@ -117,7 +117,6 @@ pub struct SizeControls {
     pub direction: Option<Dir>,
     pub size_scale: f32,
     pub min_size: f32,
-    pub dirty: bool,
 }
 
 impl Default for SizeControls {
@@ -128,7 +127,6 @@ impl Default for SizeControls {
             direction: Some(Dir::Both),
             size_scale: 10.0,
             min_size: 25.0,
-            dirty: false,
         }
     }
 }
@@ -140,7 +138,6 @@ impl<'a> SizeControls {
         direction: Option<Dir>,
         size_scale: f32,
         min_size: f32,
-        dirty: bool,
     ) -> Self {
         Self {
             size_fn,
@@ -148,7 +145,6 @@ impl<'a> SizeControls {
             direction,
             size_scale,
             min_size,
-            dirty,
         }
     }
     pub fn set_size_fn(mut self, size_fn: Option<SizeFn>) -> Self {
@@ -180,22 +176,18 @@ impl<'a> SizeControls {
         match message {
             SizeMessage::SizeFn(size_fn) => {
                 self.size_fn = Some(size_fn);
-                self.dirty = true
             }
             SizeMessage::Size(size) => {
                 self.size = size;
-                self.dirty = false
             }
             SizeMessage::Direction(direction) => self.direction = Some(direction),
             SizeMessage::SizeScale(size_scale) => {
                 self.size_scale = size_scale;
-                self.dirty = false
             }
             SizeMessage::MinSize(min_size) => {
                 self.min_size = min_size;
-                self.dirty = false
             }
-            SizeMessage::Null => self.dirty = true,
+            SizeMessage::Null => (),
         }
     }
 
@@ -212,13 +204,13 @@ impl<'a> SizeControls {
                 |x| x.map_or(Null, SizeMessage::SizeFn),
             ))
             .push(
-                LSlider::new(
+                NumericInput::new(
                     "Size".to_string(),
                     self.size,
                     5.0..=500.0,
                     5.0,
+                    0,
                     SizeMessage::Size,
-                    Null,
                 )
                 .decimals(0),
             );
@@ -230,31 +222,31 @@ impl<'a> SizeControls {
                     self.direction,
                     |x| x.map_or(Null, SizeMessage::Direction),
                 ))
-                .push(LSlider::new(
+                .push(NumericInput::new(
                     "Min Size".to_string(),
                     self.min_size,
                     1.0..=50.0,
                     1.0,
+                    1,
                     SizeMessage::MinSize,
-                    Null,
                 ))
         } else if self.size_fn == Some(Periodic) {
             col = col
-                .push(LSlider::new(
+                .push(NumericInput::new(
                     "Size Scale".to_string(),
                     self.size_scale,
                     1.0..=30.0,
                     1.0,
+                    1,
                     SizeMessage::SizeScale,
-                    Null,
                 ))
-                .push(LSlider::new(
+                .push(NumericInput::new(
                     "Min Size".to_string(),
                     self.min_size,
                     1.0..=50.0,
                     1.0,
+                    1,
                     SizeMessage::MinSize,
-                    Null,
                 ))
         }
         col.spacing(15).into()
