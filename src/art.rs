@@ -120,10 +120,10 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     let mut rng = SmallRng::seed_from_u64(SEED);
 
     let bg = match controls.background.unwrap() {
-        Background::LightClouds => BG::light_clouds(canvas.width, canvas.height),
+        Background::LightFiber => BG::light_fiber(canvas.width, canvas.height),
         Background::LightGrain => BG::light_grain(canvas.width, canvas.height, &mut rng),
         Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, &mut rng),
-        Background::DarkClouds => BG::dark_clouds(canvas.width, canvas.height),
+        Background::DarkFiber => BG::dark_fiber(canvas.width, canvas.height),
         Background::ColorGrain => {
             BG::color_grain(canvas.width, canvas.height, &mut rng, controls.grain_color)
         }

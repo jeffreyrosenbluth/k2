@@ -145,7 +145,6 @@ pub struct ColorControls {
     pub show_picker_1: bool,
     pub show_picker_2: bool,
     pub palette_choice: Option<Palettes>,
-    pub dirty: bool,
 }
 
 impl Default for ColorControls {
@@ -157,7 +156,6 @@ impl Default for ColorControls {
             show_picker_1: false,
             show_picker_2: false,
             palette_choice: Some(Palettes::Royalty),
-            dirty: false,
         }
     }
 }
@@ -170,7 +168,6 @@ impl<'a> ColorControls {
         show_picker_1: bool,
         show_picker_2: bool,
         palette_choice: Option<Palettes>,
-        dirty: bool,
     ) -> Self {
         Self {
             mode,
@@ -179,7 +176,6 @@ impl<'a> ColorControls {
             show_picker_1,
             show_picker_2,
             palette_choice,
-            dirty,
         }
     }
 
@@ -207,45 +203,25 @@ impl<'a> ColorControls {
         use ColorMessage::*;
         use ColorPickerMessage::*;
         match message {
-            Mode(m) => {
-                self.mode = Some(m);
-                self.dirty = true;
-            }
+            Mode(m) => self.mode = Some(m),
             Anchor1(message) => match message {
-                Choose => {
-                    self.show_picker_1 = true;
-                    self.dirty = false;
-                }
+                Choose => self.show_picker_1 = true,
                 Submit(color) => {
                     self.anchor1 = color;
                     self.show_picker_1 = false;
-                    self.dirty = true;
                 }
-                Cancel => {
-                    self.show_picker_1 = false;
-                    self.dirty = false;
-                }
+                Cancel => self.show_picker_1 = false,
             },
             Anchor2(message) => match message {
-                Choose => {
-                    self.show_picker_2 = true;
-                    self.dirty = false;
-                }
+                Choose => self.show_picker_2 = true,
                 Submit(color) => {
                     self.anchor2 = color;
                     self.show_picker_2 = false;
-                    self.dirty = true;
                 }
-                Cancel => {
-                    self.show_picker_2 = false;
-                    self.dirty = false;
-                }
+                Cancel => self.show_picker_2 = false,
             },
-            PaletteChoice(c) => {
-                self.palette_choice = Some(c);
-                self.dirty = true;
-            }
-            Null => self.dirty = true,
+            PaletteChoice(c) => self.palette_choice = Some(c),
+            Null => (),
         }
     }
 

@@ -4,9 +4,9 @@ use wassily::prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Background {
     LightGrain,
-    LightClouds,
+    LightFiber,
     DarkGrain,
-    DarkClouds,
+    DarkFiber,
     ColorGrain,
 }
 
@@ -17,9 +17,9 @@ impl std::fmt::Display for Background {
             "{}",
             match self {
                 Background::LightGrain => "Light Grain",
-                Background::LightClouds => "Light Clouds",
+                Background::LightFiber => "Light Fiber",
                 Background::DarkGrain => "Dark Grain",
-                Background::DarkClouds => "Dark Clouds ",
+                Background::DarkFiber => "Dark Fiber ",
                 Background::ColorGrain => "Color Grain",
             }
         )
@@ -93,14 +93,16 @@ impl BG {
         BG(canvas)
     }
 
-    pub fn light_clouds(width: u32, height: u32) -> Self {
+    pub fn light_fiber(width: u32, height: u32) -> Self {
         let mut canvas = Canvas::new(width, height);
-        let nf = Fbm::<Perlin>::default().set_octaves(4);
+        let nf1 = Fbm::<Perlin>::default().set_octaves(4);
+        let nf2: Turbulence<Fbm<Perlin>, Perlin> =
+            Turbulence::new(nf1).set_power(2.0).set_roughness(6);
         let opts = NoiseOpts::default();
         for i in 0..width {
             for j in 0..height {
                 let y =
-                    225 + (30.0 * noise2d_01(&nf, &opts, i as f32 * 0.05, j as f32 * 0.10)) as u8;
+                    255 - (40.0 * noise2d_01(&nf2, &opts, i as f32 * 0.005, j as f32 * 0.30)) as u8;
                 let c = Color::from_rgba8(y, y, y, 255);
                 let mut paint = Paint::default();
                 paint.set_color(c);
@@ -116,14 +118,16 @@ impl BG {
         BG(canvas)
     }
 
-    pub fn dark_clouds(width: u32, height: u32) -> Self {
+    pub fn dark_fiber(width: u32, height: u32) -> Self {
         let mut canvas = Canvas::new(width, height);
-        let nf = Fbm::<Perlin>::default().set_octaves(4);
+        let nf1 = Fbm::<Perlin>::default().set_octaves(4);
+        let nf2: Turbulence<Fbm<Perlin>, Perlin> =
+            Turbulence::new(nf1).set_power(2.0).set_roughness(6);
         let opts = NoiseOpts::default();
         for i in 0..width {
             for j in 0..height {
                 let y =
-                    25 + (30.0 * noise2d_01(&nf, &opts, i as f32 * 0.05, j as f32 * 0.10)) as u8;
+                    25 + (30.0 * noise2d_01(&nf2, &opts, i as f32 * 0.005, j as f32 * 0.30)) as u8;
                 let c = Color::from_rgba8(y, y, y, 255);
                 let mut paint = Paint::default();
                 paint.set_color(c);

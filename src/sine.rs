@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::gui::lslider::LSlider;
+use crate::gui::numeric_input::NumericInput;
 use iced::{
     widget::{Column, Rule},
     Element,
@@ -12,7 +12,7 @@ pub enum SineMessage {
     YFreq(f32),
     XExp(f32),
     YExp(f32),
-    Draw,
+    // Draw,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -71,7 +71,7 @@ impl<'a> SineControls {
             YFreq(yfreq) => self.yfreq = yfreq,
             XExp(xexp) => self.xexp = xexp,
             YExp(yexp) => self.yexp = yexp,
-            Draw => (),
+            // Draw => (),
         }
     }
 
@@ -80,50 +80,38 @@ impl<'a> SineControls {
         Column::new()
             .push(Rule::horizontal(10))
             .push("Sine Noise")
-            .push(
-                LSlider::new(
-                    "X Frequency".to_string(),
-                    self.xfreq,
-                    0.1..=10.0,
-                    0.1,
-                    XFreq,
-                    Draw,
-                )
-                .decimals(1),
-            )
-            .push(
-                LSlider::new(
-                    "Y Frequency".to_string(),
-                    self.yfreq,
-                    0.1..=10.0,
-                    0.1,
-                    YFreq,
-                    Draw,
-                )
-                .decimals(1),
-            )
-            .push(
-                LSlider::new(
-                    "X Exponent".to_string(),
-                    self.xexp,
-                    1.0..=4.0,
-                    1.0,
-                    XExp,
-                    Draw,
-                )
-                .decimals(0),
-            )
-            .push(
-                LSlider::new(
-                    "Y Exponent".to_string(),
-                    self.yexp,
-                    1.0..=4.0,
-                    1.0,
-                    YExp,
-                    Draw,
-                )
-                .decimals(0),
-            )
+            .push(NumericInput::new(
+                "X Frequency".to_string(),
+                self.xfreq,
+                0.1..=10.0,
+                0.1,
+                1,
+                XFreq,
+            ))
+            .push(NumericInput::new(
+                "Y Frequency".to_string(),
+                self.yfreq,
+                0.1..=10.0,
+                0.1,
+                1,
+                YFreq,
+            ))
+            .push(NumericInput::new(
+                "X Exponent".to_string(),
+                self.xexp,
+                1.0..=4.0,
+                1.0,
+                0,
+                XExp,
+            ))
+            .push(NumericInput::new(
+                "Y Exponent".to_string(),
+                self.yexp,
+                1.0..=4.0,
+                1.0,
+                0,
+                YExp,
+            ))
             .spacing(15)
             .into()
     }

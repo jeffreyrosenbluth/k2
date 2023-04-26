@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::gui::{lpicklist::LPickList, lslider::LSlider, numeric_input::NumericInput};
+use crate::gui::{lpicklist::LPickList, numeric_input::NumericInput};
 use iced::{
     widget::{Column, Rule},
     Element,

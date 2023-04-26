@@ -27,11 +27,11 @@ mod size;
 
 use crate::background::Background;
 use crate::color::{ColorControls, ColorMessage, ColorPickerMessage};
-use crate::common::{PresetState::NotSet, *};
+use crate::common::*;
 use crate::dot::{DotControls, DotMessage};
 use crate::extrude::{ExtrudeControls, ExtrudeMessage};
 use crate::fractal::{FractalControls, FractalMessage};
-use crate::gui::{lpicklist, lslider::LSlider};
+use crate::gui::lpicklist;
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
@@ -141,8 +141,14 @@ impl Application for K2 {
                 self.controls.curve_direction = Some(cd);
                 self.draw(NotSet);
             }
-            Space(b) => self.controls.spacing = b,
-            CurveLength(l) => self.controls.curve_length = l,
+            Space(b) => {
+                self.controls.spacing = b;
+                self.draw(NotSet)
+            }
+            CurveLength(l) => {
+                self.controls.curve_length = l;
+                self.draw(NotSet)
+            }
             Export => {
                 self.controls.exporting = true;
                 return Command::perform(print(self.controls.clone()), ExportComplete);
@@ -151,7 +157,10 @@ impl Application for K2 {
                 self.controls.location = Some(loc);
                 self.draw(NotSet);
             }
-            Density(s) => self.controls.density = s,
+            Density(s) => {
+                self.controls.density = s;
+                self.draw(NotSet)
+            }
             Draw(state) => {
                 self.draw(state);
             }
@@ -171,21 +180,30 @@ impl Application for K2 {
                 self.controls.noise_controls.noise_function = Some(n);
                 self.draw(NotSet);
             }
-            Speed(s) => self.controls.speed = s,
+            Speed(s) => {
+                self.controls.speed = s;
+                self.draw(NotSet)
+            }
             Dot(d) => {
-                self.controls.dot_controls.update(d);
-                if self.controls.dot_controls.dirty {
-                    self.draw(NotSet)
-                };
+                self.controls.dot_controls.update(d.clone());
+                match d {
+                    DotMessage::DotStrokeColor(c) => {
+                        if let ColorPickerMessage::Submit(_) = c {
+                            self.draw(NotSet)
+                        }
+                    }
+                    _ => self.draw(NotSet),
+                }
             }
             Extrude(e) => {
                 self.controls.extrude_controls.update(e);
-                // if self.controls.extrude_controls.dirty {
                 self.draw(NotSet)
-                // };
             }
             ExportComplete(_) => self.controls.exporting = false,
-            StrokeWidth(w) => self.controls.stroke_width = w,
+            StrokeWidth(w) => {
+                self.controls.stroke_width = w;
+                self.draw(NotSet)
+            }
             WidthSet(w) => {
                 self.controls.width = w;
             }
@@ -210,15 +228,25 @@ impl Application for K2 {
                 self.draw(NotSet);
             }
             Null => {}
-            Sinusoid(s) => match s {
-                SineMessage::Draw => self.draw(NotSet),
-                _ => self.controls.sin_controls.update(s),
-            },
+            Sinusoid(s) => {
+                self.controls.sin_controls.update(s);
+                self.draw(NotSet)
+            }
             ColorMode(c) => {
-                self.controls.color_mode_controls.update(c);
-                if self.controls.color_mode_controls.dirty {
-                    self.draw(NotSet)
-                };
+                self.controls.color_mode_controls.update(c.clone());
+                match c {
+                    ColorMessage::Anchor1(cpm1) => {
+                        if let ColorPickerMessage::Submit(_) = cpm1 {
+                            self.draw(NotSet)
+                        }
+                    }
+                    ColorMessage::Anchor2(cpm2) => {
+                        if let ColorPickerMessage::Submit(_) = cpm2 {
+                            self.draw(NotSet)
+                        }
+                    }
+                    _ => self.draw(NotSet),
+                }
             }
         }
         Command::none()
@@ -248,7 +276,6 @@ impl Application for K2 {
             self.controls.color_mode_controls.show_picker_1,
             self.controls.color_mode_controls.show_picker_2,
             self.controls.color_mode_controls.palette_choice,
-            self.controls.color_mode_controls.dirty,
         )
         .view()
         .map(Message::ColorMode);
@@ -348,39 +375,33 @@ impl Application for K2 {
             ))
             .push(lpicklist::LPickList::new(
                 "Background Style".to_string(),
-                vec![LightGrain, LightClouds, DarkGrain, DarkClouds, ColorGrain],
+                vec![LightGrain, LightFiber, DarkGrain, DarkFiber, ColorGrain],
                 self.controls.background,
                 |x| x.map_or(Null, Background),
             ))
-            .push(
-                LSlider::new(
-                    "Density".to_string(),
-                    self.controls.density,
-                    5.0..=100.0,
-                    5.0,
-                    Density,
-                    Draw(NotSet),
-                )
-                .decimals(0),
-            )
-            .push(
-                LSlider::new(
-                    "Point Spacing".to_string(),
-                    self.controls.spacing,
-                    1.0..=100.0,
-                    1.0,
-                    Space,
-                    Draw(NotSet),
-                )
-                .decimals(0),
-            )
-            .push(LSlider::new(
+            .push(NumericInput::new(
+                "Density".to_string(),
+                self.controls.density,
+                5.0..=100.0,
+                5.0,
+                0,
+                Density,
+            ))
+            .push(NumericInput::new(
+                "Point Spacing".to_string(),
+                self.controls.spacing,
+                1.0..=100.0,
+                1.0,
+                0,
+                Space,
+            ))
+            .push(NumericInput::new(
                 "Curve Length".to_string(),
                 self.controls.curve_length,
                 0..=400,
                 1,
+                0,
                 CurveLength,
-                Draw(NotSet),
             ));
         left_panel = left_panel
             .push(NumericInput::new(
@@ -399,23 +420,19 @@ impl Application for K2 {
                 1,
                 Factor,
             ))
-            .push(
-                LSlider::new(
-                    "Convergence Speed".to_string(),
-                    self.controls.speed,
-                    0.01..=1.00,
-                    0.01,
-                    Speed,
-                    Draw(NotSet),
-                )
-                .decimals(2),
-            )
+            .push(NumericInput::new(
+                "Convergence Speed".to_string(),
+                self.controls.speed,
+                0.01..=1.00,
+                0.01,
+                2,
+                Speed,
+            ))
             .push(color_mode);
         if self.controls.curve_style == Some(crate::CurveStyle::Extrusion) {
             let extrusion = ExtrudeControls::new(
                 self.controls.extrude_controls.size_controls,
                 self.controls.extrude_controls.grad_style,
-                // self.controls.extrude_controls.dirty,
             );
             right_panel = right_panel.push(extrusion.view().map(Message::Extrude));
         } else if self.controls.curve_style == Some(crate::CurveStyle::Dots) {
@@ -426,7 +443,6 @@ impl Application for K2 {
                 self.controls.dot_controls.pearl_smoothness,
                 self.controls.dot_controls.show_color_picker,
                 self.controls.dot_controls.dot_stroke_color,
-                self.controls.dot_controls.dirty,
             );
             right_panel = right_panel.push(dot.view().map(Message::Dot))
         };
@@ -475,17 +491,14 @@ impl Application for K2 {
             );
         }
         left_panel = left_panel
-            .push(
-                LSlider::new(
-                    "Stroke Width".to_string(),
-                    self.controls.stroke_width,
-                    0.0..=25.0,
-                    0.5,
-                    StrokeWidth,
-                    Draw(NotSet),
-                )
-                .decimals(1),
-            )
+            .push(NumericInput::new(
+                "Stroke Width".to_string(),
+                self.controls.stroke_width,
+                0.0..=25.0,
+                0.5,
+                1,
+                StrokeWidth,
+            ))
             .push(Container::new(
                 toggler("Border".to_owned(), self.controls.border, Border).text_size(TEXT_SIZE),
             ))

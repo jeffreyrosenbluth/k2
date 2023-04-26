@@ -116,7 +116,7 @@ pub fn solar() -> Controls {
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::PinotNoir),
-        background: Some(Background::LightClouds),
+        background: Some(Background::LightFiber),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
@@ -172,7 +172,7 @@ pub fn vortex() -> Controls {
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::DeltaBlues),
-        background: Some(Background::LightClouds),
+        background: Some(Background::LightFiber),
         width: "1000".to_string(),
         height: "1200".to_string(),
         ..Default::default()
@@ -289,7 +289,7 @@ pub fn tubes() -> Controls {
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::SpiritedAway),
-        background: Some(Background::DarkClouds),
+        background: Some(Background::DarkFiber),
         width: "1000".to_string(),
         height: "1200".to_string(),
         ..Default::default()
@@ -389,7 +389,7 @@ pub fn red_dwarf() -> Controls {
         color_mode_controls: ColorControls::default()
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::PorcoRosso),
-        background: Some(Background::DarkClouds),
+        background: Some(Background::DarkFiber),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()

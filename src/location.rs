@@ -42,13 +42,12 @@ impl Location {
             Location::Circle => {
                 let cx = w / 2.0;
                 let cy = h / 2.0;
-                let r = w.max(h);
-                let radii = vec![r / 6.0, r / 3.5, r / 2.5];
-                for r in radii {
-                    let delta = 0.5 * sep / r;
+                let divs = vec![1.0 / 6.0, 1.0 / 3.5, 1.0 / 2.5];
+                for d in divs {
+                    let delta = 0.5 * sep / w.max(h);
                     let mut theta = 0.0;
                     while theta <= TAU {
-                        pts.push(pt(cx + r * theta.cos(), cy + r * theta.sin()));
+                        pts.push(pt(cx + d * w * theta.cos(), cy + d * h * theta.sin()));
                         theta += delta;
                     }
                 }

@@ -108,7 +108,7 @@ impl Default for Controls {
             speed: 1.0,
             exporting: false,
             stroke_width: 1.0,
-            background: Some(Background::LightClouds),
+            background: Some(Background::LightFiber),
             width: String::new(),
             height: String::new(),
             border: true,
