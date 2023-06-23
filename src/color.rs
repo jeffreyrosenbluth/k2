@@ -6,7 +6,8 @@ use iced::{
     Element,
 };
 use iced_aw::ColorPicker;
-use wassily::prelude::{palette::LuvHue, palette::Saturate, palette::Shade, Color, *};
+use wassily::prelude::palette::{Darken, Desaturate, OklabHue, Saturate};
+use wassily::prelude::*;
 
 use crate::gui::lpicklist;
 
@@ -18,17 +19,18 @@ pub enum ColorPickerMessage {
 }
 
 pub fn color_scale(color1: Color, color2: Color, n: u8) -> Vec<Color> {
-    let c1 = Hsluv::from_color(&color1);
-    let c2 = Hsluv::from_color(&color2);
+    let c1 = Okhsl::from_color(&color1);
+    let c2 = Okhsl::from_color(&color2);
     let hsl1 = c1.desaturate(0.5).lighten(0.5);
     let hsl2 = c2.saturate(0.5).darken(0.5);
     (0..n)
         .map(|p| {
             let t = p as f32 * 1.0 / (n - 1) as f32;
-            let h = (1.0 - t) * hsl1.hue.to_positive_radians() + t * hsl2.hue.to_positive_radians();
+            let h =
+                (1.0 - t) * hsl1.hue.into_positive_radians() + t * hsl2.hue.into_positive_radians();
             let s = (1.0 - t) * hsl1.saturation + t * hsl2.saturation;
-            let l = (1.0 - t) * hsl1.l + t * hsl2.l;
-            Hsluv::new(LuvHue::from_radians(h), s, l).to_color()
+            let l = (1.0 - t) * hsl1.lightness + t * hsl2.lightness;
+            Okhsl::new(OklabHue::from_radians(h), s, l).to_color()
         })
         .collect()
 }
@@ -59,6 +61,11 @@ fn make_palette(hex: Vec<u32>) -> Palette {
     Palette::new(expand_palette(raw_palette))
 }
 
+fn grays() -> Vec<Color> {
+    let gs = vec![239, 223, 202, 168, 135, 109, 95, 74, 61, 28];
+    gs.iter().map(|g| gray(*g)).collect()
+}
+
 pub fn color_palette(pal: Palettes) -> Palette {
     use Palettes::*;
     match pal {
@@ -70,10 +77,25 @@ pub fn color_palette(pal: Palettes) -> Palette {
         Fire => make_palette(vec![0x621708, 0x941B0C, 0xBC3908, 0xF6AA1C]),
         Perfume => make_palette(vec![0xD9798B, 0x8C4962, 0x59364A, 0x594832]),
         Rose => make_palette(vec![0xBF2642, 0x731F2E, 0x400C16]),
-        GrayScale => make_palette(vec![0x000000, 0xE6E6E6, 0xA0A0A0]),
+        GrayScale => Palette::new(grays()),
         PorcoRosso => make_palette(vec![0x002B75, 0x862A23, 0xBD8878]),
         SpiritedAway => make_palette(vec![0xD9A404, 0xF2B988, 0xBF3030, 0x0D0D0D]),
         Totoro => make_palette(vec![0x6A7AB2, 0xF27E9D, 0x454259, 0x9B8660]),
+        MonoBlue => {
+            let mut cs = grays();
+            cs.push(*ROYALBLUE);
+            Palette::new(cs)
+        }
+        MonoRed => {
+            let mut cs = grays();
+            cs.push(*BROWN);
+            Palette::new(cs)
+        }
+        MonoGreen => {
+            let mut cs = grays();
+            cs.push(*MEDIUMSEAGREEN);
+            Palette::new(cs)
+        }
     }
 }
 
@@ -91,6 +113,9 @@ pub enum Palettes {
     PorcoRosso,
     SpiritedAway,
     Totoro,
+    MonoRed,
+    MonoGreen,
+    MonoBlue,
 }
 
 impl std::fmt::Display for Palettes {
@@ -108,6 +133,9 @@ impl std::fmt::Display for Palettes {
             Palettes::PorcoRosso => write!(f, "Porco Rosso"),
             Palettes::SpiritedAway => write!(f, "Spirited Away"),
             Palettes::Totoro => write!(f, "Totoro"),
+            Palettes::MonoBlue => write!(f, "Mono Blue"),
+            Palettes::MonoRed => write!(f, "Mono Red"),
+            Palettes::MonoGreen => write!(f, "Mono Green"),
         }
     }
 }
@@ -302,6 +330,9 @@ impl<'a> ColorControls {
                     PorcoRosso,
                     SpiritedAway,
                     Totoro,
+                    MonoRed,
+                    MonoGreen,
+                    MonoBlue,
                 ],
                 self.palette_choice,
                 |x| x.map_or(Null, PaletteChoice),

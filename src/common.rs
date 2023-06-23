@@ -36,11 +36,13 @@ impl K2 {
     pub fn new() -> Self {
         let controls = ribbons();
         let canvas = draw(&controls, false);
+        let w = canvas.width();
+        let h = canvas.height();
         Self {
             controls,
-            image: image::Handle::from_pixels(canvas.width, canvas.height, canvas.pixmap.take()),
-            width: canvas.width as u16,
-            height: canvas.height as u16,
+            image: image::Handle::from_pixels(w, h, canvas.pixmap.take()),
+            width: w as u16,
+            height: h as u16,
         }
     }
 

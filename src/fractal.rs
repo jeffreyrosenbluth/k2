@@ -3,6 +3,7 @@
 use crate::gui::numeric_input::NumericInput;
 use iced::widget::{Column, Rule};
 use iced::Element;
+
 #[derive(Debug, Clone)]
 pub enum FractalMessage {
     Octaves(u8),

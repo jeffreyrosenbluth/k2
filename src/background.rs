@@ -42,11 +42,10 @@ impl BG {
                 let c = Color::from_rgba(color.r, color.g, color.b, alpha).unwrap();
                 let mut paint = Paint::default();
                 paint.set_color(c);
-                ShapeBuilder::new()
+                Shape::new()
                     .rect_xywh(pt(i, j), pt(1, 1))
                     .fill_paint(&paint)
                     .no_stroke()
-                    .build()
                     .draw(&mut canvas);
             }
         }
@@ -61,11 +60,10 @@ impl BG {
                 let c = Color::from_rgba8(0, 0, 0, alpha);
                 let mut paint = Paint::default();
                 paint.set_color(c);
-                ShapeBuilder::new()
+                Shape::new()
                     .rect_xywh(pt(i, j), pt(1, 1))
                     .fill_paint(&paint)
                     .no_stroke()
-                    .build()
                     .draw(&mut canvas);
             }
         }
@@ -82,11 +80,10 @@ impl BG {
                 let mut paint = Paint::default();
                 paint.set_color(c);
                 paint.blend_mode = BlendMode::Multiply;
-                ShapeBuilder::new()
+                Shape::new()
                     .rect_xywh(pt(i, j), pt(1, 1))
                     .fill_paint(&paint)
                     .no_stroke()
-                    .build()
                     .draw(&mut canvas);
             }
         }
@@ -107,11 +104,10 @@ impl BG {
                 let mut paint = Paint::default();
                 paint.set_color(c);
                 paint.blend_mode = BlendMode::Multiply;
-                ShapeBuilder::new()
+                Shape::new()
                     .rect_xywh(pt(i, j), pt(1, 1))
                     .fill_paint(&paint)
                     .no_stroke()
-                    .build()
                     .draw(&mut canvas);
             }
         }
@@ -132,11 +128,10 @@ impl BG {
                 let mut paint = Paint::default();
                 paint.set_color(c);
                 paint.blend_mode = BlendMode::Multiply;
-                ShapeBuilder::new()
+                Shape::new()
                     .rect_xywh(pt(i, j), pt(1, 1))
                     .fill_paint(&paint)
                     .no_stroke()
-                    .build()
                     .draw(&mut canvas);
             }
         }
@@ -157,10 +152,9 @@ impl BG {
 
     pub fn canvas_bg(&self, canvas: &mut Canvas) {
         let paint = self.bg();
-        ShapeBuilder::new()
+        Shape::new()
             .rect_xywh(pt(0, 0), pt(canvas.w_f32(), canvas.h_f32()))
             .fill_paint(&paint)
-            .build()
             .draw(canvas);
     }
 }

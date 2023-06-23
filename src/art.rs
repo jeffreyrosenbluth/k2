@@ -120,17 +120,20 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     let mut rng = SmallRng::seed_from_u64(SEED);
 
     let bg = match controls.background.unwrap() {
-        Background::LightFiber => BG::light_fiber(canvas.width, canvas.height),
-        Background::LightGrain => BG::light_grain(canvas.width, canvas.height, &mut rng),
-        Background::DarkGrain => BG::dark_grain(canvas.width, canvas.height, &mut rng),
-        Background::DarkFiber => BG::dark_fiber(canvas.width, canvas.height),
-        Background::ColorGrain => {
-            BG::color_grain(canvas.width, canvas.height, &mut rng, controls.grain_color)
-        }
+        Background::LightFiber => BG::light_fiber(canvas.width(), canvas.height()),
+        Background::LightGrain => BG::light_grain(canvas.width(), canvas.height(), &mut rng),
+        Background::DarkGrain => BG::dark_grain(canvas.width(), canvas.height(), &mut rng),
+        Background::DarkFiber => BG::dark_fiber(canvas.width(), canvas.height()),
+        Background::ColorGrain => BG::color_grain(
+            canvas.width(),
+            canvas.height(),
+            &mut rng,
+            controls.grain_color,
+        ),
     };
     bg.canvas_bg(&mut canvas);
 
-    let mut flow = choose_flow(controls, canvas.width, canvas.height);
+    let mut flow = choose_flow(controls, canvas.width(), canvas.height());
 
     let starts = controls
         .location
@@ -225,9 +228,9 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
                         .dot_style
                         .expect("controls.dot_style cannot be None")
                     {
-                        DotStyle::Circle => ShapeBuilder::new().circle(p, r),
-                        DotStyle::Square => ShapeBuilder::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
-                        DotStyle::Pearl => ShapeBuilder::new().pearl(
+                        DotStyle::Circle => Shape::new().circle(p, r),
+                        DotStyle::Square => Shape::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
+                        DotStyle::Pearl => Shape::new().pearl(
                             p,
                             r,
                             r,
@@ -241,15 +244,14 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
                     } else {
                         sb = sb.stroke_weight(controls.stroke_width).stroke_color(sc)
                     }
-                    sb.fill_color(c).build().draw(&mut canvas);
+                    sb.fill_color(c).draw(&mut canvas);
                 }
             }
-            CurveStyle::Line => ShapeBuilder::new()
+            CurveStyle::Line => Shape::new()
                 .points(&pts)
                 .no_fill()
                 .stroke_color(c)
                 .stroke_weight(controls.stroke_width)
-                .build()
                 .draw(&mut canvas),
             CurveStyle::Extrusion => {
                 for p in pts {
@@ -268,11 +270,10 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
                             .expect("controls.extrude_controls.grad_style cannot be None"),
                         &mut rng,
                     );
-                    ShapeBuilder::new()
+                    Shape::new()
                         .line(pt(p.x, y0), pt(p.x, y1))
                         .stroke_weight(controls.stroke_width)
                         .stroke_paint(&lg)
-                        .build()
                         .draw(&mut canvas);
                 }
             }
@@ -280,12 +281,11 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     }
     if controls.border {
         let border_color = palette[0].darken_fixed(0.35);
-        ShapeBuilder::new()
-            .rect_xywh(pt(0, 0), pt(canvas.width, canvas.height))
+        Shape::new()
+            .rect_xywh(pt(0, 0), pt(canvas.width(), canvas.height()))
             .no_fill()
             .stroke_color(border_color)
             .stroke_weight(20.0)
-            .build()
             .draw(&mut canvas);
     }
     canvas
