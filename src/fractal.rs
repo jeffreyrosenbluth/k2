@@ -1,16 +1,7 @@
 #![allow(dead_code)]
 
-use crate::gui::numeric_input::NumericInput;
-use iced::widget::{rule, Column};
-use iced::Element;
-
-#[derive(Debug, Clone)]
-pub enum FractalMessage {
-    Octaves(u8),
-    Persistence(f32),
-    Lacunarity(f32),
-    Frequency(f32),
-}
+use crate::gui::numeric;
+use eframe::egui;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FractalControls {
@@ -25,13 +16,14 @@ impl Default for FractalControls {
         Self {
             octaves: 4,
             persistence: 0.5,
-            lacunarity: 2.0,
+            // The noise crate's DEFAULT_LACUNARITY: pi * 2/3
+            lacunarity: std::f32::consts::PI * 2.0 / 3.0,
             frequency: 1.0,
         }
     }
 }
 
-impl<'a> FractalControls {
+impl FractalControls {
     pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
         Self {
             octaves,
@@ -61,65 +53,21 @@ impl<'a> FractalControls {
         self
     }
 
-    pub fn update(&mut self, message: FractalMessage) {
-        use FractalMessage::*;
-        match message {
-            Octaves(octaves) => {
-                self.octaves = octaves;
-            }
-            Persistence(persistence) => {
-                self.persistence = persistence;
-            }
-            Lacunarity(lacunarity) => {
-                self.lacunarity = lacunarity;
-            }
-            Frequency(frequency) => {
-                self.frequency = frequency;
-            }
-        }
-    }
-
-    pub fn view(&self) -> Element<'a, FractalMessage> {
-        use FractalMessage::*;
-        let mut col = Column::new()
-            .push(rule::horizontal(10))
-            .push("Fractal Noise")
-            .push(NumericInput::new(
-                "Octaves".to_string(),
-                self.octaves,
-                1..=8,
-                1,
-                0,
-                Octaves,
-            ))
-            .spacing(15);
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        ui.separator();
+        ui.label("Fractal Noise");
+        numeric(ui, "Octaves", &mut self.octaves, 1..=8, 1.0, 0);
         if self.octaves > 1 {
-            col = col
-                .push(NumericInput::new(
-                    "Persistence".to_string(),
-                    self.persistence,
-                    0.05..=0.95,
-                    0.05,
-                    1,
-                    Persistence,
-                ))
-                .push(NumericInput::new(
-                    "Lacunarity".to_string(),
-                    self.lacunarity,
-                    0.1..=4.00,
-                    0.1,
-                    1,
-                    Lacunarity,
-                ))
-                .push(NumericInput::new(
-                    "Frequency".to_string(),
-                    self.frequency,
-                    0.1..=4.00,
-                    0.1,
-                    1,
-                    Frequency,
-                ))
+            numeric(
+                ui,
+                "Persistence",
+                &mut self.persistence,
+                0.05..=0.95,
+                0.05,
+                2,
+            );
+            numeric(ui, "Lacunarity", &mut self.lacunarity, 0.1..=4.0, 0.1, 1);
+            numeric(ui, "Frequency", &mut self.frequency, 0.1..=4.0, 0.1, 1);
         }
-        col.into()
     }
 }

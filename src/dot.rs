@@ -1,20 +1,6 @@
-use crate::color::ColorPickerMessage;
-use crate::gui::{lpicklist::LPickList, numeric_input::NumericInput};
-use crate::size::{SizeControls, SizeMessage};
-use iced::widget::{button, row, text, Column};
-use iced::Element;
-use iced::{Alignment::Center, Color};
-use iced_aw::ColorPicker;
-
-#[derive(Debug, Clone)]
-pub enum DotMessage {
-    DotStyle(DotStyle),
-    Size(SizeMessage),
-    PearlSides(u32),
-    PearlSmoothness(u32),
-    DotStrokeColor(ColorPickerMessage),
-    Null,
-}
+use crate::gui::{color_picker, numeric, pick_list};
+use crate::size::SizeControls;
+use eframe::egui;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DotStyle {
@@ -43,8 +29,7 @@ pub struct DotControls {
     pub size_controls: SizeControls,
     pub pearl_sides: u32,
     pub pearl_smoothness: u32,
-    pub show_color_picker: bool,
-    pub dot_stroke_color: Color,
+    pub dot_stroke_color: egui::Color32,
 }
 
 impl Default for DotControls {
@@ -54,114 +39,27 @@ impl Default for DotControls {
             size_controls: SizeControls::default(),
             pearl_sides: 4,
             pearl_smoothness: 3,
-            show_color_picker: false,
-            dot_stroke_color: Color::WHITE,
+            dot_stroke_color: egui::Color32::WHITE,
         }
     }
 }
 
-impl<'a> DotControls {
-    pub fn new(
-        dot_style: Option<DotStyle>,
-        size_controls: SizeControls,
-        pearl_sides: u32,
-        pearl_smoothness: u32,
-        show_color_picker: bool,
-        dot_stroke_color: Color,
-    ) -> Self {
-        Self {
-            dot_style,
-            size_controls,
-            pearl_sides,
-            pearl_smoothness,
-            show_color_picker,
-            dot_stroke_color,
-        }
-    }
-
-    pub fn update(&mut self, message: DotMessage) {
-        use self::DotMessage::*;
-        match message {
-            DotStyle(x) => self.dot_style = Some(x),
-            Size(x) => self.size_controls.update(x),
-            PearlSides(x) => self.pearl_sides = x,
-            PearlSmoothness(x) => self.pearl_smoothness = x,
-            DotStrokeColor(x) => match x {
-                ColorPickerMessage::Choose => self.show_color_picker = true,
-                ColorPickerMessage::Submit(c) => {
-                    self.dot_stroke_color = c;
-                    self.show_color_picker = false;
-                }
-                ColorPickerMessage::Cancel => self.show_color_picker = false,
-            },
-            Null => (),
-        }
-    }
-
-    pub fn view(&self) -> Element<'a, DotMessage> {
-        use self::DotStyle::*;
-        use DotMessage::*;
-        let color_button = button(text("Dot Stroke Color").size(15))
-            .on_press(DotStrokeColor(ColorPickerMessage::Choose));
-        let color_picker = ColorPicker::new(
-            self.show_color_picker,
-            self.dot_stroke_color,
-            color_button,
-            DotStrokeColor(ColorPickerMessage::Cancel),
-            |c| DotStrokeColor(ColorPickerMessage::Submit(c)),
-        );
-        let mut col = Column::new()
-            .push(LPickList::new(
-                "Dot Style".to_string(),
-                vec![Circle, Square, Pearl],
-                self.dot_style,
-                |x| x.map_or(Null, DotStyle),
-            ))
-            .push(
-                row![
-                    color_picker,
-                    text(format!(
-                        "{:3} {:3} {:3}",
-                        (self.dot_stroke_color.r * 255.0) as u8,
-                        (self.dot_stroke_color.g * 255.0) as u8,
-                        (self.dot_stroke_color.b * 255.0) as u8
-                    ))
-                    .size(15)
-                ]
-                .spacing(15)
-                .align_y(Center),
-            )
-            .push(
-                SizeControls::new(
-                    self.size_controls.size_fn,
-                    self.size_controls.size,
-                    self.size_controls.direction,
-                    self.size_controls.size_scale,
-                    self.size_controls.min_size,
-                )
-                .view()
-                .map(DotMessage::Size),
-            )
-            .spacing(15);
+impl DotControls {
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        use DotStyle::*;
+        pick_list(ui, "Dot Style", &[Circle, Square, Pearl], &mut self.dot_style);
+        color_picker(ui, "Dot Stroke Color", &mut self.dot_stroke_color);
+        self.size_controls.ui(ui);
         if self.dot_style == Some(Pearl) {
-            col = col
-                .push(NumericInput::new(
-                    "Pearl Sides".to_string(),
-                    self.pearl_sides,
-                    3..=8,
-                    1,
-                    0,
-                    PearlSides,
-                ))
-                .push(NumericInput::new(
-                    "Pearl Smoothness".to_string(),
-                    self.pearl_smoothness,
-                    0..=5,
-                    1,
-                    0,
-                    PearlSmoothness,
-                ))
+            numeric(ui, "Pearl Sides", &mut self.pearl_sides, 3..=8, 1.0, 0);
+            numeric(
+                ui,
+                "Pearl Smoothness",
+                &mut self.pearl_smoothness,
+                0..=5,
+                1.0,
+                0,
+            );
         }
-        col.into()
     }
 }

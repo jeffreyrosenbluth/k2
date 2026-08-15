@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+
 use crate::art::draw;
 use crate::background::Background;
 use crate::color::ColorControls;
@@ -11,71 +14,64 @@ use crate::presets::Preset;
 use crate::sine::SineControls;
 
 use crate::{location::Location, presets::ribbons};
-use iced::widget::image;
-use iced::Color;
+use eframe::egui;
 
 pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
 pub const SEED: u64 = 98713;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PresetState {
-    Set,
-    NotSet,
-}
-
-#[derive(Clone)]
 pub struct K2 {
     pub controls: Controls,
-    pub image: image::Handle,
-    pub width: u32,
-    pub height: u32,
+    /// The controls as of the last texture regeneration; used to detect edits.
+    pub last_drawn: Controls,
+    pub texture: Option<egui::TextureHandle>,
+    pub exporting: Arc<AtomicBool>,
 }
 
 impl K2 {
     pub fn new() -> Self {
         let controls = ribbons();
-        let canvas = draw(&controls, false);
-        let w = canvas.width();
-        let h = canvas.height();
         Self {
+            last_drawn: controls.clone(),
             controls,
-            image: image::Handle::from_rgba(w, h, canvas.pixmap.take()),
-            width: w,
-            height: h,
+            texture: None,
+            exporting: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    pub fn draw(&mut self, preset_state: PresetState) {
+    /// Regenerate the artwork and upload it as an egui texture.
+    pub fn regenerate(&mut self, ctx: &egui::Context) {
         let canvas = draw(&self.controls, false);
-        self.width = canvas.width();
-        self.height = canvas.height();
-        self.image = image::Handle::from_rgba(
-            canvas.pixmap.width(),
-            canvas.pixmap.height(),
-            canvas.pixmap.take(),
+        let image = egui::ColorImage::from_rgba_premultiplied(
+            [
+                canvas.pixmap.width() as usize,
+                canvas.pixmap.height() as usize,
+            ],
+            canvas.pixmap.data(),
         );
-        if preset_state == PresetState::NotSet {
-            self.controls.preset = None;
+        match &mut self.texture {
+            Some(texture) => texture.set(image, egui::TextureOptions::LINEAR),
+            None => {
+                self.texture = Some(ctx.load_texture("art", image, egui::TextureOptions::LINEAR))
+            }
         }
+        self.last_drawn = self.controls.clone();
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Controls {
     pub preset: Option<Preset>,
     pub curve_style: Option<CurveStyle>,
     pub curve_direction: Option<CurveDirection>,
     pub spacing: f32,
     pub curve_length: u32,
-    pub grain_color: Color,
-    pub show_grain_color_picker: bool,
+    pub grain_color: egui::Color32,
     pub location: Option<Location>,
     pub density: f32,
     pub noise_controls: NoiseControls,
     pub fractal_controls: FractalControls,
     pub speed: f32,
-    pub exporting: bool,
     pub stroke_width: f32,
     pub background: Option<Background>,
     pub width: String,
@@ -101,14 +97,12 @@ impl Default for Controls {
             spacing: 4.0,
             curve_length: 50,
             curve_direction: Some(CurveDirection::OneSided),
-            grain_color: Color::from_rgb8(128, 128, 128),
-            show_grain_color_picker: false,
+            grain_color: egui::Color32::from_rgb(128, 128, 128),
             location: Some(Location::Halton),
             noise_controls: NoiseControls::default(),
             density: 50.0,
             fractal_controls: FractalControls::default(),
             speed: 1.0,
-            exporting: false,
             stroke_width: 1.0,
             background: Some(Background::LightFiber),
             width: String::new(),
@@ -149,11 +143,15 @@ pub enum CurveDirection {
     TwoSided,
 }
 
-impl From<CurveDirection> for String {
-    fn from(direction: CurveDirection) -> Self {
-        match direction {
-            CurveDirection::OneSided => "One Sided".to_string(),
-            CurveDirection::TwoSided => "Two Sided".to_string(),
-        }
+impl std::fmt::Display for CurveDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                CurveDirection::OneSided => "One Sided",
+                CurveDirection::TwoSided => "Two Sided",
+            }
+        )
     }
 }

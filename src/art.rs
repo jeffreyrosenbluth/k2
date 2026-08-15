@@ -121,13 +121,12 @@ fn render_curve(
         .expect("controls.curve_style cannot be None")
     {
         CurveStyle::Dots => {
-            let sc = Color::from_rgba(
-                controls.dot_controls.dot_stroke_color.r,
-                controls.dot_controls.dot_stroke_color.g,
-                controls.dot_controls.dot_stroke_color.b,
-                1.0,
-            )
-            .unwrap();
+            let sc = Color::from_rgba8(
+                controls.dot_controls.dot_stroke_color.r(),
+                controls.dot_controls.dot_stroke_color.g(),
+                controls.dot_controls.dot_stroke_color.b(),
+                255,
+            );
             for p in pts {
                 let r = len_fn(p);
                 let mut sb = match controls
@@ -242,20 +241,18 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
         .expect("controls.mode cannot be None")
     {
         ColorMode::Scale => Palette::new(color_scale(
-            Color::from_rgba(
-                controls.color_mode_controls.anchor1.r,
-                controls.color_mode_controls.anchor1.g,
-                controls.color_mode_controls.anchor1.b,
-                1.0,
-            )
-            .unwrap(),
-            Color::from_rgba(
-                controls.color_mode_controls.anchor2.r,
-                controls.color_mode_controls.anchor2.g,
-                controls.color_mode_controls.anchor2.b,
-                1.0,
-            )
-            .unwrap(),
+            Color::from_rgba8(
+                controls.color_mode_controls.anchor1.r(),
+                controls.color_mode_controls.anchor1.g(),
+                controls.color_mode_controls.anchor1.b(),
+                255,
+            ),
+            Color::from_rgba8(
+                controls.color_mode_controls.anchor2.r(),
+                controls.color_mode_controls.anchor2.g(),
+                controls.color_mode_controls.anchor2.b(),
+                255,
+            ),
             8,
         )),
         ColorMode::Palette => color_palette(controls.color_mode_controls.palette_choice.unwrap()),

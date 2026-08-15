@@ -1,22 +1,9 @@
 #![allow(dead_code)]
 
-use iced::{
-    widget::{button, radio, row, text, Column},
-    Alignment::Center,
-    Element,
-};
-use iced_aw::ColorPicker;
+use crate::gui::{color_picker, pick_list};
+use eframe::egui;
 use wassily::prelude::palette::{Darken, Desaturate, OklabHue, Saturate};
 use wassily::prelude::*;
-
-use crate::gui::lpicklist;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ColorPickerMessage {
-    Choose,
-    Submit(iced::Color),
-    Cancel,
-}
 
 pub fn color_scale(color1: Color, color2: Color, n: u8) -> Vec<Color> {
     let c1 = Okhsl::from_color(&color1);
@@ -61,9 +48,9 @@ fn make_palette(hex: Vec<u32>) -> Palette {
     Palette::new(expand_palette(raw_palette))
 }
 
-fn grays() -> Vec<Color> {
+fn gray_values() -> Vec<Color> {
     let gs = vec![239, 223, 202, 168, 135, 109, 95, 74, 61, 28];
-    gs.iter().map(|g| wassily::prelude::grays(*g)).collect()
+    gs.iter().map(|g| grays(*g)).collect()
 }
 
 pub fn color_palette(pal: Palettes) -> Palette {
@@ -77,22 +64,22 @@ pub fn color_palette(pal: Palettes) -> Palette {
         Fire => make_palette(vec![0x621708, 0x941B0C, 0xBC3908, 0xF6AA1C]),
         Perfume => make_palette(vec![0xD9798B, 0x8C4962, 0x59364A, 0x594832]),
         Rose => make_palette(vec![0xBF2642, 0x731F2E, 0x400C16]),
-        GrayScale => Palette::new(grays()),
+        GrayScale => Palette::new(gray_values()),
         PorcoRosso => make_palette(vec![0x002B75, 0x862A23, 0xBD8878]),
         SpiritedAway => make_palette(vec![0xD9A404, 0xF2B988, 0xBF3030, 0x0D0D0D]),
         Totoro => make_palette(vec![0x6A7AB2, 0xF27E9D, 0x454259, 0x9B8660]),
         MonoBlue => {
-            let mut cs = grays();
+            let mut cs = gray_values();
             cs.push(*ROYALBLUE);
             Palette::new(cs)
         }
         MonoRed => {
-            let mut cs = grays();
+            let mut cs = gray_values();
             cs.push(*BROWN);
             Palette::new(cs)
         }
         MonoGreen => {
-            let mut cs = grays();
+            let mut cs = gray_values();
             cs.push(*MEDIUMSEAGREEN);
             Palette::new(cs)
         }
@@ -146,32 +133,11 @@ pub enum ColorMode {
     Scale,
 }
 
-impl From<ColorMode> for String {
-    fn from(mode: ColorMode) -> Self {
-        match mode {
-            ColorMode::Palette => "Palette",
-            ColorMode::Scale => "Color Scale",
-        }
-        .to_string()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ColorMessage {
-    Mode(ColorMode),
-    Anchor1(ColorPickerMessage),
-    Anchor2(ColorPickerMessage),
-    PaletteChoice(Palettes),
-    Null,
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ColorControls {
     pub mode: Option<ColorMode>,
-    pub anchor1: iced::Color,
-    pub anchor2: iced::Color,
-    pub show_picker_1: bool,
-    pub show_picker_2: bool,
+    pub anchor1: egui::Color32,
+    pub anchor2: egui::Color32,
     pub palette_choice: Option<Palettes>,
 }
 
@@ -179,40 +145,20 @@ impl Default for ColorControls {
     fn default() -> Self {
         Self {
             mode: Some(ColorMode::Scale),
-            anchor1: iced::Color::from_rgb8(20, 134, 187),
-            anchor2: iced::Color::from_rgb8(0, 0, 0),
-            show_picker_1: false,
-            show_picker_2: false,
+            anchor1: egui::Color32::from_rgb(20, 134, 187),
+            anchor2: egui::Color32::from_rgb(0, 0, 0),
             palette_choice: Some(Palettes::Royalty),
         }
     }
 }
 
-impl<'a> ColorControls {
-    pub fn new(
-        mode: Option<ColorMode>,
-        anchor1: iced::Color,
-        anchor2: iced::Color,
-        show_picker_1: bool,
-        show_picker_2: bool,
-        palette_choice: Option<Palettes>,
-    ) -> Self {
-        Self {
-            mode,
-            anchor1,
-            anchor2,
-            show_picker_1,
-            show_picker_2,
-            palette_choice,
-        }
-    }
-
-    pub fn set_anchor1(mut self, color: iced::Color) -> Self {
+impl ColorControls {
+    pub fn set_anchor1(mut self, color: egui::Color32) -> Self {
         self.anchor1 = color;
         self
     }
 
-    pub fn set_anchor2(mut self, color: iced::Color) -> Self {
+    pub fn set_anchor2(mut self, color: egui::Color32) -> Self {
         self.anchor2 = color;
         self
     }
@@ -227,97 +173,20 @@ impl<'a> ColorControls {
         self
     }
 
-    pub fn update(&mut self, message: ColorMessage) {
-        use ColorMessage::*;
-        use ColorPickerMessage::*;
-        match message {
-            Mode(m) => self.mode = Some(m),
-            Anchor1(message) => match message {
-                Choose => self.show_picker_1 = true,
-                Submit(color) => {
-                    self.anchor1 = color;
-                    self.show_picker_1 = false;
-                }
-                Cancel => self.show_picker_1 = false,
-            },
-            Anchor2(message) => match message {
-                Choose => self.show_picker_2 = true,
-                Submit(color) => {
-                    self.anchor2 = color;
-                    self.show_picker_2 = false;
-                }
-                Cancel => self.show_picker_2 = false,
-            },
-            PaletteChoice(c) => self.palette_choice = Some(c),
-            Null => (),
-        }
-    }
-
-    pub fn view(&mut self) -> Element<'a, ColorMessage> {
-        use ColorMessage::*;
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
         use Palettes::*;
-        let mut col = Column::new();
-        let mode = row([ColorMode::Palette, ColorMode::Scale]
-            .iter()
-            .cloned()
-            .map(|m| radio(m, m, self.mode, Mode).text_size(15).size(15))
-            .map(Element::from)
-            .collect::<Vec<_>>())
-        .spacing(15);
-        col = col.push(mode);
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut self.mode, Some(ColorMode::Palette), "Palette");
+            ui.radio_value(&mut self.mode, Some(ColorMode::Scale), "Color Scale");
+        });
         if self.mode == Some(ColorMode::Scale) {
-            let color_button1 = button(text("Anchor 1 Color").size(15))
-                .on_press(Anchor1(ColorPickerMessage::Choose));
-            let color_button2 = button(text("Anchor 2 Color").size(15))
-                .on_press(Anchor2(ColorPickerMessage::Choose));
-            let color_picker1 = ColorPicker::new(
-                self.show_picker_1,
-                self.anchor1,
-                color_button1,
-                Anchor1(ColorPickerMessage::Cancel),
-                |c| Anchor1(ColorPickerMessage::Submit(c)),
-            );
-            let color_picker2 = ColorPicker::new(
-                self.show_picker_2,
-                self.anchor2,
-                color_button2,
-                Anchor2(ColorPickerMessage::Cancel),
-                |c| Anchor2(ColorPickerMessage::Submit(c)),
-            );
-            col = col
-                .push(
-                    row![
-                        color_picker1,
-                        text(format!(
-                            "{:3} {:3} {:3}",
-                            (self.anchor1.r * 255.0) as u8,
-                            (self.anchor1.g * 255.0) as u8,
-                            (self.anchor1.b * 255.0) as u8
-                        ))
-                        .size(15)
-                    ]
-                    .spacing(15)
-                    .align_y(Center),
-                )
-                .push(
-                    row![
-                        color_picker2,
-                        text(format!(
-                            "{:3} {:3} {:3}",
-                            (self.anchor2.r * 255.0) as u8,
-                            (self.anchor2.g * 255.0) as u8,
-                            (self.anchor2.b * 255.0) as u8
-                        ))
-                        .size(15)
-                    ]
-                    .spacing(15)
-                    .align_y(Center),
-                )
-                .spacing(15);
+            color_picker(ui, "Anchor 1", &mut self.anchor1);
+            color_picker(ui, "Anchor 2", &mut self.anchor2);
         } else {
-            let pc = lpicklist::LPickList::new(
-                "Palette".to_string(),
-                vec![
+            pick_list(
+                ui,
+                "Palette",
+                &[
                     Royalty,
                     DeltaBlues,
                     PinotNoir,
@@ -334,11 +203,8 @@ impl<'a> ColorControls {
                     MonoGreen,
                     MonoBlue,
                 ],
-                self.palette_choice,
-                |x| x.map_or(Null, PaletteChoice),
+                &mut self.palette_choice,
             );
-            col = col.push(pc);
         }
-        col.spacing(15).into()
     }
 }

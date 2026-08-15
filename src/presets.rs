@@ -9,7 +9,7 @@ use crate::location::Location;
 use crate::noise::{NoiseControls, NoiseFunction};
 use crate::sine::SineControls;
 use crate::size::{Dir, SizeControls, SizeFn};
-use iced::Color;
+use eframe::egui::Color32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Preset {
@@ -94,7 +94,7 @@ pub fn ridges() -> Controls {
         },
         fractal_controls: FractalControls::default().set_octaves(2),
         density: 100.0,
-        color_mode_controls: ColorControls::default().set_anchor1(Color::from_rgb8(111, 171, 181)),
+        color_mode_controls: ColorControls::default().set_anchor1(Color32::from_rgb(111, 171, 181)),
         background: Some(Background::DarkGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -143,7 +143,7 @@ pub fn river_stones() -> Controls {
         stroke_width: 0.0,
         curve_length: 1,
         density: 45.0,
-        color_mode_controls: ColorControls::default().set_anchor1(Color::from_rgb8(45, 10, 65)),
+        color_mode_controls: ColorControls::default().set_anchor1(Color32::from_rgb(45, 10, 65)),
         background: Some(Background::ColorGrain),
         width: "1080".to_string(),
         height: "1080".to_string(),
@@ -227,7 +227,7 @@ pub fn fence() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::Algae),
         background: Some(Background::ColorGrain),
-        grain_color: Color::from_rgb8(152, 194, 152),
+        grain_color: Color32::from_rgb(152, 194, 152),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
@@ -282,7 +282,7 @@ pub fn tubes() -> Controls {
                 .set_min_size(10.0)
                 .set_size_fn(Some(SizeFn::Periodic))
                 .set_direction(Some(crate::size::Dir::Both)),
-            dot_stroke_color: Color::from_rgb8(0, 0, 0),
+            dot_stroke_color: Color32::from_rgb(0, 0, 0),
             ..Default::default()
         },
         density: 85.0,
@@ -303,7 +303,7 @@ pub fn ducts() -> Controls {
         location: Some(Location::Halton),
         dot_controls: DotControls {
             dot_style: Some(DotStyle::Square),
-            dot_stroke_color: Color::from_rgb8(0, 0, 0),
+            dot_stroke_color: Color32::from_rgb(0, 0, 0),
             size_controls: SizeControls::default()
                 .set_size(100.0)
                 .set_size_scale(10.0)
@@ -321,7 +321,7 @@ pub fn ducts() -> Controls {
             .set_palette_choice(Palettes::Fire),
         sin_controls: SineControls::new(2.0, 2.0, 1.0, 3.0),
         background: Some(Background::ColorGrain),
-        grain_color: Color::from_rgb8(195, 130, 65),
+        grain_color: Color32::from_rgb(195, 130, 65),
         ..Default::default()
     }
 }
@@ -339,7 +339,7 @@ pub fn symmetry() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::Totoro),
         background: Some(Background::ColorGrain),
-        grain_color: Color::from_rgb8(215, 155, 190),
+        grain_color: Color32::from_rgb(215, 155, 190),
         width: "1080".to_string(),
         height: "1080".to_string(),
         ..Default::default()
