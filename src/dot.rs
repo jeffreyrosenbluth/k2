@@ -129,7 +129,7 @@ impl<'a> DotControls {
                     .size(15)
                 ]
                 .spacing(15)
-                .align_items(Center),
+                .align_y(Center),
             )
             .push(
                 SizeControls::new(

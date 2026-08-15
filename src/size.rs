@@ -2,7 +2,7 @@
 
 use crate::gui::{lpicklist::LPickList, numeric_input::NumericInput};
 use iced::{
-    widget::{Column, Rule},
+    widget::{rule, Column},
     Element,
 };
 use wassily::prelude::*;
@@ -60,7 +60,7 @@ impl SizeFn {
         dir: Dir,
         scale: f32,
         min_size: f32,
-    ) -> Box<dyn Fn(Point) -> f32> {
+    ) -> Box<dyn Fn(Point) -> f32 + Send + Sync> {
         match self {
             SizeFn::Expanding => Box::new(expanding(w, h, r, dir, min_size)),
             SizeFn::Contracting => Box::new(contracting(w, h, r, dir, min_size)),
@@ -80,19 +80,19 @@ fn distance(p: Point, w: f32, h: f32, dir: Dir) -> f32 {
     }
 }
 
-fn expanding(w: f32, h: f32, r: f32, dir: Dir, min_size: f32) -> impl Fn(Point) -> f32 {
+fn expanding(w: f32, h: f32, r: f32, dir: Dir, min_size: f32) -> impl Fn(Point) -> f32 + Send + Sync {
     move |p| f32::max(min_size, distance(p, w, h, dir) * r)
 }
 
-fn contracting(w: f32, h: f32, r: f32, dir: Dir, min_size: f32) -> impl Fn(Point) -> f32 {
+fn contracting(w: f32, h: f32, r: f32, dir: Dir, min_size: f32) -> impl Fn(Point) -> f32 + Send + Sync {
     move |p| f32::max(min_size, (0.5 - distance(p, w, h, dir)) * r)
 }
 
-fn constant(r: f32) -> impl Fn(Point) -> f32 {
+fn constant(r: f32) -> impl Fn(Point) -> f32 + Send + Sync {
     move |_| r * 0.5
 }
 
-fn periodic(w: f32, h: f32, r: f32, scale: f32, min_size: f32) -> impl Fn(Point) -> f32 {
+fn periodic(w: f32, h: f32, r: f32, scale: f32, min_size: f32) -> impl Fn(Point) -> f32 + Send + Sync {
     move |p| {
         let opts = NoiseOpts::with_wh(w, h).scales(scale);
         let nf = Perlin::default().set_seed(98713);
@@ -195,7 +195,7 @@ impl<'a> SizeControls {
         use self::SizeFn::*;
         use SizeMessage::*;
         let mut col = Column::new()
-            .push(Rule::horizontal(10))
+            .push(rule::horizontal(10))
             .push("Size")
             .push(LPickList::new(
                 "Size Function".to_string(),

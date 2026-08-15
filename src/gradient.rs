@@ -42,18 +42,18 @@ pub fn paint_lg<'a, R: RngCore>(
     let stops = match grad_style {
         LightFiber => vec![
             GradientStop::new(0.0, *WHITE),
-            GradientStop::new(rng.gen_range(0.7..1.0), color1),
+            GradientStop::new(rng.random_range(0.7..1.0), color1),
             GradientStop::new(1.0, *WHITE),
         ],
         DarkFiber => vec![
             GradientStop::new(0.0, Color::from_rgba8(30, 30, 30, 255)),
-            GradientStop::new(rng.gen_range(0.05..0.25), *WHITE),
-            GradientStop::new(rng.gen_range(0.7..1.0), color1),
+            GradientStop::new(rng.random_range(0.05..0.25), *WHITE),
+            GradientStop::new(rng.random_range(0.7..1.0), color1),
             GradientStop::new(1.0, Color::from_rgba8(30, 30, 30, 255)),
         ],
         Fiber => vec![
             GradientStop::new(0.0, *WHITE),
-            GradientStop::new(rng.gen_range(0.7..0.9), color1),
+            GradientStop::new(rng.random_range(0.7..0.9), color1),
         ],
         Dark => vec![
             GradientStop::new(0.0, Color::from_rgba8(30, 30, 30, 255)),

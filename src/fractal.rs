@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::gui::numeric_input::NumericInput;
-use iced::widget::{Column, Rule};
+use iced::widget::{rule, Column};
 use iced::Element;
 
 #[derive(Debug, Clone)]
@@ -82,7 +82,7 @@ impl<'a> FractalControls {
     pub fn view(&self) -> Element<'a, FractalMessage> {
         use FractalMessage::*;
         let mut col = Column::new()
-            .push(Rule::horizontal(10))
+            .push(rule::horizontal(10))
             .push("Fractal Noise")
             .push(NumericInput::new(
                 "Octaves".to_string(),

@@ -31,7 +31,7 @@ impl Location {
             Location::Rand => {
                 let n = (w * h) / (sep * sep);
                 for _ in 0..n as u32 {
-                    pts.push(pt(rng.gen_range(0.0..w), rng.gen_range(0.0..h)));
+                    pts.push(pt(rng.random_range(0.0..w), rng.random_range(0.0..h)));
                 }
             }
             Location::Halton => {

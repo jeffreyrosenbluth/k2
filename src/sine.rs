@@ -2,7 +2,7 @@
 
 use crate::gui::numeric_input::NumericInput;
 use iced::{
-    widget::{Column, Rule},
+    widget::{rule, Column},
     Element,
 };
 
@@ -78,7 +78,7 @@ impl<'a> SineControls {
     pub fn view(&self) -> Element<'a, SineMessage> {
         use SineMessage::*;
         Column::new()
-            .push(Rule::horizontal(10))
+            .push(rule::horizontal(10))
             .push("Sine Noise")
             .push(NumericInput::new(
                 "X Frequency".to_string(),

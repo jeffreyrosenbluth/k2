@@ -1,10 +1,8 @@
 use directories::UserDirs;
 use iced::{
-    widget::{
-        button, image, radio, row, text, text_input, toggler, vertical_space, Container, Rule,
-    },
-    Alignment::{self, Center},
-    Application, Command, Element, Settings, Theme,
+    widget::{button, image, radio, row, rule, space, text, text_input, toggler, Container},
+    Alignment::Center,
+    Element, Task, Theme,
 };
 use iced_aw::ColorPicker;
 use std::path::PathBuf;
@@ -38,13 +36,45 @@ use crate::presets::*;
 use crate::sine::{SineControls, SineMessage};
 use crate::{art::draw, gui::numeric_input::NumericInput};
 
-const TEXT_SIZE: u16 = 15;
+const TEXT_SIZE: f32 = 15.0;
 
 pub fn main() -> iced::Result {
     env_logger::init();
-    let mut settings = Settings::default();
-    settings.window.size = (1500, 1100);
-    K2::run(settings)
+    if std::env::var("K2_BENCH").is_ok() {
+        bench();
+        return Ok(());
+    }
+    iced::application(K2::new, K2::update, K2::view)
+        .title("K2")
+        .theme(theme)
+        .font(iced_aw::ICED_AW_FONT_BYTES)
+        .window_size(iced::Size::new(1500.0, 1100.0))
+        .run()
+}
+
+fn theme(_state: &K2) -> Theme {
+    Theme::Dark
+}
+
+fn bench() {
+    use crate::background::Background as BgKind;
+    for bg in [
+        BgKind::LightFiber,
+        BgKind::LightGrain,
+        BgKind::DarkGrain,
+        BgKind::ColorGrain,
+    ] {
+        let mut controls = ribbons();
+        controls.background = Some(bg);
+        let t = std::time::Instant::now();
+        let canvas = draw(&controls, false);
+        println!(
+            "{bg}: {:?} ({}x{})",
+            t.elapsed(),
+            canvas.width(),
+            canvas.height()
+        );
+    }
 }
 
 pub async fn print(controls: Controls) {
@@ -95,21 +125,8 @@ pub enum Message {
     Null,
 }
 
-impl Application for K2 {
-    type Message = Message;
-    type Theme = Theme;
-    type Executor = iced::executor::Default;
-    type Flags = ();
-
-    fn new(_flags: ()) -> (K2, Command<Message>) {
-        (Self::new(), Command::none())
-    }
-
-    fn title(&self) -> String {
-        String::from("K2")
-    }
-
-    fn update(&mut self, message: Message) -> Command<Message> {
+impl K2 {
+    fn update(&mut self, message: Message) -> Task<Message> {
         use crate::presets::Preset::*;
         use Message::*;
         use PresetState::*;
@@ -151,7 +168,7 @@ impl Application for K2 {
             }
             Export => {
                 self.controls.exporting = true;
-                return Command::perform(print(self.controls.clone()), ExportComplete);
+                return Task::perform(print(self.controls.clone()), ExportComplete);
             }
             Loc(loc) => {
                 self.controls.location = Some(loc);
@@ -249,15 +266,15 @@ impl Application for K2 {
                 }
             }
         }
-        Command::none()
+        Task::none()
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         use crate::Background::*;
         use crate::NoiseFunction::*;
         use crate::Preset::*;
         use Message::*;
-        let img_view = image::viewer(self.image.clone()).min_scale(1.0);
+        let img_view = image::Viewer::new(self.image.clone()).min_scale(1.0);
         let mut left_panel = iced::widget::column![];
         let mut right_panel = iced::widget::column![];
         let grain_color_button = button(text("Grain Color").size(15))
@@ -280,9 +297,9 @@ impl Application for K2 {
         .view()
         .map(Message::ColorMode);
 
-        right_panel = right_panel.push(vertical_space(5.0));
+        right_panel = right_panel.push(space().height(5));
         left_panel = left_panel
-            .push(vertical_space(5.0))
+            .push(space().height(5))
             .push(
                 row!(
                     text("Width").size(15).width(90),
@@ -348,7 +365,7 @@ impl Application for K2 {
                         .size(15)
                 })
                 .map(Element::from)
-                .collect())
+                .collect::<Vec<_>>())
                 .spacing(15),
             )
             .push(lpicklist::LPickList::new(
@@ -475,7 +492,7 @@ impl Application for K2 {
             )
         }
         if self.controls.background == Some(ColorGrain) {
-            right_panel = right_panel.push(Rule::horizontal(15)).push(
+            right_panel = right_panel.push(rule::horizontal(15)).push(
                 row![
                     grain_color_picker,
                     text(format!(
@@ -487,7 +504,7 @@ impl Application for K2 {
                     .size(15)
                 ]
                 .spacing(15)
-                .align_items(Center),
+                .align_y(Center),
             );
         }
         left_panel = left_panel
@@ -500,7 +517,10 @@ impl Application for K2 {
                 StrokeWidth,
             ))
             .push(Container::new(
-                toggler("Border".to_owned(), self.controls.border, Border).text_size(TEXT_SIZE),
+                toggler(self.controls.border)
+                    .label("Border")
+                    .on_toggle(Border)
+                    .text_size(TEXT_SIZE),
             ))
             .padding(20)
             .spacing(15)
@@ -513,16 +533,15 @@ impl Application for K2 {
         };
         left_panel = left_panel.push(export_button).spacing(12);
         let img_container = Container::new(img_view).width(self.width).height(1000);
-        let image_panel =
-            iced::widget::column!(vertical_space(25), img_container, vertical_space(5),)
-                .spacing(15)
-                .align_items(Alignment::Center);
+        let image_panel = iced::widget::column!(
+            space().height(25),
+            img_container,
+            space().height(5),
+        )
+        .spacing(15)
+        .align_x(Center);
 
         right_panel = right_panel.padding(20).spacing(15).width(250);
         row![left_panel, image_panel, right_panel].into()
-    }
-
-    fn theme(&self) -> Theme {
-        Theme::Dark
     }
 }

@@ -30,7 +30,7 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn curve1(&mut self, x: f32, y: f32) -> Vec<Point> {
+    pub fn curve1(&self, x: f32, y: f32) -> Vec<Point> {
         let mut vertices: Vec<Vertex> = Vec::new();
         let mut theta = noise2d(&self.noise_function, &self.noise_opts, x, y) * PI;
         let v = Vertex::new(x, y, theta);
@@ -51,7 +51,7 @@ impl Field {
         vertices.into_iter().map(|v| v.to_point()).collect()
     }
 
-    pub fn curve2(&mut self, x: f32, y: f32) -> Vec<Point> {
+    pub fn curve2(&self, x: f32, y: f32) -> Vec<Point> {
         let mut vertices: VecDeque<Vertex> = VecDeque::new();
         let mut theta_back = noise2d(&self.noise_function, &self.noise_opts, x, y) * PI;
         let mut theta_front = theta_back;

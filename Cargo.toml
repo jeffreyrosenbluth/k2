@@ -5,14 +5,21 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-iced = { version = "0.9.0", features = ["image", "tokio"] }
+iced = { version = "0.14", features = ["image", "tokio", "lazy"] }
 wassily = { git = "https://github.com/jeffreyrosenbluth/wassily" }
-rand = { version = "0.8.5", features = ["small_rng"] }
-num-traits = "0.2.15"
-iced_aw = { git = "https://github.com/jeffreyrosenbluth/iced_aw", default-features = false, features = [
+rand = { version = "0.9", features = ["small_rng"] }
+num-traits = "0.2"
+iced_aw = { version = "0.14", default-features = false, features = [
     "color_picker",
 ] }
-directories = "5.0.0"
-env_logger = "0.10.0"
-iced_native = "0.10.1"
-iced_lazy = "0.6.1"
+directories = "6.0"
+env_logger = "0.11"
+rayon = "1.10"
+
+# Keep the app responsive in debug builds: optimize all dependencies
+# (tiny-skia, noise, iced) fully, and this crate's code lightly.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

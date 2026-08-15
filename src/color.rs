@@ -63,7 +63,7 @@ fn make_palette(hex: Vec<u32>) -> Palette {
 
 fn grays() -> Vec<Color> {
     let gs = vec![239, 223, 202, 168, 135, 109, 95, 74, 61, 28];
-    gs.iter().map(|g| gray(*g)).collect()
+    gs.iter().map(|g| wassily::prelude::grays(*g)).collect()
 }
 
 pub fn color_palette(pal: Palettes) -> Palette {
@@ -262,7 +262,7 @@ impl<'a> ColorControls {
             .cloned()
             .map(|m| radio(m, m, self.mode, Mode).text_size(15).size(15))
             .map(Element::from)
-            .collect())
+            .collect::<Vec<_>>())
         .spacing(15);
         col = col.push(mode);
         if self.mode == Some(ColorMode::Scale) {
@@ -297,7 +297,7 @@ impl<'a> ColorControls {
                         .size(15)
                     ]
                     .spacing(15)
-                    .align_items(Center),
+                    .align_y(Center),
                 )
                 .push(
                     row![
@@ -311,7 +311,7 @@ impl<'a> ColorControls {
                         .size(15)
                     ]
                     .spacing(15)
-                    .align_items(Center),
+                    .align_y(Center),
                 )
                 .spacing(15);
         } else {

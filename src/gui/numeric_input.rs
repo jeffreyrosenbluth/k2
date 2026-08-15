@@ -1,7 +1,7 @@
-use iced::widget::{button, row, slider, text, text_input};
-use iced::Alignment;
-use iced_lazy::{self, Component};
-use iced_native::Element;
+#![allow(deprecated)]
+
+use iced::widget::{column, component, row, slider, text, text_input, Component};
+use iced::{Alignment, Element};
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 
@@ -14,9 +14,9 @@ where
     value_string: String,
     range: RangeInclusive<T>,
     step: T,
-    text_size: u16,
-    width: u16,
-    spacing: u16,
+    text_size: f32,
+    width: f32,
+    spacing: f32,
     decimals: u8,
     on_release: Box<dyn Fn(T) -> Message>,
 }
@@ -52,23 +52,23 @@ where
             value,
             range,
             step,
-            text_size: 15,
-            width: 150,
-            spacing: 10,
+            text_size: 15.0,
+            width: 150.0,
+            spacing: 10.0,
             decimals,
             on_release: Box::new(on_release),
         }
     }
 
-    pub fn text_size(self, text_size: u16) -> Self {
+    pub fn text_size(self, text_size: f32) -> Self {
         Self { text_size, ..self }
     }
 
-    pub fn width(self, width: u16) -> Self {
+    pub fn width(self, width: f32) -> Self {
         Self { width, ..self }
     }
 
-    pub fn spacing(self, spacing: u16) -> Self {
+    pub fn spacing(self, spacing: f32) -> Self {
         Self { spacing, ..self }
     }
 
@@ -77,7 +77,7 @@ where
     }
 }
 
-impl<'a, T, Message, Renderer> Component<Message, Renderer> for NumericInput<T, Message>
+impl<T, Message> Component<Message> for NumericInput<T, Message>
 where
     T: Copy
         + From<u8>
@@ -87,12 +87,7 @@ where
         + std::fmt::Display
         + 'static,
     f64: From<T>,
-    Renderer: iced_native::text::Renderer + 'static,
-    Renderer::Theme: button::StyleSheet + text::StyleSheet + slider::StyleSheet,
-    <<Renderer as iced_native::Renderer>::Theme as iced::widget::text::StyleSheet>::Style:
-        From<iced::Color>,
-    <Renderer as iced_native::Renderer>::Theme: iced::widget::text_input::StyleSheet,
-    Message: 'a + Clone,
+    Message: Clone,
 {
     type State = ();
     type Event = Event<T>;
@@ -125,10 +120,9 @@ where
         }
     }
 
-    fn view(&self, _state: &Self::State) -> iced_native::Element<'_, Self::Event, Renderer> {
-        let r = row![text(self.label.clone()).size(self.text_size)];
-        iced::widget::column![
-            r.spacing(self.text_size),
+    fn view(&self, _state: &Self::State) -> Element<'_, Self::Event> {
+        column![
+            row![text(self.label.clone()).size(self.text_size)].spacing(self.text_size),
             row![
                 slider(self.range.clone(), self.value, Event::SliderChanged)
                     .on_release(Event::SliderReleased)
@@ -141,14 +135,14 @@ where
                     .width(45)
             ]
             .spacing(self.spacing)
-            .align_items(Alignment::Center)
+            .align_y(Alignment::Center)
         ]
         .spacing(self.spacing)
         .into()
     }
 }
 
-impl<'a, T, Message, Renderer> From<NumericInput<T, Message>> for Element<'a, Message, Renderer>
+impl<'a, T, Message> From<NumericInput<T, Message>> for Element<'a, Message>
 where
     T: Copy
         + From<u8>
@@ -158,14 +152,9 @@ where
         + std::fmt::Display
         + 'static,
     f64: From<T>,
-    Renderer: iced_native::text::Renderer + 'static,
-    Renderer::Theme: button::StyleSheet + text::StyleSheet + slider::StyleSheet,
-    <<Renderer as iced_native::Renderer>::Theme as iced::widget::text::StyleSheet>::Style:
-        From<iced::Color>,
-    <Renderer as iced_native::Renderer>::Theme: iced::widget::text_input::StyleSheet,
-    Message: 'a + Clone,
+    Message: Clone + 'a,
 {
     fn from(ni: NumericInput<T, Message>) -> Self {
-        iced_lazy::component(ni)
+        component(ni)
     }
 }

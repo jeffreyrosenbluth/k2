@@ -28,8 +28,8 @@ pub enum PresetState {
 pub struct K2 {
     pub controls: Controls,
     pub image: image::Handle,
-    pub width: u16,
-    pub height: u16,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl K2 {
@@ -40,17 +40,17 @@ impl K2 {
         let h = canvas.height();
         Self {
             controls,
-            image: image::Handle::from_pixels(w, h, canvas.pixmap.take()),
-            width: w as u16,
-            height: h as u16,
+            image: image::Handle::from_rgba(w, h, canvas.pixmap.take()),
+            width: w,
+            height: h,
         }
     }
 
     pub fn draw(&mut self, preset_state: PresetState) {
         let canvas = draw(&self.controls, false);
-        self.width = canvas.width() as u16;
-        self.height = canvas.height() as u16;
-        self.image = image::Handle::from_pixels(
+        self.width = canvas.width();
+        self.height = canvas.height();
+        self.image = image::Handle::from_rgba(
             canvas.pixmap.width(),
             canvas.pixmap.height(),
             canvas.pixmap.take(),

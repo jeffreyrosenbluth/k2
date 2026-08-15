@@ -1,3 +1,5 @@
+use rand::RngCore;
+use rayon::prelude::*;
 use wassily::prelude::*;
 
 use crate::background::*;
@@ -97,6 +99,94 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     }
 }
 
+fn render_curve(
+    controls: &Controls,
+    flow: &Field,
+    len_fn: &(dyn Fn(Point) -> f32 + Send + Sync),
+    start: Point,
+    c: Color,
+    rng: &mut SmallRng,
+    canvas: &mut Canvas,
+) {
+    let pts = match controls
+        .curve_direction
+        .expect("controls.curve_direction cannot be None")
+    {
+        CurveDirection::OneSided => flow.curve1(start.x, start.y),
+        CurveDirection::TwoSided => flow.curve2(start.x, start.y),
+    };
+
+    match controls
+        .curve_style
+        .expect("controls.curve_style cannot be None")
+    {
+        CurveStyle::Dots => {
+            let sc = Color::from_rgba(
+                controls.dot_controls.dot_stroke_color.r,
+                controls.dot_controls.dot_stroke_color.g,
+                controls.dot_controls.dot_stroke_color.b,
+                1.0,
+            )
+            .unwrap();
+            for p in pts {
+                let r = len_fn(p);
+                let mut sb = match controls
+                    .dot_controls
+                    .dot_style
+                    .expect("controls.dot_style cannot be None")
+                {
+                    DotStyle::Circle => Shape::new().circle(p, r),
+                    DotStyle::Square => Shape::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
+                    DotStyle::Pearl => Shape::new().pearl(
+                        p,
+                        r,
+                        r,
+                        controls.dot_controls.pearl_sides,
+                        controls.dot_controls.pearl_smoothness,
+                        rng,
+                    ),
+                };
+                if controls.stroke_width < 0.5 {
+                    sb = sb.no_stroke();
+                } else {
+                    sb = sb.stroke_weight(controls.stroke_width).stroke_color(sc)
+                }
+                sb.fill_color(c).draw(canvas);
+            }
+        }
+        CurveStyle::Line => Shape::new()
+            .points(&pts)
+            .no_fill()
+            .stroke_color(c)
+            .stroke_weight(controls.stroke_width)
+            .draw(canvas),
+        CurveStyle::Extrusion => {
+            for p in pts {
+                let r = len_fn(p);
+                let y0 = p.y - r;
+                let y1 = p.y + r;
+                let lg = paint_lg(
+                    p.x,
+                    y0,
+                    p.x,
+                    y1,
+                    c,
+                    controls
+                        .extrude_controls
+                        .grad_style
+                        .expect("controls.extrude_controls.grad_style cannot be None"),
+                    rng,
+                );
+                Shape::new()
+                    .line(pt(p.x, y0), pt(p.x, y1))
+                    .stroke_weight(controls.stroke_width)
+                    .stroke_paint(&lg)
+                    .draw(canvas);
+            }
+        }
+    }
+}
+
 pub fn draw(controls: &Controls, print: bool) -> Canvas {
     let mut canvas = Canvas::new(WIDTH, HEIGHT);
     if let Ok(w) = controls.width.parse::<u32>() {
@@ -133,7 +223,8 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     };
     bg.canvas_bg(&mut canvas);
 
-    let mut flow = choose_flow(controls, canvas.width(), canvas.height());
+    // The Field is rebuilt per render chunk below: noise 0.9's Worley holds an
+    // Rc internally, so a single Field cannot be shared across threads.
 
     let starts = controls
         .location
@@ -199,85 +290,38 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
             )
     };
 
-    for p in starts {
-        let pts = match controls
-            .curve_direction
-            .expect("controls.curve_direction cannot be None")
-        {
-            CurveDirection::OneSided => flow.curve1(p.x, p.y),
-            CurveDirection::TwoSided => flow.curve2(p.x, p.y),
-        };
-        let c = palette.rand_color();
-
-        match controls
-            .curve_style
-            .expect("controls.curve_style cannot be None")
-        {
-            CurveStyle::Dots => {
-                let sc = Color::from_rgba(
-                    controls.dot_controls.dot_stroke_color.r,
-                    controls.dot_controls.dot_stroke_color.g,
-                    controls.dot_controls.dot_stroke_color.b,
-                    1.0,
-                )
-                .unwrap();
-                for p in pts {
-                    let r = len_fn(p);
-                    let mut sb = match controls
-                        .dot_controls
-                        .dot_style
-                        .expect("controls.dot_style cannot be None")
-                    {
-                        DotStyle::Circle => Shape::new().circle(p, r),
-                        DotStyle::Square => Shape::new().rect_cwh(p, pt(2.0 * r, 2.0 * r)),
-                        DotStyle::Pearl => Shape::new().pearl(
-                            p,
-                            r,
-                            r,
-                            controls.dot_controls.pearl_sides,
-                            controls.dot_controls.pearl_smoothness,
-                            &mut rng,
-                        ),
-                    };
-                    if controls.stroke_width < 0.5 {
-                        sb = sb.no_stroke();
-                    } else {
-                        sb = sb.stroke_weight(controls.stroke_width).stroke_color(sc)
-                    }
-                    sb.fill_color(c).draw(&mut canvas);
-                }
+    // Assign per-curve colors and rng seeds sequentially so the result is
+    // deterministic, then rasterize chunks of curves on separate threads into
+    // transparent layers, composited in order to preserve overlap semantics.
+    let jobs: Vec<(Point, Color, u64)> = starts
+        .into_iter()
+        .map(|p| (p, palette.rand_color(), rng.next_u64()))
+        .collect();
+    let chunk_size = jobs
+        .len()
+        .div_ceil(rayon::current_num_threads())
+        .max(1);
+    let layers: Vec<Pixmap> = jobs
+        .par_chunks(chunk_size)
+        .map(|chunk| {
+            let mut layer = Canvas::with_scale(canvas.width(), canvas.height(), canvas.scale);
+            let flow = choose_flow(controls, canvas.width(), canvas.height());
+            for (p, c, seed) in chunk {
+                let mut rng = SmallRng::seed_from_u64(*seed);
+                render_curve(controls, &flow, len_fn.as_ref(), *p, *c, &mut rng, &mut layer);
             }
-            CurveStyle::Line => Shape::new()
-                .points(&pts)
-                .no_fill()
-                .stroke_color(c)
-                .stroke_weight(controls.stroke_width)
-                .draw(&mut canvas),
-            CurveStyle::Extrusion => {
-                for p in pts {
-                    let r = len_fn(p);
-                    let y0 = p.y - r;
-                    let y1 = p.y + r;
-                    let lg = paint_lg(
-                        p.x,
-                        y0,
-                        p.x,
-                        y1,
-                        c,
-                        controls
-                            .extrude_controls
-                            .grad_style
-                            .expect("controls.extrude_controls.grad_style cannot be None"),
-                        &mut rng,
-                    );
-                    Shape::new()
-                        .line(pt(p.x, y0), pt(p.x, y1))
-                        .stroke_weight(controls.stroke_width)
-                        .stroke_paint(&lg)
-                        .draw(&mut canvas);
-                }
-            }
-        }
+            layer.pixmap
+        })
+        .collect();
+    for layer in layers {
+        canvas.pixmap.draw_pixmap(
+            0,
+            0,
+            layer.as_ref(),
+            &PixmapPaint::default(),
+            Transform::identity(),
+            None,
+        );
     }
     if controls.border {
         let border_color = palette[0].darken_fixed(0.35);
