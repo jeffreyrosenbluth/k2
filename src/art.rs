@@ -6,6 +6,7 @@ use crate::background::*;
 use crate::color::{color_palette, color_scale, ColorMode};
 use crate::common::{Controls, CurveDirection, CurveStyle, HEIGHT, SEED, WIDTH};
 use crate::dot::DotStyle;
+use crate::extrude::ExtrudeDirection;
 use crate::field::Field;
 use crate::gradient::paint_lg;
 use crate::noise::*;
@@ -160,14 +161,37 @@ fn render_curve(
             .stroke_weight(controls.stroke_width)
             .draw(canvas),
         CurveStyle::Extrusion => {
-            for p in pts {
-                let r = len_fn(p);
-                let y0 = p.y - r;
-                let y1 = p.y + r;
+            let extrude_dir = controls
+                .extrude_controls
+                .direction
+                .unwrap_or(ExtrudeDirection::Vertical);
+            for (i, p) in pts.iter().enumerate() {
+                let r = len_fn(*p);
+                // Half-extent of the extruded line: along the y-axis, the
+                // x-axis, or the normal to the curve at this point (estimated
+                // from the neighboring points).
+                let (dx, dy) = match extrude_dir {
+                    ExtrudeDirection::Vertical => (0.0, r),
+                    ExtrudeDirection::Horizontal => (r, 0.0),
+                    ExtrudeDirection::Normal => {
+                        let prev = pts[i.saturating_sub(1)];
+                        let next = pts[(i + 1).min(pts.len() - 1)];
+                        let tx = next.x - prev.x;
+                        let ty = next.y - prev.y;
+                        let len = (tx * tx + ty * ty).sqrt();
+                        if len < f32::EPSILON {
+                            (0.0, r)
+                        } else {
+                            (-ty / len * r, tx / len * r)
+                        }
+                    }
+                };
+                let (x0, y0) = (p.x - dx, p.y - dy);
+                let (x1, y1) = (p.x + dx, p.y + dy);
                 let lg = paint_lg(
-                    p.x,
+                    x0,
                     y0,
-                    p.x,
+                    x1,
                     y1,
                     c,
                     controls
@@ -177,7 +201,7 @@ fn render_curve(
                     rng,
                 );
                 Shape::new()
-                    .line(pt(p.x, y0), pt(p.x, y1))
+                    .line(pt(x0, y0), pt(x1, y1))
                     .stroke_weight(controls.stroke_width)
                     .stroke_paint(&lg)
                     .draw(canvas);
