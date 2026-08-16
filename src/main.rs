@@ -1,11 +1,7 @@
 use directories::UserDirs;
-use iced::{
-    widget::{button, image, radio, row, rule, space, text, text_input, toggler, Container},
-    Alignment::Center,
-    Element, Task, Theme,
-};
-use iced_aw::ColorPicker;
+use eframe::egui;
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 
 mod art;
 mod background;
@@ -23,37 +19,460 @@ mod presets;
 mod sine;
 mod size;
 
+use crate::art::draw;
 use crate::background::Background;
-use crate::color::{ColorControls, ColorMessage, ColorPickerMessage};
 use crate::common::*;
-use crate::dot::{DotControls, DotMessage};
-use crate::extrude::{ExtrudeControls, ExtrudeMessage};
-use crate::fractal::{FractalControls, FractalMessage};
-use crate::gui::lpicklist;
+use crate::gui::{color_picker, numeric, pick_list, section, SliderRow, SPACE};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
-use crate::sine::{SineControls, SineMessage};
-use crate::{art::draw, gui::numeric_input::NumericInput};
 
-const TEXT_SIZE: f32 = 15.0;
-
-pub fn main() -> iced::Result {
+pub fn main() -> eframe::Result {
     env_logger::init();
     if std::env::var("K2_BENCH").is_ok() {
         bench();
         return Ok(());
     }
-    iced::application(K2::new, K2::update, K2::view)
-        .title("K2")
-        .theme(theme)
-        .font(iced_aw::ICED_AW_FONT_BYTES)
-        .window_size(iced::Size::new(1500.0, 1100.0))
-        .run()
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1500.0, 950.0])
+            .with_title("K2"),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "K2",
+        options,
+        Box::new(|cc| {
+            cc.egui_ctx.set_theme(egui::Theme::Dark);
+            Ok(Box::new(K2::new()))
+        }),
+    )
 }
 
-fn theme(_state: &K2) -> Theme {
-    Theme::Dark
+/// Render the artwork at full resolution and save it to `path`, along with
+/// a json file of the parameters that produced it.
+pub fn print(controls: Controls, mut path: PathBuf) {
+    if path.extension().is_none() {
+        path.set_extension("png");
+    }
+    let canvas = draw(&controls, true);
+    canvas.save_png(&path);
+    let params = path.with_extension("json");
+    match serde_json::to_string_pretty(&controls) {
+        Ok(json) => {
+            if let Err(e) = std::fs::write(&params, json) {
+                eprintln!("failed to write {}: {e}", params.display());
+            }
+        }
+        Err(e) => eprintln!("failed to serialize parameters: {e}"),
+    }
+}
+
+/// The first `k2_N.png` name not already present in `dir`.
+fn next_sketch_name(dir: &std::path::Path) -> String {
+    let mut num = 0;
+    while dir.join(format!("k2_{num}.png")).exists() {
+        num += 1;
+    }
+    format!("k2_{num}.png")
+}
+
+fn load_preset(p: Preset) -> Controls {
+    use Preset::*;
+    let mut controls = match p {
+        Ribbons => ribbons(),
+        Worms => worms(),
+        Solar => solar(),
+        Vortex => vortex(),
+        Canyon => canyon(),
+        Splat => splat(),
+        Tubes => tubes(),
+        Ducts => ducts(),
+        RedDwarf => red_dwarf(),
+    };
+    controls.preset = Some(p);
+    controls
+}
+
+impl K2 {
+    fn left_panel(&mut self, ui: &mut egui::Ui) {
+        use crate::common::CurveDirection::*;
+        use crate::CurveStyle::*;
+        use Background::*;
+        use NoiseFunction::*;
+        use Preset::*;
+
+        let d = Controls::default();
+        egui::Grid::new("main")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                SliderRow::new(
+                    "Width",
+                    &mut self.controls.width,
+                    d.width,
+                    0..=28800,
+                )
+                .hover(&[
+                    "Set the width of the output",
+                    "image in pixels. Values under",
+                    "180 are treated as inches",
+                    "at 300 DPI.",
+                ])
+                .unclamped()
+                .show(ui);
+                // Small values are treated as inches at 300 DPI.
+                if self.controls.width < 180 {
+                    self.controls.width *= 300;
+                }
+                SliderRow::new(
+                    "Height",
+                    &mut self.controls.height,
+                    d.height,
+                    0..=28800,
+                )
+                .hover(&[
+                    "Set the height of the output",
+                    "image in pixels. Values under",
+                    "180 are treated as inches",
+                    "at 300 DPI.",
+                ])
+                .unclamped()
+                .show(ui);
+                // Small values are treated as inches at 300 DPI.
+                if self.controls.height < 180 {
+                    self.controls.height *= 300;
+                }
+
+                let mut preset = self.controls.preset;
+                if pick_list(
+                    ui,
+                    "Preset",
+                    &[
+                        Ribbons, Worms, Solar, Vortex, Canyon, Splat, Tubes, Ducts, RedDwarf,
+                    ],
+                    &mut preset,
+                ) {
+                    if let Some(p) = preset {
+                        self.controls = load_preset(p);
+                    }
+                }
+            });
+
+        ui.add_space(SPACE);
+        ui.separator();
+        ui.add_space(SPACE);
+
+        egui::Grid::new("style")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                pick_list(
+                    ui,
+                    "Curve Style",
+                    &[Line, Dots, Extrusion],
+                    &mut self.controls.curve_style,
+                );
+                ui.label("Direction");
+                ui.horizontal(|ui| {
+                    ui.radio_value(&mut self.controls.curve_direction, Some(OneSided), "One");
+                    ui.radio_value(&mut self.controls.curve_direction, Some(TwoSided), "Two");
+                });
+                ui.end_row();
+                pick_list(
+                    ui,
+                    "Flow Field",
+                    &[
+                        Fbm, BasicMulti, HybridMulti, Billow, Ridged, Value, Cylinders,
+                        Worley, Curl, Sinusoidal,
+                    ],
+                    &mut self.controls.noise_controls.noise_function,
+                );
+                pick_list(
+                    ui,
+                    "Locations",
+                    &[
+                        Location::Grid,
+                        Location::Rand,
+                        Location::Halton,
+                        Location::Poisson,
+                        Location::Circle,
+                        Location::Lissajous,
+                        Location::Box,
+                    ],
+                    &mut self.controls.location,
+                );
+                pick_list(
+                    ui,
+                    "Background",
+                    &[
+                        LightGrain, LightFiber, DarkGrain, DarkFiber, ColorGrain, White, Black,
+                        Solid,
+                    ],
+                    &mut self.controls.background,
+                );
+            });
+
+        ui.add_space(SPACE);
+        ui.separator();
+        ui.add_space(SPACE);
+
+        egui::Grid::new("curves")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                numeric(
+                    ui,
+                    "Density",
+                    &mut self.controls.density,
+                    d.density,
+                    5.0..=100.0,
+                    5.0,
+                    0,
+                );
+                numeric(
+                    ui,
+                    "Point Spacing",
+                    &mut self.controls.spacing,
+                    d.spacing,
+                    1.0..=100.0,
+                    1.0,
+                    0,
+                );
+                numeric(
+                    ui,
+                    "Curve Length",
+                    &mut self.controls.curve_length,
+                    d.curve_length,
+                    0..=1000,
+                    1.0,
+                    0,
+                );
+                ui.label("Hide Ends").on_hover_ui(|ui| {
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "Extend both ends of every curve",
+                    );
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "along the flow field until they",
+                    );
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "leave the canvas, so no curve",
+                    );
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "endpoints are visible.",
+                    );
+                });
+                ui.checkbox(&mut self.controls.hide_ends, "");
+                ui.end_row();
+                numeric(
+                    ui,
+                    "Noise Scale",
+                    &mut self.controls.noise_controls.noise_scale,
+                    d.noise_controls.noise_scale,
+                    0.5..=20.0,
+                    0.1,
+                    1,
+                );
+                numeric(
+                    ui,
+                    "Noise Factor",
+                    &mut self.controls.noise_controls.noise_factor,
+                    d.noise_controls.noise_factor,
+                    0.5..=10.0,
+                    0.1,
+                    1,
+                );
+                SliderRow::new(
+                    "Turning Speed",
+                    &mut self.controls.speed,
+                    d.speed,
+                    0.01..=1.0,
+                )
+                .hover(&[
+                    "How quickly a curve turns toward",
+                    "the flow field direction. Low",
+                    "values give long, smooth strands.",
+                ])
+                .logarithmic()
+                .decimals(2)
+                .show(ui);
+            });
+
+        self.controls.color_mode_controls.ui(ui);
+
+        ui.add_space(2.0 * SPACE);
+        egui::Grid::new("stroke")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                numeric(
+                    ui,
+                    "Stroke Width",
+                    &mut self.controls.stroke_width,
+                    d.stroke_width,
+                    0.0..=25.0,
+                    0.5,
+                    1,
+                );
+            });
+
+        if self.exporting.load(Ordering::Relaxed) {
+            ui.add_space(SPACE);
+            ui.vertical_centered(|ui| ui.spinner());
+        }
+    }
+
+    /// Save the current artwork and its parameters on a background thread.
+    fn save_png(&mut self) {
+        let mut dialog = rfd::FileDialog::new().add_filter("PNG image", &["png"]);
+        if let Some(download_dir) = UserDirs::new().and_then(|d| d.download_dir().map(PathBuf::from))
+        {
+            dialog = dialog
+                .set_file_name(next_sketch_name(&download_dir))
+                .set_directory(download_dir);
+        }
+        let Some(path) = dialog.save_file() else {
+            return;
+        };
+        self.exporting.store(true, Ordering::Relaxed);
+        let controls = self.controls.clone();
+        let flag = self.exporting.clone();
+        std::thread::spawn(move || {
+            print(controls, path);
+            flag.store(false, Ordering::Relaxed);
+        });
+    }
+
+    fn menu_bar(&mut self, ui: &mut egui::Ui) {
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.menu_button("File", |ui| {
+                let exporting = self.exporting.load(Ordering::Relaxed);
+                if ui
+                    .add_enabled(!exporting, egui::Button::new("Save PNG"))
+                    .clicked()
+                {
+                    self.save_png();
+                }
+                if ui.button("Reset").clicked() {
+                    self.controls = ribbons();
+                }
+                ui.separator();
+                if ui.button("Quit").clicked() {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            });
+        });
+    }
+
+    fn right_panel(&mut self, ui: &mut egui::Ui) {
+        if self.controls.curve_style == Some(CurveStyle::Extrusion) {
+            self.controls.extrude_controls.ui(ui);
+        } else if self.controls.curve_style == Some(CurveStyle::Dots) {
+            self.controls.dot_controls.ui(ui);
+        }
+        if matches!(
+            self.controls.noise_controls.noise_function,
+            Some(NoiseFunction::Fbm)
+                | Some(NoiseFunction::BasicMulti)
+                | Some(NoiseFunction::HybridMulti)
+                | Some(NoiseFunction::Billow)
+                | Some(NoiseFunction::Ridged)
+                | Some(NoiseFunction::Curl)
+        ) {
+            self.controls.fractal_controls.ui(ui);
+        }
+        if self.controls.noise_controls.noise_function == Some(NoiseFunction::Sinusoidal) {
+            self.controls.sin_controls.ui(ui);
+        }
+        if self.controls.background == Some(Background::ColorGrain) {
+            section(ui, "Grain");
+            egui::Grid::new("grain")
+                .spacing((15.0, 10.0))
+                .min_col_width(90.0)
+                .show(ui, |ui| {
+                    color_picker(ui, "Grain Color", &mut self.controls.grain_color);
+                });
+        }
+        if self.controls.background == Some(Background::Solid) {
+            section(ui, "Background");
+            egui::Grid::new("solid_bg")
+                .spacing((15.0, 10.0))
+                .min_col_width(90.0)
+                .show(ui, |ui| {
+                    color_picker(ui, "Color", &mut self.controls.solid_color);
+                });
+        }
+    }
+}
+
+impl eframe::App for K2 {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+        egui::Panel::top("menu_bar").show(ui, |ui| {
+            self.menu_bar(ui);
+        });
+        // Panel width: 90px label column + 15px grid spacing + ~185px of
+        // slider/value/reset widgets, a 10px scrollbar strip, and 2x10 margins.
+        egui::Panel::left("controls")
+            .exact_size(330.0)
+            .resizable(false)
+            .frame(egui::Frame::default().inner_margin(10.0))
+            .show(ui, |ui| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        ui.add_space(SPACE);
+                        self.left_panel(ui);
+                    });
+            });
+        egui::Panel::right("style_controls")
+            .exact_size(330.0)
+            .resizable(false)
+            .frame(egui::Frame::default().inner_margin(10.0))
+            .show(ui, |ui| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        ui.add_space(SPACE);
+                        self.right_panel(ui);
+                    });
+            });
+        egui::CentralPanel::default().show(ui, |ui| {
+            if let Some(texture) = &self.texture {
+                ui.add_space(10.0);
+                ui.vertical_centered(|ui| {
+                    ui.add(
+                        egui::Image::new(texture)
+                            .max_size(ui.available_size())
+                            .maintain_aspect_ratio(true),
+                    );
+                });
+            }
+        });
+
+        // Regenerate the artwork once the user finishes an interaction:
+        // no mouse button held (slider drags) and no focused widget (text
+        // edits commit on Enter or focus loss).
+        let interacting = ctx.input(|i| i.pointer.any_down())
+            || ctx.memory(|m| m.focused().is_some());
+        if self.texture.is_none() {
+            self.regenerate(&ctx);
+        } else if !interacting && self.controls != self.last_drawn {
+            // Manual edits clear the preset selection; picking a preset keeps it.
+            if self.controls.preset == self.last_drawn.preset {
+                self.controls.preset = None;
+            }
+            self.regenerate(&ctx);
+        }
+
+        if self.exporting.load(Ordering::Relaxed) {
+            ctx.request_repaint_after(std::time::Duration::from_millis(250));
+        }
+    }
 }
 
 fn bench() {
@@ -77,471 +496,24 @@ fn bench() {
     }
 }
 
-pub async fn print(controls: Controls) {
-    let canvas = draw(&controls, true);
-    let dirs = UserDirs::new().unwrap();
-    let dir = dirs.download_dir().unwrap();
-    let path = format!(r"{}/{}", dir.to_string_lossy(), "k2");
-    let mut num = 0;
-    let mut sketch = PathBuf::from(format!(r"{path}_{num}"));
-    sketch.set_extension("png");
-    while sketch.exists() {
-        num += 1;
-        sketch = PathBuf::from(format!(r"{path}_{num}"));
-        sketch.set_extension("png");
-    }
-    canvas.save_png(&sketch);
-}
 
-#[derive(Debug, Clone)]
-pub enum Message {
-    Preset(Preset),
-    CurveStyle(CurveStyle),
-    CurveDirection(CurveDirection),
-    Space(f32),
-    CurveLength(u32),
-    Export,
-    Draw(PresetState),
-    Loc(Location),
-    Density(f32),
-    Fractal(FractalMessage),
-    Factor(f32),
-    NoiseScale(f32),
-    Noise(NoiseFunction),
-    Speed(f32),
-    ExportComplete(()),
-    StrokeWidth(f32),
-    WidthSet(String),
-    Width,
-    HeightSet(String),
-    Height,
-    GrainColor(ColorPickerMessage),
-    ColorMode(ColorMessage),
-    Background(Background),
-    Border(bool),
-    Sinusoid(SineMessage),
-    Dot(DotMessage),
-    Extrude(ExtrudeMessage),
-    Null,
-}
 
-impl K2 {
-    fn update(&mut self, message: Message) -> Task<Message> {
-        use crate::presets::Preset::*;
-        use Message::*;
-        use PresetState::*;
-        match message {
-            Preset(p) => {
-                self.controls = match p {
-                    Ribbons => ribbons(),
-                    Solar => solar(),
-                    RiverStones => river_stones(),
-                    Vortex => vortex(),
-                    Canyon => canyon(),
-                    Fence => fence(),
-                    Splat => splat(),
-                    Tubes => tubes(),
-                    Ducts => ducts(),
-                    Symmetry => symmetry(),
-                    PomPom => pompom(),
-                    RedDwarf => red_dwarf(),
-                    Ridges => ridges(),
-                };
-                self.controls.preset = Some(p);
-                self.draw(Set);
-            }
-            CurveStyle(cs) => {
-                self.controls.curve_style = Some(cs);
-                self.draw(NotSet);
-            }
-            CurveDirection(cd) => {
-                self.controls.curve_direction = Some(cd);
-                self.draw(NotSet);
-            }
-            Space(b) => {
-                self.controls.spacing = b;
-                self.draw(NotSet)
-            }
-            CurveLength(l) => {
-                self.controls.curve_length = l;
-                self.draw(NotSet)
-            }
-            Export => {
-                self.controls.exporting = true;
-                return Task::perform(print(self.controls.clone()), ExportComplete);
-            }
-            Loc(loc) => {
-                self.controls.location = Some(loc);
-                self.draw(NotSet);
-            }
-            Density(s) => {
-                self.controls.density = s;
-                self.draw(NotSet)
-            }
-            Draw(state) => {
-                self.draw(state);
-            }
-            Fractal(f) => {
-                self.controls.fractal_controls.update(f);
-                self.draw(NotSet);
-            }
-            Factor(f) => {
-                self.controls.noise_controls.noise_factor = f;
-                self.draw(NotSet)
-            }
-            NoiseScale(s) => {
-                self.controls.noise_controls.noise_scale = s;
-                self.draw(NotSet)
-            }
-            Noise(n) => {
-                self.controls.noise_controls.noise_function = Some(n);
-                self.draw(NotSet);
-            }
-            Speed(s) => {
-                self.controls.speed = s;
-                self.draw(NotSet)
-            }
-            Dot(d) => {
-                self.controls.dot_controls.update(d.clone());
-                match d {
-                    DotMessage::DotStrokeColor(c) => {
-                        if let ColorPickerMessage::Submit(_) = c {
-                            self.draw(NotSet)
-                        }
-                    }
-                    _ => self.draw(NotSet),
-                }
-            }
-            Extrude(e) => {
-                self.controls.extrude_controls.update(e);
-                self.draw(NotSet)
-            }
-            ExportComplete(_) => self.controls.exporting = false,
-            StrokeWidth(w) => {
-                self.controls.stroke_width = w;
-                self.draw(NotSet)
-            }
-            WidthSet(w) => {
-                self.controls.width = w;
-            }
-            Width => self.draw(NotSet),
-            HeightSet(h) => self.controls.height = h,
-            Height => self.draw(NotSet),
-            Message::GrainColor(c) => match c {
-                ColorPickerMessage::Choose => self.controls.show_grain_color_picker = true,
-                ColorPickerMessage::Submit(k) => {
-                    self.controls.grain_color = k;
-                    self.controls.show_grain_color_picker = false;
-                    self.draw(NotSet)
-                }
-                ColorPickerMessage::Cancel => self.controls.show_grain_color_picker = false,
-            },
-            Message::Background(b) => {
-                self.controls.background = Some(b);
-                self.draw(NotSet);
-            }
-            Border(b) => {
-                self.controls.border = b;
-                self.draw(NotSet);
-            }
-            Null => {}
-            Sinusoid(s) => {
-                self.controls.sin_controls.update(s);
-                self.draw(NotSet)
-            }
-            ColorMode(c) => {
-                self.controls.color_mode_controls.update(c.clone());
-                match c {
-                    ColorMessage::Anchor1(cpm1) => {
-                        if let ColorPickerMessage::Submit(_) = cpm1 {
-                            self.draw(NotSet)
-                        }
-                    }
-                    ColorMessage::Anchor2(cpm2) => {
-                        if let ColorPickerMessage::Submit(_) = cpm2 {
-                            self.draw(NotSet)
-                        }
-                    }
-                    _ => self.draw(NotSet),
-                }
-            }
-        }
-        Task::none()
-    }
 
-    fn view(&self) -> Element<'_, Message> {
-        use crate::Background::*;
-        use crate::NoiseFunction::*;
-        use crate::Preset::*;
-        use Message::*;
-        let img_view = image::Viewer::new(self.image.clone()).min_scale(1.0);
-        let mut left_panel = iced::widget::column![];
-        let mut right_panel = iced::widget::column![];
-        let grain_color_button = button(text("Grain Color").size(15))
-            .on_press(Message::GrainColor(ColorPickerMessage::Choose));
-        let grain_color_picker = ColorPicker::new(
-            self.controls.show_grain_color_picker,
-            self.controls.grain_color,
-            grain_color_button,
-            Message::GrainColor(ColorPickerMessage::Cancel),
-            |c| Message::GrainColor(ColorPickerMessage::Submit(c)),
-        );
-        let color_mode = crate::ColorControls::new(
-            self.controls.color_mode_controls.mode,
-            self.controls.color_mode_controls.anchor1,
-            self.controls.color_mode_controls.anchor2,
-            self.controls.color_mode_controls.show_picker_1,
-            self.controls.color_mode_controls.show_picker_2,
-            self.controls.color_mode_controls.palette_choice,
-        )
-        .view()
-        .map(Message::ColorMode);
 
-        right_panel = right_panel.push(space().height(5));
-        left_panel = left_panel
-            .push(space().height(5))
-            .push(
-                row!(
-                    text("Width").size(15).width(90),
-                    text("Height").size(15).width(90)
-                )
-                .spacing(15),
-            )
-            .push(
-                row!(
-                    text_input("1000", &self.controls.width)
-                        .on_input(WidthSet)
-                        .size(15)
-                        .width(90)
-                        .on_submit(Width),
-                    text_input("1000", &self.controls.height)
-                        .on_input(HeightSet)
-                        .size(15)
-                        .width(90)
-                        .on_submit(Height),
-                )
-                .spacing(15),
-            )
-            .push(lpicklist::LPickList::new(
-                "Preset".to_string(),
-                vec![
-                    Ribbons,
-                    Solar,
-                    RiverStones,
-                    Vortex,
-                    Canyon,
-                    Fence,
-                    Splat,
-                    Tubes,
-                    Ducts,
-                    Symmetry,
-                    PomPom,
-                    RedDwarf,
-                    Ridges,
-                ],
-                self.controls.preset,
-                |x| x.map_or(Null, Preset),
-            ))
-            .push(lpicklist::LPickList::new(
-                "Curve Style".to_string(),
-                vec![
-                    crate::CurveStyle::Line,
-                    crate::CurveStyle::Dots,
-                    crate::CurveStyle::Extrusion,
-                ],
-                self.controls.curve_style,
-                |x| x.map_or(CurveStyle(common::CurveStyle::Dots), CurveStyle),
-            ))
-            .push(
-                row([
-                    common::CurveDirection::OneSided,
-                    common::CurveDirection::TwoSided,
-                ]
-                .iter()
-                .cloned()
-                .map(|d| {
-                    radio(d, d, self.controls.curve_direction, CurveDirection)
-                        .text_size(15)
-                        .size(15)
-                })
-                .map(Element::from)
-                .collect::<Vec<_>>())
-                .spacing(15),
-            )
-            .push(lpicklist::LPickList::new(
-                "Flow Field".to_string(),
-                vec![
-                    Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
-                    Sinusoidal,
-                ],
-                self.controls.noise_controls.noise_function,
-                |x| x.map_or(Null, Noise),
-            ))
-            .push(lpicklist::LPickList::new(
-                "Curve Locations".to_string(),
-                vec![
-                    Location::Grid,
-                    Location::Rand,
-                    Location::Halton,
-                    Location::Poisson,
-                    Location::Circle,
-                    Location::Lissajous,
-                ],
-                self.controls.location,
-                |x| x.map_or(Null, Loc),
-            ))
-            .push(lpicklist::LPickList::new(
-                "Background Style".to_string(),
-                vec![LightGrain, LightFiber, DarkGrain, DarkFiber, ColorGrain],
-                self.controls.background,
-                |x| x.map_or(Null, Background),
-            ))
-            .push(NumericInput::new(
-                "Density".to_string(),
-                self.controls.density,
-                5.0..=100.0,
-                5.0,
-                0,
-                Density,
-            ))
-            .push(NumericInput::new(
-                "Point Spacing".to_string(),
-                self.controls.spacing,
-                1.0..=100.0,
-                1.0,
-                0,
-                Space,
-            ))
-            .push(NumericInput::new(
-                "Curve Length".to_string(),
-                self.controls.curve_length,
-                0..=400,
-                1,
-                0,
-                CurveLength,
-            ));
-        left_panel = left_panel
-            .push(NumericInput::new(
-                "Noise Scale".to_string(),
-                self.controls.noise_controls.noise_scale,
-                0.5..=20.0,
-                0.1,
-                1,
-                NoiseScale,
-            ))
-            .push(NumericInput::new(
-                "Noise Factor".to_string(),
-                self.controls.noise_controls.noise_factor,
-                0.5..=10.0,
-                0.1,
-                1,
-                Factor,
-            ))
-            .push(NumericInput::new(
-                "Convergence Speed".to_string(),
-                self.controls.speed,
-                0.01..=1.00,
-                0.01,
-                2,
-                Speed,
-            ))
-            .push(color_mode);
-        if self.controls.curve_style == Some(crate::CurveStyle::Extrusion) {
-            let extrusion = ExtrudeControls::new(
-                self.controls.extrude_controls.size_controls,
-                self.controls.extrude_controls.grad_style,
-            );
-            right_panel = right_panel.push(extrusion.view().map(Message::Extrude));
-        } else if self.controls.curve_style == Some(crate::CurveStyle::Dots) {
-            let dot = crate::DotControls::new(
-                self.controls.dot_controls.dot_style,
-                self.controls.dot_controls.size_controls,
-                self.controls.dot_controls.pearl_sides,
-                self.controls.dot_controls.pearl_smoothness,
-                self.controls.dot_controls.show_color_picker,
-                self.controls.dot_controls.dot_stroke_color,
-            );
-            right_panel = right_panel.push(dot.view().map(Message::Dot))
-        };
-        if self.controls.noise_controls.noise_function == Some(Fbm)
-            || self.controls.noise_controls.noise_function == Some(Billow)
-            || self.controls.noise_controls.noise_function == Some(Ridged)
-            || self.controls.noise_controls.noise_function == Some(Curl)
-        {
-            right_panel = right_panel.push(
-                FractalControls::new(
-                    self.controls.fractal_controls.octaves,
-                    self.controls.fractal_controls.persistence,
-                    self.controls.fractal_controls.lacunarity,
-                    self.controls.fractal_controls.frequency,
-                )
-                .view()
-                .map(Message::Fractal),
-            )
-        }
-        if self.controls.noise_controls.noise_function == Some(Sinusoidal) {
-            right_panel = right_panel.push(
-                SineControls::new(
-                    self.controls.sin_controls.xfreq,
-                    self.controls.sin_controls.yfreq,
-                    self.controls.sin_controls.xexp,
-                    self.controls.sin_controls.yexp,
-                )
-                .view()
-                .map(Message::Sinusoid),
-            )
-        }
-        if self.controls.background == Some(ColorGrain) {
-            right_panel = right_panel.push(rule::horizontal(15)).push(
-                row![
-                    grain_color_picker,
-                    text(format!(
-                        "{:3} {:3} {:3}",
-                        (self.controls.grain_color.r * 255.0) as u8,
-                        (self.controls.grain_color.g * 255.0) as u8,
-                        (self.controls.grain_color.b * 255.0) as u8
-                    ))
-                    .size(15)
-                ]
-                .spacing(15)
-                .align_y(Center),
-            );
-        }
-        left_panel = left_panel
-            .push(NumericInput::new(
-                "Stroke Width".to_string(),
-                self.controls.stroke_width,
-                0.0..=25.0,
-                0.5,
-                1,
-                StrokeWidth,
-            ))
-            .push(Container::new(
-                toggler(self.controls.border)
-                    .label("Border")
-                    .on_toggle(Border)
-                    .text_size(TEXT_SIZE),
-            ))
-            .padding(20)
-            .spacing(15)
-            .width(250);
 
-        let export_button = if self.controls.exporting {
-            button(text("Export").size(15))
-        } else {
-            button(text("Export").size(15)).on_press(Export)
-        };
-        left_panel = left_panel.push(export_button).spacing(12);
-        let img_container = Container::new(img_view).width(self.width).height(1000);
-        let image_panel = iced::widget::column!(
-            space().height(25),
-            img_container,
-            space().height(5),
-        )
-        .spacing(15)
-        .align_x(Center);
 
-        right_panel = right_panel.padding(20).spacing(15).width(250);
-        row![left_panel, image_panel, right_panel].into()
-    }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

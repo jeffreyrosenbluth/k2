@@ -5,16 +5,16 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-iced = { version = "0.14", features = ["image", "tokio", "lazy"] }
+eframe = "0.36"
+egui = { version = "0.36", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 wassily = { git = "https://github.com/jeffreyrosenbluth/wassily" }
 rand = { version = "0.9", features = ["small_rng"] }
-num-traits = "0.2"
-iced_aw = { version = "0.14", default-features = false, features = [
-    "color_picker",
-] }
 directories = "6.0"
 env_logger = "0.11"
 rayon = "1.10"
+rfd = "0.17"
 
 # Keep the app responsive in debug builds: optimize all dependencies
 # (tiny-skia, noise, iced) fully, and this crate's code lightly.

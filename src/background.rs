@@ -1,14 +1,18 @@
 use rand::RngCore;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use wassily::prelude::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Background {
     LightGrain,
     LightFiber,
     DarkGrain,
     DarkFiber,
     ColorGrain,
+    White,
+    Black,
+    Solid,
 }
 
 impl std::fmt::Display for Background {
@@ -22,6 +26,9 @@ impl std::fmt::Display for Background {
                 Background::DarkGrain => "Dark Grain",
                 Background::DarkFiber => "Dark Fiber ",
                 Background::ColorGrain => "Color Grain",
+                Background::White => "Solid White",
+                Background::Black => "Solid Black",
+                Background::Solid => "Solid Color",
             }
         )
     }
@@ -53,17 +60,28 @@ impl BG {
         BG(canvas)
     }
 
+    pub fn solid(width: u32, height: u32, color: Color) -> Self {
+        let mut canvas = Canvas::new(width, height);
+        canvas.fill(color);
+        BG(canvas)
+    }
+
     pub fn color_grain<R: RngCore>(
         width: u32,
         height: u32,
         rng: &mut R,
-        color: iced::Color,
+        color: eframe::egui::Color32,
     ) -> Self {
         // Color with alpha in [0.8, 0.95] composited over an opaque black base.
         let seed = rng.next_u64();
+        let (r, g, b) = (
+            color.r() as f32 / 255.0,
+            color.g() as f32 / 255.0,
+            color.b() as f32 / 255.0,
+        );
         Self::from_pixels(width, height, seed, |_, _, rng| {
             let alpha: f32 = rng.random_range(0.8..=0.95);
-            Color::from_rgba(color.r * alpha, color.g * alpha, color.b * alpha, 1.0).unwrap()
+            Color::from_rgba(r * alpha, g * alpha, b * alpha, 1.0).unwrap()
         })
     }
 

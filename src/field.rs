@@ -27,27 +27,62 @@ pub struct Field {
     pub height: u32,
     pub curve_length: u32,
     pub speed: f32,
+    pub hide_ends: bool,
 }
 
 impl Field {
-    pub fn curve1(&self, x: f32, y: f32) -> Vec<Point> {
-        let mut vertices: Vec<Vertex> = Vec::new();
-        let mut theta = noise2d(&self.noise_function, &self.noise_opts, x, y) * PI;
-        let v = Vertex::new(x, y, theta);
-        vertices.push(v);
-        let mut v: Vertex;
-        let mut x1: f32;
-        let mut y1: f32;
-        let mut v1: Vertex;
-        for _ in 0..self.curve_length {
-            v = *vertices.last().unwrap();
-            x1 = v.x + self.step_size * v.theta.cos();
-            y1 = v.y + self.step_size * v.theta.sin();
+    fn outside(&self, x: f32, y: f32) -> bool {
+        let m = 0.05 * self.width.max(self.height) as f32;
+        x < -m || x > self.width as f32 + m || y < -m || y > self.height as f32 + m
+    }
+
+    /// Walk both ends of a curve onward through the flow field until they
+    /// leave the canvas (plus a margin), so no curve endpoint is visible in
+    /// the piece. Capped, since a vortex in the field can trap an end forever.
+    fn extend_ends(&self, vertices: &mut VecDeque<Vertex>) {
+        if !self.hide_ends {
+            return;
+        }
+        let cap = (2.0 * (self.width + self.height) as f32 / self.step_size) as u32;
+        let mut theta = vertices.back().unwrap().theta;
+        for _ in 0..cap {
+            let v = *vertices.back().unwrap();
+            if self.outside(v.x, v.y) {
+                break;
+            }
+            let x1 = v.x + self.step_size * v.theta.cos();
+            let y1 = v.y + self.step_size * v.theta.sin();
             theta = (1.0 - self.speed) * theta
                 + self.speed * noise2d(&self.noise_function, &self.noise_opts, x1, y1) * PI;
-            v1 = Vertex::new(x1, y1, theta);
-            vertices.push(v1);
+            vertices.push_back(Vertex::new(x1, y1, theta));
         }
+        let mut theta = vertices.front().unwrap().theta;
+        for _ in 0..cap {
+            let v = *vertices.front().unwrap();
+            if self.outside(v.x, v.y) {
+                break;
+            }
+            let x1 = v.x + self.step_size * (PI + v.theta).cos();
+            let y1 = v.y + self.step_size * (PI + v.theta).sin();
+            theta = (1.0 - self.speed) * theta
+                + self.speed * noise2d(&self.noise_function, &self.noise_opts, x1, y1) * PI;
+            vertices.push_front(Vertex::new(x1, y1, theta));
+        }
+    }
+
+    pub fn curve1(&self, x: f32, y: f32) -> Vec<Point> {
+        let mut vertices: VecDeque<Vertex> = VecDeque::new();
+        let mut theta = noise2d(&self.noise_function, &self.noise_opts, x, y) * PI;
+        vertices.push_back(Vertex::new(x, y, theta));
+        for _ in 0..self.curve_length {
+            let v = *vertices.back().unwrap();
+            let x1 = v.x + self.step_size * v.theta.cos();
+            let y1 = v.y + self.step_size * v.theta.sin();
+            theta = (1.0 - self.speed) * theta
+                + self.speed * noise2d(&self.noise_function, &self.noise_opts, x1, y1) * PI;
+            vertices.push_back(Vertex::new(x1, y1, theta));
+        }
+        self.extend_ends(&mut vertices);
         vertices.into_iter().map(|v| v.to_point()).collect()
     }
 
@@ -85,6 +120,7 @@ impl Field {
             vertices.push_back(v1);
             vertices.push_front(v2);
         }
+        self.extend_ends(&mut vertices);
         vertices.into_iter().map(|v| v.to_point()).collect()
     }
 }

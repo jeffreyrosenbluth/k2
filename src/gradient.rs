@@ -1,7 +1,8 @@
 use rand::RngCore;
 use wassily::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GradStyle {
     Plain,
     Light,

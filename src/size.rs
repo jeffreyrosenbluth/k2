@@ -1,13 +1,11 @@
 #![allow(dead_code)]
 
-use crate::gui::{lpicklist::LPickList, numeric_input::NumericInput};
-use iced::{
-    widget::{rule, Column},
-    Element,
-};
+use crate::gui::{numeric, pick_list, section};
+use eframe::egui;
 use wassily::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dir {
     Both,
     Horizontal,
@@ -28,7 +26,7 @@ impl std::fmt::Display for Dir {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SizeFn {
     Expanding,
     Contracting,
@@ -80,11 +78,23 @@ fn distance(p: Point, w: f32, h: f32, dir: Dir) -> f32 {
     }
 }
 
-fn expanding(w: f32, h: f32, r: f32, dir: Dir, min_size: f32) -> impl Fn(Point) -> f32 + Send + Sync {
+fn expanding(
+    w: f32,
+    h: f32,
+    r: f32,
+    dir: Dir,
+    min_size: f32,
+) -> impl Fn(Point) -> f32 + Send + Sync {
     move |p| f32::max(min_size, distance(p, w, h, dir) * r)
 }
 
-fn contracting(w: f32, h: f32, r: f32, dir: Dir, min_size: f32) -> impl Fn(Point) -> f32 + Send + Sync {
+fn contracting(
+    w: f32,
+    h: f32,
+    r: f32,
+    dir: Dir,
+    min_size: f32,
+) -> impl Fn(Point) -> f32 + Send + Sync {
     move |p| f32::max(min_size, (0.5 - distance(p, w, h, dir)) * r)
 }
 
@@ -100,17 +110,7 @@ fn periodic(w: f32, h: f32, r: f32, scale: f32, min_size: f32) -> impl Fn(Point)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum SizeMessage {
-    SizeFn(SizeFn),
-    Size(f32),
-    Direction(Dir),
-    SizeScale(f32),
-    MinSize(f32),
-    Null,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SizeControls {
     pub size_fn: Option<SizeFn>,
     pub size: f32,
@@ -131,7 +131,7 @@ impl Default for SizeControls {
     }
 }
 
-impl<'a> SizeControls {
+impl SizeControls {
     pub fn new(
         size_fn: Option<SizeFn>,
         size: f32,
@@ -172,83 +172,57 @@ impl<'a> SizeControls {
         self
     }
 
-    pub fn update(&mut self, message: SizeMessage) {
-        match message {
-            SizeMessage::SizeFn(size_fn) => {
-                self.size_fn = Some(size_fn);
-            }
-            SizeMessage::Size(size) => {
-                self.size = size;
-            }
-            SizeMessage::Direction(direction) => self.direction = Some(direction),
-            SizeMessage::SizeScale(size_scale) => {
-                self.size_scale = size_scale;
-            }
-            SizeMessage::MinSize(min_size) => {
-                self.min_size = min_size;
-            }
-            SizeMessage::Null => (),
-        }
-    }
-
-    pub fn view(&mut self) -> Element<'a, SizeMessage> {
-        use self::SizeFn::*;
-        use SizeMessage::*;
-        let mut col = Column::new()
-            .push(rule::horizontal(10))
-            .push("Size")
-            .push(LPickList::new(
-                "Size Function".to_string(),
-                vec![Constant, Expanding, Contracting, Periodic],
-                self.size_fn,
-                |x| x.map_or(Null, SizeMessage::SizeFn),
-            ))
-            .push(
-                NumericInput::new(
-                    "Size".to_string(),
-                    self.size,
-                    5.0..=500.0,
-                    5.0,
-                    0,
-                    SizeMessage::Size,
-                )
-                .decimals(0),
-            );
-        if self.size_fn == Some(Expanding) || self.size_fn == Some(Contracting) {
-            col = col
-                .push(LPickList::new(
-                    "Direction".to_string(),
-                    vec![Dir::Both, Dir::Horizontal, Dir::Vertical],
-                    self.direction,
-                    |x| x.map_or(Null, SizeMessage::Direction),
-                ))
-                .push(NumericInput::new(
-                    "Min Size".to_string(),
-                    self.min_size,
-                    1.0..=50.0,
-                    1.0,
-                    1,
-                    SizeMessage::MinSize,
-                ))
-        } else if self.size_fn == Some(Periodic) {
-            col = col
-                .push(NumericInput::new(
-                    "Size Scale".to_string(),
-                    self.size_scale,
-                    1.0..=30.0,
-                    1.0,
-                    1,
-                    SizeMessage::SizeScale,
-                ))
-                .push(NumericInput::new(
-                    "Min Size".to_string(),
-                    self.min_size,
-                    1.0..=50.0,
-                    1.0,
-                    1,
-                    SizeMessage::MinSize,
-                ))
-        }
-        col.spacing(15).into()
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        use SizeFn::*;
+        let d = Self::default();
+        section(ui, "Size");
+        egui::Grid::new("size")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                pick_list(
+                    ui,
+                    "Size Function",
+                    &[Constant, Expanding, Contracting, Periodic],
+                    &mut self.size_fn,
+                );
+                numeric(ui, "Size", &mut self.size, d.size, 5.0..=500.0, 5.0, 0);
+                if self.size_fn == Some(Expanding) || self.size_fn == Some(Contracting) {
+                    pick_list(
+                        ui,
+                        "Direction",
+                        &[Dir::Both, Dir::Horizontal, Dir::Vertical],
+                        &mut self.direction,
+                    );
+                    numeric(
+                        ui,
+                        "Min Size",
+                        &mut self.min_size,
+                        d.min_size,
+                        1.0..=50.0,
+                        1.0,
+                        1,
+                    );
+                } else if self.size_fn == Some(Periodic) {
+                    numeric(
+                        ui,
+                        "Size Scale",
+                        &mut self.size_scale,
+                        d.size_scale,
+                        1.0..=30.0,
+                        1.0,
+                        1,
+                    );
+                    numeric(
+                        ui,
+                        "Min Size",
+                        &mut self.min_size,
+                        d.min_size,
+                        1.0..=50.0,
+                        1.0,
+                        1,
+                    );
+                }
+            });
     }
 }

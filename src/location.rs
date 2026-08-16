@@ -1,8 +1,9 @@
 use crate::common::SEED;
 use rand::RngCore;
 use wassily::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Location {
     Grid,
     Rand,
@@ -10,6 +11,7 @@ pub enum Location {
     Poisson,
     Circle,
     Lissajous,
+    Box,
 }
 
 impl Location {
@@ -52,6 +54,26 @@ impl Location {
                     }
                 }
             }
+            Location::Box => {
+                // Every point starts outside the piece, spaced `sep` apart
+                // along the perimeter of a rectangle slightly larger than the
+                // canvas; the curves have to flow into the frame.
+                let margin = 0.05 * w.max(h);
+                let (x0, x1) = (-margin, w + margin);
+                let (y0, y1) = (-margin, h + margin);
+                let mut t = 0.0;
+                while x0 + t <= x1 {
+                    pts.push(pt(x0 + t, y0));
+                    pts.push(pt(x0 + t, y1));
+                    t += sep;
+                }
+                let mut t = sep;
+                while y0 + t < y1 {
+                    pts.push(pt(x0, y0 + t));
+                    pts.push(pt(x1, y0 + t));
+                    t += sep;
+                }
+            }
             Location::Lissajous => {
                 let n = (w * h) / (sep * sep);
                 let cx = w / 2.0;
@@ -80,6 +102,7 @@ impl std::fmt::Display for Location {
                 Location::Poisson => "Poisson",
                 Location::Circle => "Circle",
                 Location::Lissajous => "Lissajous",
+                Location::Box => "Box",
             }
         )
     }

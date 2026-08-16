@@ -1,21 +1,10 @@
 #![allow(dead_code)]
 
-use crate::gui::numeric_input::NumericInput;
-use iced::{
-    widget::{rule, Column},
-    Element,
-};
+use crate::gui::{numeric, section};
+use eframe::egui;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy)]
-pub enum SineMessage {
-    XFreq(f32),
-    YFreq(f32),
-    XExp(f32),
-    YExp(f32),
-    // Draw,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SineControls {
     pub xfreq: f32,
     pub yfreq: f32,
@@ -34,7 +23,7 @@ impl Default for SineControls {
     }
 }
 
-impl<'a> SineControls {
+impl SineControls {
     pub fn new(xfreq: f32, yfreq: f32, xexp: f32, yexp: f32) -> Self {
         Self {
             xfreq,
@@ -44,75 +33,17 @@ impl<'a> SineControls {
         }
     }
 
-    pub fn set_xfreq(mut self, xfreq: f32) -> Self {
-        self.xfreq = xfreq;
-        self
-    }
-
-    pub fn set_yfreq(mut self, yfreq: f32) -> Self {
-        self.yfreq = yfreq;
-        self
-    }
-
-    pub fn set_xexp(mut self, xexp: f32) -> Self {
-        self.xexp = xexp;
-        self
-    }
-
-    pub fn set_yexp(mut self, yexp: f32) -> Self {
-        self.yexp = yexp;
-        self
-    }
-
-    pub fn update(&mut self, message: SineMessage) {
-        use SineMessage::*;
-        match message {
-            XFreq(xfreq) => self.xfreq = xfreq,
-            YFreq(yfreq) => self.yfreq = yfreq,
-            XExp(xexp) => self.xexp = xexp,
-            YExp(yexp) => self.yexp = yexp,
-            // Draw => (),
-        }
-    }
-
-    pub fn view(&self) -> Element<'a, SineMessage> {
-        use SineMessage::*;
-        Column::new()
-            .push(rule::horizontal(10))
-            .push("Sine Noise")
-            .push(NumericInput::new(
-                "X Frequency".to_string(),
-                self.xfreq,
-                0.1..=10.0,
-                0.1,
-                1,
-                XFreq,
-            ))
-            .push(NumericInput::new(
-                "Y Frequency".to_string(),
-                self.yfreq,
-                0.1..=10.0,
-                0.1,
-                1,
-                YFreq,
-            ))
-            .push(NumericInput::new(
-                "X Exponent".to_string(),
-                self.xexp,
-                1.0..=4.0,
-                1.0,
-                0,
-                XExp,
-            ))
-            .push(NumericInput::new(
-                "Y Exponent".to_string(),
-                self.yexp,
-                1.0..=4.0,
-                1.0,
-                0,
-                YExp,
-            ))
-            .spacing(15)
-            .into()
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+        let d = Self::default();
+        section(ui, "Sine Noise");
+        egui::Grid::new("sine")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                numeric(ui, "X Frequency", &mut self.xfreq, d.xfreq, 0.1..=10.0, 0.1, 1);
+                numeric(ui, "Y Frequency", &mut self.yfreq, d.yfreq, 0.1..=10.0, 0.1, 1);
+                numeric(ui, "X Exponent", &mut self.xexp, d.xexp, 1.0..=4.0, 1.0, 0);
+                numeric(ui, "Y Exponent", &mut self.yexp, d.yexp, 1.0..=4.0, 1.0, 0);
+            });
     }
 }
