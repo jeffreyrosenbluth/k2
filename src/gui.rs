@@ -157,14 +157,132 @@ pub fn pick_list<T: Copy + PartialEq + Display>(
     changed
 }
 
-/// A grid row with a color swatch button and its rgb values.
+/// A grid row with a color swatch button and its rgb values. The button
+/// opens egui's picker augmented with a hex field, recent colors, and
+/// swatches of the named palettes.
 pub fn color_picker(ui: &mut egui::Ui, label: &str, color: &mut egui::Color32) {
     ui.label(label);
     ui.horizontal(|ui| {
-        ui.color_edit_button_srgba(color);
+        color_edit_button(ui, color);
         ui.label(format!("{:3} {:3} {:3}", color.r(), color.g(), color.b()));
     });
     ui.end_row();
+}
+
+fn color_edit_button(ui: &mut egui::Ui, color: &mut Color32) {
+    let popup_id = ui.auto_id_with("k2 color popup");
+    let opened_key = popup_id.with("opened with");
+    let recents_key = egui::Id::new("k2 recent colors");
+    let button = ui.add(
+        egui::Button::new("")
+            .fill(*color)
+            .min_size(egui::vec2(28.0, 16.0)),
+    );
+
+    egui::Popup::menu(&button)
+        .id(popup_id)
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .show(|ui| {
+            ui.spacing_mut().slider_width = 220.0;
+            egui::color_picker::color_picker_color32(
+                ui,
+                color,
+                egui::color_picker::Alpha::Opaque,
+            );
+            hex_row(ui, color);
+            let recents: Vec<Color32> = ui
+                .ctx()
+                .data_mut(|d| d.get_temp(recents_key))
+                .unwrap_or_default();
+            if !recents.is_empty() {
+                ui.separator();
+                ui.label("Recent");
+                swatch_grid(ui, &recents, color);
+            }
+            ui.separator();
+            ui.label("Swatches");
+            swatch_grid(ui, &crate::color::swatches(), color);
+        });
+
+    // Track the color the popup opened with; when it closes on a different
+    // color, remember the result in the recent list.
+    let open = egui::Popup::is_id_open(ui.ctx(), popup_id);
+    let current = *color;
+    ui.ctx().data_mut(|d| {
+        let slot: &mut Option<Color32> = d.get_temp_mut_or_default(opened_key);
+        if open {
+            if slot.is_none() {
+                *slot = Some(current);
+            }
+        } else if let Some(initial) = slot.take() {
+            if initial != current {
+                let recents: &mut Vec<Color32> = d.get_temp_mut_or_default(recents_key);
+                recents.retain(|c| *c != current);
+                recents.insert(0, current);
+                recents.truncate(8);
+            }
+        }
+    });
+}
+
+fn hex_row(ui: &mut egui::Ui, color: &mut Color32) {
+    let id = ui.id().with("hex text");
+    let mut text: String = ui
+        .data_mut(|d| d.get_temp(id))
+        .unwrap_or_else(|| hex_string(*color));
+    ui.horizontal(|ui| {
+        ui.label("Hex");
+        let response = ui.add(
+            egui::TextEdit::singleline(&mut text)
+                .desired_width(80.0)
+                .font(egui::TextStyle::Monospace),
+        );
+        if response.lost_focus() {
+            if let Some(c) = parse_hex(&text) {
+                *color = c;
+            }
+        }
+        if !response.has_focus() {
+            text = hex_string(*color);
+        }
+    });
+    ui.data_mut(|d| d.insert_temp(id, text));
+}
+
+fn hex_string(c: Color32) -> String {
+    format!("#{:02X}{:02X}{:02X}", c.r(), c.g(), c.b())
+}
+
+fn parse_hex(s: &str) -> Option<Color32> {
+    let s = s.trim().trim_start_matches('#');
+    if s.len() != 6 {
+        return None;
+    }
+    let n = u32::from_str_radix(s, 16).ok()?;
+    Some(Color32::from_rgb((n >> 16) as u8, (n >> 8) as u8, n as u8))
+}
+
+fn swatch_grid(ui: &mut egui::Ui, colors: &[Color32], color: &mut Color32) {
+    // Fixed 8-wide rows so the popup never grows past the picker itself.
+    for row in colors.chunks(8) {
+        ui.horizontal(|ui| {
+            for &c in row {
+                let (rect, response) =
+                    ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::click());
+                let stroke = if c == *color {
+                    egui::Stroke::new(2.0, ui.visuals().strong_text_color())
+                } else {
+                    egui::Stroke::new(1.0, ui.visuals().weak_text_color())
+                };
+                ui.painter()
+                    .rect(rect, 3.0, c, stroke, egui::StrokeKind::Inside);
+                if response.clicked() {
+                    *color = c;
+                }
+                response.on_hover_text(hex_string(c));
+            }
+        });
+    }
 }
 
 /// A section break: separator plus a centered bold title.

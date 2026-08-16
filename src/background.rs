@@ -12,6 +12,7 @@ pub enum Background {
     ColorGrain,
     White,
     Black,
+    Solid,
 }
 
 impl std::fmt::Display for Background {
@@ -27,6 +28,7 @@ impl std::fmt::Display for Background {
                 Background::ColorGrain => "Color Grain",
                 Background::White => "Solid White",
                 Background::Black => "Solid Black",
+                Background::Solid => "Solid Color",
             }
         )
     }

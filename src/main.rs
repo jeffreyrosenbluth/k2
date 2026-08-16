@@ -49,24 +49,15 @@ pub fn main() -> eframe::Result {
     )
 }
 
-/// Save the artwork as a full resolution png in the Downloads folder, along
-/// with a json file of the parameters that produced it.
-pub fn print(controls: Controls) {
-    let canvas = draw(&controls, true);
-    let dirs = UserDirs::new().unwrap();
-    let dir = dirs.download_dir().unwrap();
-    let path = format!(r"{}/{}", dir.to_string_lossy(), "k2");
-    let mut num = 0;
-    let mut sketch = PathBuf::from(format!(r"{path}_{num}"));
-    sketch.set_extension("png");
-    while sketch.exists() {
-        num += 1;
-        sketch = PathBuf::from(format!(r"{path}_{num}"));
-        sketch.set_extension("png");
+/// Render the artwork at full resolution and save it to `path`, along with
+/// a json file of the parameters that produced it.
+pub fn print(controls: Controls, mut path: PathBuf) {
+    if path.extension().is_none() {
+        path.set_extension("png");
     }
-    canvas.save_png(&sketch);
-    let mut params = sketch.clone();
-    params.set_extension("json");
+    let canvas = draw(&controls, true);
+    canvas.save_png(&path);
+    let params = path.with_extension("json");
     match serde_json::to_string_pretty(&controls) {
         Ok(json) => {
             if let Err(e) = std::fs::write(&params, json) {
@@ -77,22 +68,27 @@ pub fn print(controls: Controls) {
     }
 }
 
+/// The first `k2_N.png` name not already present in `dir`.
+fn next_sketch_name(dir: &std::path::Path) -> String {
+    let mut num = 0;
+    while dir.join(format!("k2_{num}.png")).exists() {
+        num += 1;
+    }
+    format!("k2_{num}.png")
+}
+
 fn load_preset(p: Preset) -> Controls {
     use Preset::*;
     let mut controls = match p {
         Ribbons => ribbons(),
+        Worms => worms(),
         Solar => solar(),
-        RiverStones => river_stones(),
         Vortex => vortex(),
         Canyon => canyon(),
-        Fence => fence(),
         Splat => splat(),
         Tubes => tubes(),
         Ducts => ducts(),
-        Symmetry => symmetry(),
-        PomPom => pompom(),
         RedDwarf => red_dwarf(),
-        Ridges => ridges(),
     };
     controls.preset = Some(p);
     controls
@@ -153,8 +149,7 @@ impl K2 {
                     ui,
                     "Preset",
                     &[
-                        Ribbons, Solar, RiverStones, Vortex, Canyon, Fence, Splat, Tubes, Ducts,
-                        Symmetry, PomPom, RedDwarf, Ridges,
+                        Ribbons, Worms, Solar, Vortex, Canyon, Splat, Tubes, Ducts, RedDwarf,
                     ],
                     &mut preset,
                 ) {
@@ -162,7 +157,16 @@ impl K2 {
                         self.controls = load_preset(p);
                     }
                 }
+            });
 
+        ui.add_space(SPACE);
+        ui.separator();
+        ui.add_space(SPACE);
+
+        egui::Grid::new("style")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
                 pick_list(
                     ui,
                     "Curve Style",
@@ -179,8 +183,8 @@ impl K2 {
                     ui,
                     "Flow Field",
                     &[
-                        Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
-                        Sinusoidal,
+                        Fbm, BasicMulti, HybridMulti, Billow, Ridged, Value, Cylinders,
+                        Worley, Curl, Sinusoidal,
                     ],
                     &mut self.controls.noise_controls.noise_function,
                 );
@@ -203,9 +207,20 @@ impl K2 {
                     "Background",
                     &[
                         LightGrain, LightFiber, DarkGrain, DarkFiber, ColorGrain, White, Black,
+                        Solid,
                     ],
                     &mut self.controls.background,
                 );
+            });
+
+        ui.add_space(SPACE);
+        ui.separator();
+        ui.add_space(SPACE);
+
+        egui::Grid::new("curves")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
                 numeric(
                     ui,
                     "Density",
@@ -313,11 +328,21 @@ impl K2 {
 
     /// Save the current artwork and its parameters on a background thread.
     fn save_png(&mut self) {
+        let mut dialog = rfd::FileDialog::new().add_filter("PNG image", &["png"]);
+        if let Some(download_dir) = UserDirs::new().and_then(|d| d.download_dir().map(PathBuf::from))
+        {
+            dialog = dialog
+                .set_file_name(next_sketch_name(&download_dir))
+                .set_directory(download_dir);
+        }
+        let Some(path) = dialog.save_file() else {
+            return;
+        };
         self.exporting.store(true, Ordering::Relaxed);
         let controls = self.controls.clone();
         let flag = self.exporting.clone();
         std::thread::spawn(move || {
-            print(controls);
+            print(controls, path);
             flag.store(false, Ordering::Relaxed);
         });
     }
@@ -352,6 +377,8 @@ impl K2 {
         if matches!(
             self.controls.noise_controls.noise_function,
             Some(NoiseFunction::Fbm)
+                | Some(NoiseFunction::BasicMulti)
+                | Some(NoiseFunction::HybridMulti)
                 | Some(NoiseFunction::Billow)
                 | Some(NoiseFunction::Ridged)
                 | Some(NoiseFunction::Curl)
@@ -368,6 +395,15 @@ impl K2 {
                 .min_col_width(90.0)
                 .show(ui, |ui| {
                     color_picker(ui, "Grain Color", &mut self.controls.grain_color);
+                });
+        }
+        if self.controls.background == Some(Background::Solid) {
+            section(ui, "Background");
+            egui::Grid::new("solid_bg")
+                .spacing((15.0, 10.0))
+                .min_col_width(90.0)
+                .show(ui, |ui| {
+                    color_picker(ui, "Color", &mut self.controls.solid_color);
                 });
         }
     }
@@ -459,6 +495,15 @@ fn bench() {
         );
     }
 }
+
+
+
+
+
+
+
+
+
 
 
 
