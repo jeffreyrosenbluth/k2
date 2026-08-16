@@ -1,9 +1,10 @@
 use crate::gradient::{GradStyle, GradStyle::Plain};
-use crate::gui::pick_list;
+use crate::gui::{pick_list, SPACE};
 use crate::size::SizeControls;
 use eframe::egui;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ExtrudeDirection {
     Vertical,
     Horizontal,
@@ -24,7 +25,7 @@ impl std::fmt::Display for ExtrudeDirection {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ExtrudeControls {
     pub size_controls: SizeControls,
     pub grad_style: Option<GradStyle>,
@@ -59,17 +60,23 @@ impl ExtrudeControls {
         use ExtrudeDirection::*;
         use GradStyle::*;
         self.size_controls.ui(ui);
-        pick_list(
-            ui,
-            "Extrude Direction",
-            &[Vertical, Horizontal, Normal],
-            &mut self.direction,
-        );
-        pick_list(
-            ui,
-            "Gradient Style",
-            &[Plain, Light, Dark, Fiber, LightFiber, DarkFiber],
-            &mut self.grad_style,
-        );
+        ui.add_space(2.0 * SPACE);
+        egui::Grid::new("extrude")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                pick_list(
+                    ui,
+                    "Extrude Dir",
+                    &[Vertical, Horizontal, Normal],
+                    &mut self.direction,
+                );
+                pick_list(
+                    ui,
+                    "Gradient Style",
+                    &[Plain, Light, Dark, Fiber, LightFiber, DarkFiber],
+                    &mut self.grad_style,
+                );
+            });
     }
 }

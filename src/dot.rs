@@ -1,8 +1,9 @@
 use crate::gui::{color_picker, numeric, pick_list};
 use crate::size::SizeControls;
 use eframe::egui;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DotStyle {
     Circle,
     Square,
@@ -23,7 +24,7 @@ impl std::fmt::Display for DotStyle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct DotControls {
     pub dot_style: Option<DotStyle>,
     pub size_controls: SizeControls,
@@ -47,19 +48,39 @@ impl Default for DotControls {
 impl DotControls {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         use DotStyle::*;
-        pick_list(ui, "Dot Style", &[Circle, Square, Pearl], &mut self.dot_style);
-        color_picker(ui, "Dot Stroke Color", &mut self.dot_stroke_color);
+        let d = Self::default();
+        egui::Grid::new("dot")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                pick_list(ui, "Dot Style", &[Circle, Square, Pearl], &mut self.dot_style);
+                color_picker(ui, "Stroke Color", &mut self.dot_stroke_color);
+            });
         self.size_controls.ui(ui);
         if self.dot_style == Some(Pearl) {
-            numeric(ui, "Pearl Sides", &mut self.pearl_sides, 3..=8, 1.0, 0);
-            numeric(
-                ui,
-                "Pearl Smoothness",
-                &mut self.pearl_smoothness,
-                0..=5,
-                1.0,
-                0,
-            );
+            egui::Grid::new("pearl")
+                .spacing((15.0, 10.0))
+                .min_col_width(90.0)
+                .show(ui, |ui| {
+                    numeric(
+                        ui,
+                        "Pearl Sides",
+                        &mut self.pearl_sides,
+                        d.pearl_sides,
+                        3..=8,
+                        1.0,
+                        0,
+                    );
+                    numeric(
+                        ui,
+                        "Smoothness",
+                        &mut self.pearl_smoothness,
+                        d.pearl_smoothness,
+                        0..=5,
+                        1.0,
+                        0,
+                    );
+                });
         }
     }
 }

@@ -15,6 +15,7 @@ use crate::sine::SineControls;
 
 use crate::{location::Location, presets::ribbons};
 use eframe::egui;
+use serde::{Deserialize, Serialize};
 
 pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
@@ -59,13 +60,14 @@ impl K2 {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct Controls {
     pub preset: Option<Preset>,
     pub curve_style: Option<CurveStyle>,
     pub curve_direction: Option<CurveDirection>,
     pub spacing: f32,
     pub curve_length: u32,
+    pub hide_ends: bool,
     pub grain_color: egui::Color32,
     pub location: Option<Location>,
     pub density: f32,
@@ -74,9 +76,8 @@ pub struct Controls {
     pub speed: f32,
     pub stroke_width: f32,
     pub background: Option<Background>,
-    pub width: String,
-    pub height: String,
-    pub border: bool,
+    pub width: u32,
+    pub height: u32,
     pub sin_controls: SineControls,
     pub dot_controls: DotControls,
     pub extrude_controls: ExtrudeControls,
@@ -96,6 +97,7 @@ impl Default for Controls {
             curve_style: Some(CurveStyle::Dots),
             spacing: 4.0,
             curve_length: 50,
+            hide_ends: false,
             curve_direction: Some(CurveDirection::OneSided),
             grain_color: egui::Color32::from_rgb(128, 128, 128),
             location: Some(Location::Halton),
@@ -105,9 +107,8 @@ impl Default for Controls {
             speed: 1.0,
             stroke_width: 1.0,
             background: Some(Background::LightFiber),
-            width: String::new(),
-            height: String::new(),
-            border: true,
+            width: 1080,
+            height: 1080,
             sin_controls: SineControls::default(),
             dot_controls: DotControls::default(),
             extrude_controls: ExtrudeControls::default(),
@@ -116,7 +117,7 @@ impl Default for Controls {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CurveStyle {
     Line,
     Dots,
@@ -137,7 +138,7 @@ impl std::fmt::Display for CurveStyle {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CurveDirection {
     OneSided,
     TwoSided,

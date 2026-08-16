@@ -1,14 +1,17 @@
 use rand::RngCore;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use wassily::prelude::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Background {
     LightGrain,
     LightFiber,
     DarkGrain,
     DarkFiber,
     ColorGrain,
+    White,
+    Black,
 }
 
 impl std::fmt::Display for Background {
@@ -22,6 +25,8 @@ impl std::fmt::Display for Background {
                 Background::DarkGrain => "Dark Grain",
                 Background::DarkFiber => "Dark Fiber ",
                 Background::ColorGrain => "Color Grain",
+                Background::White => "Solid White",
+                Background::Black => "Solid Black",
             }
         )
     }
@@ -50,6 +55,12 @@ impl BG {
                     *px = f(i as u32, j as u32, &mut rng).premultiply().to_color_u8();
                 }
             });
+        BG(canvas)
+    }
+
+    pub fn solid(width: u32, height: u32, color: Color) -> Self {
+        let mut canvas = Canvas::new(width, height);
+        canvas.fill(color);
         BG(canvas)
     }
 

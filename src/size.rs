@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
-use crate::gui::{numeric, pick_list};
+use crate::gui::{numeric, pick_list, section};
 use eframe::egui;
 use wassily::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dir {
     Both,
     Horizontal,
@@ -25,7 +26,7 @@ impl std::fmt::Display for Dir {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SizeFn {
     Expanding,
     Contracting,
@@ -109,7 +110,7 @@ fn periodic(w: f32, h: f32, r: f32, scale: f32, min_size: f32) -> impl Fn(Point)
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SizeControls {
     pub size_fn: Option<SizeFn>,
     pub size: f32,
@@ -173,26 +174,55 @@ impl SizeControls {
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         use SizeFn::*;
-        ui.separator();
-        ui.label("Size");
-        pick_list(
-            ui,
-            "Size Function",
-            &[Constant, Expanding, Contracting, Periodic],
-            &mut self.size_fn,
-        );
-        numeric(ui, "Size", &mut self.size, 5.0..=500.0, 5.0, 0);
-        if self.size_fn == Some(Expanding) || self.size_fn == Some(Contracting) {
-            pick_list(
-                ui,
-                "Direction",
-                &[Dir::Both, Dir::Horizontal, Dir::Vertical],
-                &mut self.direction,
-            );
-            numeric(ui, "Min Size", &mut self.min_size, 1.0..=50.0, 1.0, 1);
-        } else if self.size_fn == Some(Periodic) {
-            numeric(ui, "Size Scale", &mut self.size_scale, 1.0..=30.0, 1.0, 1);
-            numeric(ui, "Min Size", &mut self.min_size, 1.0..=50.0, 1.0, 1);
-        }
+        let d = Self::default();
+        section(ui, "Size");
+        egui::Grid::new("size")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                pick_list(
+                    ui,
+                    "Size Function",
+                    &[Constant, Expanding, Contracting, Periodic],
+                    &mut self.size_fn,
+                );
+                numeric(ui, "Size", &mut self.size, d.size, 5.0..=500.0, 5.0, 0);
+                if self.size_fn == Some(Expanding) || self.size_fn == Some(Contracting) {
+                    pick_list(
+                        ui,
+                        "Direction",
+                        &[Dir::Both, Dir::Horizontal, Dir::Vertical],
+                        &mut self.direction,
+                    );
+                    numeric(
+                        ui,
+                        "Min Size",
+                        &mut self.min_size,
+                        d.min_size,
+                        1.0..=50.0,
+                        1.0,
+                        1,
+                    );
+                } else if self.size_fn == Some(Periodic) {
+                    numeric(
+                        ui,
+                        "Size Scale",
+                        &mut self.size_scale,
+                        d.size_scale,
+                        1.0..=30.0,
+                        1.0,
+                        1,
+                    );
+                    numeric(
+                        ui,
+                        "Min Size",
+                        &mut self.min_size,
+                        d.min_size,
+                        1.0..=50.0,
+                        1.0,
+                        1,
+                    );
+                }
+            });
     }
 }

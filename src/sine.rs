@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
-use crate::gui::numeric;
+use crate::gui::{numeric, section};
 use eframe::egui;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SineControls {
     pub xfreq: f32,
     pub yfreq: f32,
@@ -33,11 +34,16 @@ impl SineControls {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.separator();
-        ui.label("Sine Noise");
-        numeric(ui, "X Frequency", &mut self.xfreq, 0.1..=10.0, 0.1, 1);
-        numeric(ui, "Y Frequency", &mut self.yfreq, 0.1..=10.0, 0.1, 1);
-        numeric(ui, "X Exponent", &mut self.xexp, 1.0..=4.0, 1.0, 0);
-        numeric(ui, "Y Exponent", &mut self.yexp, 1.0..=4.0, 1.0, 0);
+        let d = Self::default();
+        section(ui, "Sine Noise");
+        egui::Grid::new("sine")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                numeric(ui, "X Frequency", &mut self.xfreq, d.xfreq, 0.1..=10.0, 0.1, 1);
+                numeric(ui, "Y Frequency", &mut self.yfreq, d.yfreq, 0.1..=10.0, 0.1, 1);
+                numeric(ui, "X Exponent", &mut self.xexp, d.xexp, 1.0..=4.0, 1.0, 0);
+                numeric(ui, "Y Exponent", &mut self.yexp, d.yexp, 1.0..=4.0, 1.0, 0);
+            });
     }
 }

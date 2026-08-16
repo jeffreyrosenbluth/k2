@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use wassily::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct NoiseControls {
     pub noise_function: Option<NoiseFunction>,
     pub noise_factor: f32,
@@ -44,7 +45,7 @@ impl Default for NoiseControls {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NoiseFunction {
     Fbm,
     Billow,

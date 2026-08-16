@@ -10,8 +10,9 @@ use crate::noise::{NoiseControls, NoiseFunction};
 use crate::sine::SineControls;
 use crate::size::{Dir, SizeControls, SizeFn};
 use eframe::egui::Color32;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Preset {
     Ribbons,
     Solar,
@@ -71,8 +72,8 @@ pub fn ribbons() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::Royalty),
         background: Some(Background::LightGrain),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -96,8 +97,8 @@ pub fn ridges() -> Controls {
         density: 100.0,
         color_mode_controls: ColorControls::default().set_anchor1(Color32::from_rgb(111, 171, 181)),
         background: Some(Background::DarkGrain),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -107,7 +108,6 @@ pub fn solar() -> Controls {
         curve_style: Some(CurveStyle::Line),
         noise_controls: NoiseControls::new(NoiseFunction::Curl, 4.0, 1.2),
         location: Some(Location::Circle),
-        border: true,
         spacing: 5.0,
         stroke_width: 2.0,
         curve_length: 100,
@@ -117,8 +117,8 @@ pub fn solar() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::PinotNoir),
         background: Some(Background::LightFiber),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -145,8 +145,8 @@ pub fn river_stones() -> Controls {
         density: 45.0,
         color_mode_controls: ColorControls::default().set_anchor1(Color32::from_rgb(45, 10, 65)),
         background: Some(Background::ColorGrain),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -173,8 +173,8 @@ pub fn vortex() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::DeltaBlues),
         background: Some(Background::LightFiber),
-        width: "1000".to_string(),
-        height: "1200".to_string(),
+        width: 1000,
+        height: 1200,
         ..Default::default()
     }
 }
@@ -193,8 +193,8 @@ pub fn canyon() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::Rose),
         background: Some(Background::DarkGrain),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -228,8 +228,8 @@ pub fn fence() -> Controls {
             .set_palette_choice(Palettes::Algae),
         background: Some(Background::ColorGrain),
         grain_color: Color32::from_rgb(152, 194, 152),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -261,8 +261,8 @@ pub fn splat() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::GrayScale),
         background: Some(Background::LightGrain),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -290,8 +290,8 @@ pub fn tubes() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::SpiritedAway),
         background: Some(Background::DarkFiber),
-        width: "1000".to_string(),
-        height: "1200".to_string(),
+        width: 1000,
+        height: 1200,
         ..Default::default()
     }
 }
@@ -340,8 +340,8 @@ pub fn symmetry() -> Controls {
             .set_palette_choice(Palettes::Totoro),
         background: Some(Background::ColorGrain),
         grain_color: Color32::from_rgb(215, 155, 190),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -359,8 +359,8 @@ pub fn pompom() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::SpiritedAway),
         background: Some(Background::DarkGrain),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }
@@ -390,8 +390,8 @@ pub fn red_dwarf() -> Controls {
             .set_mode(ColorMode::Palette)
             .set_palette_choice(Palettes::PorcoRosso),
         background: Some(Background::DarkFiber),
-        width: "1080".to_string(),
-        height: "1080".to_string(),
+        width: 1080,
+        height: 1080,
         ..Default::default()
     }
 }

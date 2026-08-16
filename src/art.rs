@@ -97,6 +97,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
         height: h,
         curve_length: controls.curve_length,
         speed: controls.speed,
+        hide_ends: controls.hide_ends,
     }
 }
 
@@ -154,12 +155,27 @@ fn render_curve(
                 sb.fill_color(c).draw(canvas);
             }
         }
-        CurveStyle::Line => Shape::new()
-            .points(&pts)
-            .no_fill()
-            .stroke_color(c)
-            .stroke_weight(controls.stroke_width)
-            .draw(canvas),
+        CurveStyle::Line => {
+            // Split the polyline at any jump much larger than a step, so a
+            // discontinuity in the point list never draws a stray chord.
+            let max_jump = (4.0 * controls.spacing).max(20.0);
+            let mut seg_start = 0;
+            for i in 0..pts.len() {
+                let broken = i + 1 == pts.len()
+                    || pts[i].dist2(pts[i + 1]) > max_jump * max_jump;
+                if broken {
+                    if i > seg_start {
+                        Shape::new()
+                            .points(&pts[seg_start..=i])
+                            .no_fill()
+                            .stroke_color(c)
+                            .stroke_weight(controls.stroke_width)
+                            .draw(canvas);
+                    }
+                    seg_start = i + 1;
+                }
+            }
+        }
         CurveStyle::Extrusion => {
             let extrude_dir = controls
                 .extrude_controls
@@ -211,23 +227,20 @@ fn render_curve(
 }
 
 pub fn draw(controls: &Controls, print: bool) -> Canvas {
-    let mut canvas = Canvas::new(WIDTH, HEIGHT);
-    if let Ok(w) = controls.width.parse::<u32>() {
-        if let Ok(h) = controls.height.parse::<u32>() {
-            let aspect_ratio = w as f32 / h as f32;
-            let mut ch = HEIGHT;
-            let mut cw = WIDTH;
-            if w >= h {
-                ch = (WIDTH as f32 / aspect_ratio) as u32;
-            } else {
-                cw = (HEIGHT as f32 * aspect_ratio) as u32;
-            }
-            if print {
-                canvas = Canvas::with_scale(cw, ch, std::cmp::max(w, h) as f32 / 1000.0)
-            } else {
-                canvas = Canvas::new(cw, ch)
-            }
-        }
+    let w = controls.width.max(1);
+    let h = controls.height.max(1);
+    let aspect_ratio = w as f32 / h as f32;
+    let mut ch = HEIGHT;
+    let mut cw = WIDTH;
+    if w >= h {
+        ch = (WIDTH as f32 / aspect_ratio) as u32;
+    } else {
+        cw = (HEIGHT as f32 * aspect_ratio) as u32;
+    }
+    let mut canvas = if print {
+        Canvas::with_scale(cw, ch, std::cmp::max(w, h) as f32 / 1000.0)
+    } else {
+        Canvas::new(cw, ch)
     };
 
     let mut rng = SmallRng::seed_from_u64(SEED);
@@ -243,6 +256,8 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
             &mut rng,
             controls.grain_color,
         ),
+        Background::White => BG::solid(canvas.width(), canvas.height(), *WHITE),
+        Background::Black => BG::solid(canvas.width(), canvas.height(), *BLACK),
     };
     bg.canvas_bg(&mut canvas);
 
@@ -343,15 +358,6 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
             Transform::identity(),
             None,
         );
-    }
-    if controls.border {
-        let border_color = palette[0].darken_fixed(0.35);
-        Shape::new()
-            .rect_xywh(pt(0, 0), pt(canvas.width(), canvas.height()))
-            .no_fill()
-            .stroke_color(border_color)
-            .stroke_weight(20.0)
-            .draw(&mut canvas);
     }
     canvas
 }

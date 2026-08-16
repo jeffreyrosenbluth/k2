@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
-use crate::gui::{color_picker, pick_list};
+use crate::gui::{color_picker, pick_list, section};
 use eframe::egui;
 use wassily::prelude::palette::{Darken, Desaturate, OklabHue, Saturate};
 use wassily::prelude::*;
+use serde::{Deserialize, Serialize};
 
 pub fn color_scale(color1: Color, color2: Color, n: u8) -> Vec<Color> {
     let c1 = Okhsl::from_color(&color1);
@@ -86,7 +87,7 @@ pub fn color_palette(pal: Palettes) -> Palette {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Palettes {
     Royalty,
     DeltaBlues,
@@ -127,13 +128,13 @@ impl std::fmt::Display for Palettes {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ColorMode {
     Palette,
     Scale,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ColorControls {
     pub mode: Option<ColorMode>,
     pub anchor1: egui::Color32,
@@ -175,36 +176,44 @@ impl ColorControls {
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         use Palettes::*;
-        ui.horizontal(|ui| {
-            ui.radio_value(&mut self.mode, Some(ColorMode::Palette), "Palette");
-            ui.radio_value(&mut self.mode, Some(ColorMode::Scale), "Color Scale");
-        });
-        if self.mode == Some(ColorMode::Scale) {
-            color_picker(ui, "Anchor 1", &mut self.anchor1);
-            color_picker(ui, "Anchor 2", &mut self.anchor2);
-        } else {
-            pick_list(
-                ui,
-                "Palette",
-                &[
-                    Royalty,
-                    DeltaBlues,
-                    PinotNoir,
-                    Algae,
-                    Scepter,
-                    Fire,
-                    Perfume,
-                    Rose,
-                    GrayScale,
-                    PorcoRosso,
-                    SpiritedAway,
-                    Totoro,
-                    MonoRed,
-                    MonoGreen,
-                    MonoBlue,
-                ],
-                &mut self.palette_choice,
-            );
-        }
+        section(ui, "Color");
+        egui::Grid::new("color_mode")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                ui.label("Color Mode");
+                ui.horizontal(|ui| {
+                    ui.radio_value(&mut self.mode, Some(ColorMode::Palette), "Palette");
+                    ui.radio_value(&mut self.mode, Some(ColorMode::Scale), "Scale");
+                });
+                ui.end_row();
+                if self.mode == Some(ColorMode::Scale) {
+                    color_picker(ui, "Anchor 1", &mut self.anchor1);
+                    color_picker(ui, "Anchor 2", &mut self.anchor2);
+                } else {
+                    pick_list(
+                        ui,
+                        "Palette",
+                        &[
+                            Royalty,
+                            DeltaBlues,
+                            PinotNoir,
+                            Algae,
+                            Scepter,
+                            Fire,
+                            Perfume,
+                            Rose,
+                            GrayScale,
+                            PorcoRosso,
+                            SpiritedAway,
+                            Totoro,
+                            MonoRed,
+                            MonoGreen,
+                            MonoBlue,
+                        ],
+                        &mut self.palette_choice,
+                    );
+                }
+            });
     }
 }

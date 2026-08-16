@@ -22,7 +22,7 @@ mod size;
 use crate::art::draw;
 use crate::background::Background;
 use crate::common::*;
-use crate::gui::{color_picker, numeric, pick_list};
+use crate::gui::{color_picker, numeric, pick_list, section, SliderRow, SPACE};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
@@ -35,7 +35,7 @@ pub fn main() -> eframe::Result {
     }
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1500.0, 1100.0])
+            .with_inner_size([1500.0, 950.0])
             .with_title("K2"),
         ..Default::default()
     };
@@ -49,6 +49,8 @@ pub fn main() -> eframe::Result {
     )
 }
 
+/// Save the artwork as a full resolution png in the Downloads folder, along
+/// with a json file of the parameters that produced it.
 pub fn print(controls: Controls) {
     let canvas = draw(&controls, true);
     let dirs = UserDirs::new().unwrap();
@@ -63,6 +65,16 @@ pub fn print(controls: Controls) {
         sketch.set_extension("png");
     }
     canvas.save_png(&sketch);
+    let mut params = sketch.clone();
+    params.set_extension("json");
+    match serde_json::to_string_pretty(&controls) {
+        Ok(json) => {
+            if let Err(e) = std::fs::write(&params, json) {
+                eprintln!("failed to write {}: {e}", params.display());
+            }
+        }
+        Err(e) => eprintln!("failed to serialize parameters: {e}"),
+    }
 }
 
 fn load_preset(p: Preset) -> Controls {
@@ -94,146 +106,241 @@ impl K2 {
         use NoiseFunction::*;
         use Preset::*;
 
-        ui.horizontal(|ui| {
-            ui.vertical(|ui| {
-                ui.label("Width");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.controls.width)
-                        .desired_width(70.0)
-                        .hint_text("1000"),
-                );
-            });
-            ui.vertical(|ui| {
-                ui.label("Height");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.controls.height)
-                        .desired_width(70.0)
-                        .hint_text("1000"),
-                );
-            });
-        });
+        let d = Controls::default();
+        egui::Grid::new("main")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                SliderRow::new(
+                    "Width",
+                    &mut self.controls.width,
+                    d.width,
+                    0..=28800,
+                )
+                .hover(&[
+                    "Set the width of the output",
+                    "image in pixels. Values under",
+                    "180 are treated as inches",
+                    "at 300 DPI.",
+                ])
+                .unclamped()
+                .show(ui);
+                // Small values are treated as inches at 300 DPI.
+                if self.controls.width < 180 {
+                    self.controls.width *= 300;
+                }
+                SliderRow::new(
+                    "Height",
+                    &mut self.controls.height,
+                    d.height,
+                    0..=28800,
+                )
+                .hover(&[
+                    "Set the height of the output",
+                    "image in pixels. Values under",
+                    "180 are treated as inches",
+                    "at 300 DPI.",
+                ])
+                .unclamped()
+                .show(ui);
+                // Small values are treated as inches at 300 DPI.
+                if self.controls.height < 180 {
+                    self.controls.height *= 300;
+                }
 
-        let mut preset = self.controls.preset;
-        if pick_list(
-            ui,
-            "Preset",
-            &[
-                Ribbons, Solar, RiverStones, Vortex, Canyon, Fence, Splat, Tubes, Ducts, Symmetry,
-                PomPom, RedDwarf, Ridges,
-            ],
-            &mut preset,
-        ) {
-            if let Some(p) = preset {
-                self.controls = load_preset(p);
-            }
-        }
+                let mut preset = self.controls.preset;
+                if pick_list(
+                    ui,
+                    "Preset",
+                    &[
+                        Ribbons, Solar, RiverStones, Vortex, Canyon, Fence, Splat, Tubes, Ducts,
+                        Symmetry, PomPom, RedDwarf, Ridges,
+                    ],
+                    &mut preset,
+                ) {
+                    if let Some(p) = preset {
+                        self.controls = load_preset(p);
+                    }
+                }
 
-        pick_list(
-            ui,
-            "Curve Style",
-            &[Line, Dots, Extrusion],
-            &mut self.controls.curve_style,
-        );
-        ui.horizontal(|ui| {
-            ui.radio_value(&mut self.controls.curve_direction, Some(OneSided), "One Sided");
-            ui.radio_value(&mut self.controls.curve_direction, Some(TwoSided), "Two Sided");
-        });
-        pick_list(
-            ui,
-            "Flow Field",
-            &[
-                Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity, Sinusoidal,
-            ],
-            &mut self.controls.noise_controls.noise_function,
-        );
-        pick_list(
-            ui,
-            "Curve Locations",
-            &[
-                Location::Grid,
-                Location::Rand,
-                Location::Halton,
-                Location::Poisson,
-                Location::Circle,
-                Location::Lissajous,
-            ],
-            &mut self.controls.location,
-        );
-        pick_list(
-            ui,
-            "Background Style",
-            &[LightGrain, LightFiber, DarkGrain, DarkFiber, ColorGrain],
-            &mut self.controls.background,
-        );
-        numeric(ui, "Density", &mut self.controls.density, 5.0..=100.0, 5.0, 0);
-        numeric(
-            ui,
-            "Point Spacing",
-            &mut self.controls.spacing,
-            1.0..=100.0,
-            1.0,
-            0,
-        );
-        numeric(
-            ui,
-            "Curve Length",
-            &mut self.controls.curve_length,
-            0..=400,
-            1.0,
-            0,
-        );
-        numeric(
-            ui,
-            "Noise Scale",
-            &mut self.controls.noise_controls.noise_scale,
-            0.5..=20.0,
-            0.1,
-            1,
-        );
-        numeric(
-            ui,
-            "Noise Factor",
-            &mut self.controls.noise_controls.noise_factor,
-            0.5..=10.0,
-            0.1,
-            1,
-        );
-        numeric(
-            ui,
-            "Convergence Speed",
-            &mut self.controls.speed,
-            0.01..=1.0,
-            0.01,
-            2,
-        );
+                pick_list(
+                    ui,
+                    "Curve Style",
+                    &[Line, Dots, Extrusion],
+                    &mut self.controls.curve_style,
+                );
+                ui.label("Direction");
+                ui.horizontal(|ui| {
+                    ui.radio_value(&mut self.controls.curve_direction, Some(OneSided), "One");
+                    ui.radio_value(&mut self.controls.curve_direction, Some(TwoSided), "Two");
+                });
+                ui.end_row();
+                pick_list(
+                    ui,
+                    "Flow Field",
+                    &[
+                        Fbm, Billow, Ridged, Value, Cylinders, Worley, Curl, Magnet, Gravity,
+                        Sinusoidal,
+                    ],
+                    &mut self.controls.noise_controls.noise_function,
+                );
+                pick_list(
+                    ui,
+                    "Locations",
+                    &[
+                        Location::Grid,
+                        Location::Rand,
+                        Location::Halton,
+                        Location::Poisson,
+                        Location::Circle,
+                        Location::Lissajous,
+                        Location::Box,
+                    ],
+                    &mut self.controls.location,
+                );
+                pick_list(
+                    ui,
+                    "Background",
+                    &[
+                        LightGrain, LightFiber, DarkGrain, DarkFiber, ColorGrain, White, Black,
+                    ],
+                    &mut self.controls.background,
+                );
+                numeric(
+                    ui,
+                    "Density",
+                    &mut self.controls.density,
+                    d.density,
+                    5.0..=100.0,
+                    5.0,
+                    0,
+                );
+                numeric(
+                    ui,
+                    "Point Spacing",
+                    &mut self.controls.spacing,
+                    d.spacing,
+                    1.0..=100.0,
+                    1.0,
+                    0,
+                );
+                numeric(
+                    ui,
+                    "Curve Length",
+                    &mut self.controls.curve_length,
+                    d.curve_length,
+                    0..=1000,
+                    1.0,
+                    0,
+                );
+                ui.label("Hide Ends").on_hover_ui(|ui| {
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "Extend both ends of every curve",
+                    );
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "along the flow field until they",
+                    );
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "leave the canvas, so no curve",
+                    );
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "endpoints are visible.",
+                    );
+                });
+                ui.checkbox(&mut self.controls.hide_ends, "");
+                ui.end_row();
+                numeric(
+                    ui,
+                    "Noise Scale",
+                    &mut self.controls.noise_controls.noise_scale,
+                    d.noise_controls.noise_scale,
+                    0.5..=20.0,
+                    0.1,
+                    1,
+                );
+                numeric(
+                    ui,
+                    "Noise Factor",
+                    &mut self.controls.noise_controls.noise_factor,
+                    d.noise_controls.noise_factor,
+                    0.5..=10.0,
+                    0.1,
+                    1,
+                );
+                SliderRow::new(
+                    "Turning Speed",
+                    &mut self.controls.speed,
+                    d.speed,
+                    0.01..=1.0,
+                )
+                .hover(&[
+                    "How quickly a curve turns toward",
+                    "the flow field direction. Low",
+                    "values give long, smooth strands.",
+                ])
+                .logarithmic()
+                .decimals(2)
+                .show(ui);
+            });
+
         self.controls.color_mode_controls.ui(ui);
-        numeric(
-            ui,
-            "Stroke Width",
-            &mut self.controls.stroke_width,
-            0.0..=25.0,
-            0.5,
-            1,
-        );
-        ui.checkbox(&mut self.controls.border, "Border");
 
-        ui.add_space(5.0);
-        let exporting = self.exporting.load(Ordering::Relaxed);
-        if ui
-            .add_enabled(!exporting, egui::Button::new("Export"))
-            .clicked()
-        {
-            self.exporting.store(true, Ordering::Relaxed);
-            let controls = self.controls.clone();
-            let flag = self.exporting.clone();
-            std::thread::spawn(move || {
-                print(controls);
-                flag.store(false, Ordering::Relaxed);
+        ui.add_space(2.0 * SPACE);
+        egui::Grid::new("stroke")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                numeric(
+                    ui,
+                    "Stroke Width",
+                    &mut self.controls.stroke_width,
+                    d.stroke_width,
+                    0.0..=25.0,
+                    0.5,
+                    1,
+                );
             });
+
+        if self.exporting.load(Ordering::Relaxed) {
+            ui.add_space(SPACE);
+            ui.vertical_centered(|ui| ui.spinner());
         }
-        if exporting {
-            ui.spinner();
-        }
+    }
+
+    /// Save the current artwork and its parameters on a background thread.
+    fn save_png(&mut self) {
+        self.exporting.store(true, Ordering::Relaxed);
+        let controls = self.controls.clone();
+        let flag = self.exporting.clone();
+        std::thread::spawn(move || {
+            print(controls);
+            flag.store(false, Ordering::Relaxed);
+        });
+    }
+
+    fn menu_bar(&mut self, ui: &mut egui::Ui) {
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.menu_button("File", |ui| {
+                let exporting = self.exporting.load(Ordering::Relaxed);
+                if ui
+                    .add_enabled(!exporting, egui::Button::new("Save PNG"))
+                    .clicked()
+                {
+                    self.save_png();
+                }
+                if ui.button("Reset").clicked() {
+                    self.controls = ribbons();
+                }
+                ui.separator();
+                if ui.button("Quit").clicked() {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            });
+        });
     }
 
     fn right_panel(&mut self, ui: &mut egui::Ui) {
@@ -255,8 +362,13 @@ impl K2 {
             self.controls.sin_controls.ui(ui);
         }
         if self.controls.background == Some(Background::ColorGrain) {
-            ui.separator();
-            color_picker(ui, "Grain Color", &mut self.controls.grain_color);
+            section(ui, "Grain");
+            egui::Grid::new("grain")
+                .spacing((15.0, 10.0))
+                .min_col_width(90.0)
+                .show(ui, |ui| {
+                    color_picker(ui, "Grain Color", &mut self.controls.grain_color);
+                });
         }
     }
 }
@@ -264,25 +376,34 @@ impl K2 {
 impl eframe::App for K2 {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        egui::Panel::top("menu_bar").show(ui, |ui| {
+            self.menu_bar(ui);
+        });
+        // Panel width: 90px label column + 15px grid spacing + ~185px of
+        // slider/value/reset widgets, a 10px scrollbar strip, and 2x10 margins.
         egui::Panel::left("controls")
-            .exact_size(250.0)
+            .exact_size(330.0)
+            .resizable(false)
+            .frame(egui::Frame::default().inner_margin(10.0))
             .show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 10.0;
-                ui.spacing_mut().slider_width = 150.0;
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.add_space(5.0);
-                    self.left_panel(ui);
-                });
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        ui.add_space(SPACE);
+                        self.left_panel(ui);
+                    });
             });
         egui::Panel::right("style_controls")
-            .exact_size(250.0)
+            .exact_size(330.0)
+            .resizable(false)
+            .frame(egui::Frame::default().inner_margin(10.0))
             .show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 10.0;
-                ui.spacing_mut().slider_width = 150.0;
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.add_space(5.0);
-                    self.right_panel(ui);
-                });
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        ui.add_space(SPACE);
+                        self.right_panel(ui);
+                    });
             });
         egui::CentralPanel::default().show(ui, |ui| {
             if let Some(texture) = &self.texture {
@@ -338,4 +459,16 @@ fn bench() {
         );
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
