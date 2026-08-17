@@ -2080,6 +2080,7 @@ dependencies = [
  "eframe",
  "egui",
  "env_logger",
+ "image",
  "rand 0.9.5",
  "rayon",
  "rfd",

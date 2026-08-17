@@ -13,6 +13,7 @@ mod field;
 mod fractal;
 mod gradient;
 mod gui;
+mod imgnoise;
 mod location;
 mod noise;
 mod presets;
@@ -22,7 +23,7 @@ mod size;
 use crate::art::draw;
 use crate::background::Background;
 use crate::common::*;
-use crate::gui::{color_picker, numeric, pick_list, section, SliderRow, SPACE};
+use crate::gui::{action_button, color_picker, numeric, pick_list, section, SliderRow, SPACE};
 use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
@@ -55,7 +56,8 @@ pub fn print(controls: Controls, mut path: PathBuf) {
     if path.extension().is_none() {
         path.set_extension("png");
     }
-    let canvas = draw(&controls, true);
+    let scale = std::cmp::max(controls.width, controls.height).max(1) as f32 / 1000.0;
+    let canvas = draw(&controls, scale);
     canvas.save_png(&path);
     let params = path.with_extension("json");
     match serde_json::to_string_pretty(&controls) {
@@ -154,7 +156,11 @@ impl K2 {
                     &mut preset,
                 ) {
                     if let Some(p) = preset {
+                        // Keep the chosen noise image across preset loads.
+                        let image_noise = self.controls.image_noise.clone();
                         self.controls = load_preset(p);
+                        self.controls.image_noise = image_noise;
+                        self.pending_draw = true;
                     }
                 }
             });
@@ -184,7 +190,7 @@ impl K2 {
                     "Flow Field",
                     &[
                         Fbm, BasicMulti, HybridMulti, Billow, Ridged, Value, Cylinders,
-                        Worley, Curl, Sinusoidal,
+                        Worley, Curl, Sinusoidal, Image,
                     ],
                     &mut self.controls.noise_controls.noise_function,
                 );
@@ -320,7 +326,18 @@ impl K2 {
                 );
             });
 
-        if self.exporting.load(Ordering::Relaxed) {
+        ui.add_space(SPACE);
+        ui.separator();
+        ui.add_space(SPACE);
+        if action_button(
+            ui,
+            "Draw",
+            true,
+            &["Render the artwork with the", "current settings."],
+        ) {
+            self.pending_draw = true;
+        }
+        if self.exporting.load(Ordering::Relaxed) || self.rendering {
             ui.add_space(SPACE);
             ui.vertical_centered(|ui| ui.spinner());
         }
@@ -358,7 +375,10 @@ impl K2 {
                     self.save_png();
                 }
                 if ui.button("Reset").clicked() {
+                    let image_noise = self.controls.image_noise.clone();
                     self.controls = ribbons();
+                    self.controls.image_noise = image_noise;
+                    self.pending_draw = true;
                 }
                 ui.separator();
                 if ui.button("Quit").clicked() {
@@ -387,6 +407,9 @@ impl K2 {
         }
         if self.controls.noise_controls.noise_function == Some(NoiseFunction::Sinusoidal) {
             self.controls.sin_controls.ui(ui);
+        }
+        if self.controls.noise_controls.noise_function == Some(NoiseFunction::Image) {
+            self.controls.image_noise.ui(ui, &mut self.image_thumb);
         }
         if self.controls.background == Some(Background::ColorGrain) {
             section(ui, "Grain");
@@ -441,32 +464,35 @@ impl eframe::App for K2 {
                         self.right_panel(ui);
                     });
             });
+        self.poll_renders(&ctx);
         egui::CentralPanel::default().show(ui, |ui| {
             if let Some(texture) = &self.texture {
                 ui.add_space(10.0);
                 ui.vertical_centered(|ui| {
-                    ui.add(
-                        egui::Image::new(texture)
-                            .max_size(ui.available_size())
-                            .maintain_aspect_ratio(true),
-                    );
+                    // Size by the logical image dimensions, so the layout is
+                    // identical while previews and full renders swap in.
+                    let avail = ui.available_size();
+                    let s = (avail.x / self.image_logical.x)
+                        .min(avail.y / self.image_logical.y)
+                        .min(1.0);
+                    ui.add(egui::Image::new(texture).fit_to_exact_size(self.image_logical * s));
                 });
             }
         });
 
-        // Regenerate the artwork once the user finishes an interaction:
-        // no mouse button held (slider drags) and no focused widget (text
-        // edits commit on Enter or focus loss).
-        let interacting = ctx.input(|i| i.pointer.any_down())
-            || ctx.memory(|m| m.focused().is_some());
-        if self.texture.is_none() {
-            self.regenerate(&ctx);
-        } else if !interacting && self.controls != self.last_drawn {
-            // Manual edits clear the preset selection; picking a preset keeps it.
-            if self.controls.preset == self.last_drawn.preset {
+        // Rendering happens only when asked: the Draw button, a preset load,
+        // or Reset set `pending_draw`, so any number of controls can be
+        // changed before committing. Work runs on a worker thread; a fast
+        // preview lands first and the full image follows.
+        if self.texture.is_none() && !self.rendering {
+            self.start_render(&ctx);
+        } else if self.pending_draw {
+            self.pending_draw = false;
+            // Manual edits clear the preset selection; a preset load keeps it.
+            if self.controls.preset == self.last_drawn.preset && self.controls != self.last_drawn {
                 self.controls.preset = None;
             }
-            self.regenerate(&ctx);
+            self.start_render(&ctx);
         }
 
         if self.exporting.load(Ordering::Relaxed) {
@@ -486,7 +512,7 @@ fn bench() {
         let mut controls = ribbons();
         controls.background = Some(bg);
         let t = std::time::Instant::now();
-        let canvas = draw(&controls, false);
+        let canvas = draw(&controls, 1.0);
         println!(
             "{bg}: {:?} ({}x{})",
             t.elapsed(),
@@ -495,6 +521,12 @@ fn bench() {
         );
     }
 }
+
+
+
+
+
+
 
 
 

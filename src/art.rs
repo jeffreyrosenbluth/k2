@@ -76,6 +76,27 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                     .set_persistence(controls.fractal_controls.persistence as f64);
                 Box::new(Curl::new(nf))
             }
+            NoiseFunction::Image => {
+                let noise = controls.image_noise.path.as_deref().and_then(|p| {
+                    crate::imgnoise::cached_noise(
+                        p,
+                        controls
+                            .image_noise
+                            .color_map
+                            .unwrap_or(crate::imgnoise::ColorMap::Lightness),
+                        controls.image_noise.blur.max(0.0),
+                        controls
+                            .image_noise
+                            .rotation
+                            .unwrap_or(crate::imgnoise::Rotation::Deg0),
+                    )
+                });
+                match noise {
+                    Some(n) => Box::new(crate::imgnoise::SharedImgNoise(n)),
+                    // No image chosen (or unreadable): a flat field.
+                    None => Box::new(Constant::new(0.0)),
+                }
+            }
             NoiseFunction::Sinusoidal => Box::new(Sinusoidal::new(
                 controls.sin_controls.xfreq as f64,
                 controls.sin_controls.yfreq as f64,
@@ -270,7 +291,9 @@ fn render_curve(
     }
 }
 
-pub fn draw(controls: &Controls, print: bool) -> Canvas {
+/// Render the artwork. `scale` multiplies the logical canvas size: 1.0 for
+/// the display image, below 1.0 for fast previews, above 1.0 for print.
+pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     let w = controls.width.max(1);
     let h = controls.height.max(1);
     let aspect_ratio = w as f32 / h as f32;
@@ -281,11 +304,7 @@ pub fn draw(controls: &Controls, print: bool) -> Canvas {
     } else {
         cw = (HEIGHT as f32 * aspect_ratio) as u32;
     }
-    let mut canvas = if print {
-        Canvas::with_scale(cw, ch, std::cmp::max(w, h) as f32 / 1000.0)
-    } else {
-        Canvas::new(cw, ch)
-    };
+    let mut canvas = Canvas::with_scale(cw, ch, scale);
 
     let mut rng = SmallRng::seed_from_u64(SEED);
 

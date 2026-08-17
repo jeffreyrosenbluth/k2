@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{mpsc, Arc};
 
 use crate::art::draw;
 use crate::background::Background;
@@ -9,6 +9,7 @@ use crate::color::ColorControls;
 use crate::dot::DotControls;
 use crate::extrude::ExtrudeControls;
 use crate::fractal::FractalControls;
+use crate::imgnoise::{ImageNoiseControls, ThumbCache};
 use crate::noise::NoiseControls;
 use crate::presets::Preset;
 use crate::sine::SineControls;
@@ -20,43 +21,116 @@ use serde::{Deserialize, Serialize};
 pub const WIDTH: u32 = 1000;
 pub const HEIGHT: u32 = 1000;
 pub const SEED: u64 = 98713;
+/// Scale of the fast preview rendered while the full image is in flight.
+pub const PREVIEW_SCALE: f32 = 0.5;
+
+/// A finished render arriving from a worker thread.
+pub struct RenderMsg {
+    epoch: u64,
+    image: egui::ColorImage,
+    logical: egui::Vec2,
+    full: bool,
+}
 
 pub struct K2 {
     pub controls: Controls,
-    /// The controls as of the last texture regeneration; used to detect edits.
+    /// The controls as of the last render kick-off; used to detect edits.
     pub last_drawn: Controls,
     pub texture: Option<egui::TextureHandle>,
+    /// Logical (unscaled) size of the displayed image, for stable layout
+    /// while previews and full renders of different resolutions swap in.
+    pub image_logical: egui::Vec2,
     pub exporting: Arc<AtomicBool>,
+    /// True from render kick-off until its full resolution image lands.
+    pub rendering: bool,
+    /// Set by the Draw button (and preset loads); consumed by the frame loop.
+    pub pending_draw: bool,
+    /// Thumbnail of the image noise source shown in the right panel.
+    pub image_thumb: ThumbCache,
+    epoch: Arc<AtomicU64>,
+    tx: mpsc::Sender<RenderMsg>,
+    rx: mpsc::Receiver<RenderMsg>,
 }
 
 impl K2 {
     pub fn new() -> Self {
         let controls = ribbons();
+        let (tx, rx) = mpsc::channel();
         Self {
             last_drawn: controls.clone(),
             controls,
             texture: None,
+            image_logical: egui::vec2(WIDTH as f32, HEIGHT as f32),
             exporting: Arc::new(AtomicBool::new(false)),
+            rendering: false,
+            pending_draw: false,
+            image_thumb: ThumbCache::default(),
+            epoch: Arc::new(AtomicU64::new(0)),
+            tx,
+            rx,
         }
     }
 
-    /// Regenerate the artwork and upload it as an egui texture.
-    pub fn regenerate(&mut self, ctx: &egui::Context) {
-        let canvas = draw(&self.controls, false);
-        let image = egui::ColorImage::from_rgba_premultiplied(
-            [
-                canvas.pixmap.width() as usize,
-                canvas.pixmap.height() as usize,
-            ],
-            canvas.pixmap.data(),
-        );
-        match &mut self.texture {
-            Some(texture) => texture.set(image, egui::TextureOptions::LINEAR),
-            None => {
-                self.texture = Some(ctx.load_texture("art", image, egui::TextureOptions::LINEAR))
+    /// Kick off an asynchronous render of the current controls: a fast
+    /// reduced-scale preview first, then the full resolution image, each
+    /// swapped in as it arrives. A newer kick-off supersedes older renders.
+    pub fn start_render(&mut self, ctx: &egui::Context) {
+        let epoch = self.epoch.fetch_add(1, Ordering::Relaxed) + 1;
+        self.rendering = true;
+        self.last_drawn = self.controls.clone();
+        let controls = self.controls.clone();
+        let latest = self.epoch.clone();
+        let tx = self.tx.clone();
+        let ctx = ctx.clone();
+        std::thread::spawn(move || {
+            for (scale, full) in [(PREVIEW_SCALE, false), (1.0, true)] {
+                if latest.load(Ordering::Relaxed) != epoch {
+                    return;
+                }
+                let canvas = draw(&controls, scale);
+                let image = egui::ColorImage::from_rgba_premultiplied(
+                    [
+                        canvas.pixmap.width() as usize,
+                        canvas.pixmap.height() as usize,
+                    ],
+                    canvas.pixmap.data(),
+                );
+                let logical = egui::vec2(canvas.w_f32(), canvas.h_f32());
+                if latest.load(Ordering::Relaxed) != epoch
+                    || tx
+                        .send(RenderMsg {
+                            epoch,
+                            image,
+                            logical,
+                            full,
+                        })
+                        .is_err()
+                {
+                    return;
+                }
+                ctx.request_repaint();
+            }
+        });
+    }
+
+    /// Apply any renders that have arrived, discarding superseded ones.
+    pub fn poll_renders(&mut self, ctx: &egui::Context) {
+        while let Ok(msg) = self.rx.try_recv() {
+            if msg.epoch != self.epoch.load(Ordering::Relaxed) {
+                continue;
+            }
+            self.image_logical = msg.logical;
+            match &mut self.texture {
+                Some(texture) => texture.set(msg.image, egui::TextureOptions::LINEAR),
+                None => {
+                    self.texture =
+                        Some(ctx.load_texture("art", msg.image, egui::TextureOptions::LINEAR))
+                }
+            }
+            if msg.full {
+                self.rendering = false;
             }
         }
-        self.last_drawn = self.controls.clone();
     }
 }
 
@@ -83,6 +157,8 @@ pub struct Controls {
     pub dot_controls: DotControls,
     pub extrude_controls: ExtrudeControls,
     pub color_mode_controls: ColorControls,
+    #[serde(default)]
+    pub image_noise: ImageNoiseControls,
 }
 
 impl Controls {
@@ -115,6 +191,7 @@ impl Default for Controls {
             dot_controls: DotControls::default(),
             extrude_controls: ExtrudeControls::default(),
             color_mode_controls: ColorControls::default(),
+            image_noise: ImageNoiseControls::default(),
         }
     }
 }

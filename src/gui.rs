@@ -285,6 +285,26 @@ fn swatch_grid(ui: &mut egui::Ui, colors: &[Color32], color: &mut Color32) {
     }
 }
 
+/// A centered mixel-style action button with orange hover help lines.
+pub fn action_button(ui: &mut egui::Ui, label: &str, enabled: bool, hover: &[&str]) -> bool {
+    let mut clicked = false;
+    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+        let response = ui
+            .add_enabled(
+                enabled,
+                egui::Button::new(RichText::new(label).strong().size(16.0))
+                    .min_size(egui::Vec2::new(150.0, 25.0)),
+            )
+            .on_hover_ui(|ui| {
+                for line in hover {
+                    ui.colored_label(Color32::ORANGE, *line);
+                }
+            });
+        clicked = response.clicked();
+    });
+    clicked
+}
+
 /// A section break: separator plus a centered bold title.
 pub fn section(ui: &mut egui::Ui, title: &str) {
     ui.add_space(SPACE);

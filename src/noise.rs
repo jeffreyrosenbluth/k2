@@ -57,6 +57,7 @@ pub enum NoiseFunction {
     Worley,
     Curl,
     Sinusoidal,
+    Image,
 }
 
 impl std::fmt::Display for NoiseFunction {
@@ -75,6 +76,7 @@ impl std::fmt::Display for NoiseFunction {
                 NoiseFunction::Worley => "Worley",
                 NoiseFunction::Curl => "Curl",
                 NoiseFunction::Sinusoidal => "Sinusoidal",
+                NoiseFunction::Image => "Image",
             }
         )
     }
