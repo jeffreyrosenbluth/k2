@@ -257,7 +257,7 @@ impl K2 {
                     1.0,
                     0,
                 );
-                ui.label("Hide Ends").on_hover_ui(|ui| {
+                ui.label("Endless").on_hover_ui(|ui| {
                     ui.colored_label(
                         egui::Color32::ORANGE,
                         "Extend both ends of every curve",
@@ -524,6 +524,7 @@ fn bench() {
         );
     }
 }
+
 
 
 

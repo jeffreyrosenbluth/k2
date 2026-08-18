@@ -30,7 +30,14 @@ pub struct DotControls {
     pub size_controls: SizeControls,
     pub pearl_sides: u32,
     pub pearl_smoothness: u32,
+    /// When false the dots are drawn without any stroke.
+    #[serde(default = "default_stroke")]
+    pub stroke: bool,
     pub dot_stroke_color: egui::Color32,
+}
+
+fn default_stroke() -> bool {
+    true
 }
 
 impl Default for DotControls {
@@ -40,6 +47,7 @@ impl Default for DotControls {
             size_controls: SizeControls::default(),
             pearl_sides: 4,
             pearl_smoothness: 3,
+            stroke: true,
             dot_stroke_color: egui::Color32::WHITE,
         }
     }
@@ -54,7 +62,18 @@ impl DotControls {
             .min_col_width(90.0)
             .show(ui, |ui| {
                 pick_list(ui, "Dot Style", &[Circle, Square, Pearl], &mut self.dot_style);
-                color_picker(ui, "Stroke Color", &mut self.dot_stroke_color);
+                ui.label("Stroke").on_hover_ui(|ui| {
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "Uncheck to draw dots with",
+                    );
+                    ui.colored_label(egui::Color32::ORANGE, "no stroke at all.");
+                });
+                ui.checkbox(&mut self.stroke, "");
+                ui.end_row();
+                if self.stroke {
+                    color_picker(ui, "Stroke Color", &mut self.dot_stroke_color);
+                }
             });
         self.size_controls.ui(ui);
         if self.dot_style == Some(Pearl) {

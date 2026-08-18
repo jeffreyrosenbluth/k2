@@ -198,7 +198,7 @@ fn render_curve(
                         rng,
                     ),
                 };
-                if controls.stroke_width < 0.5 {
+                if !controls.dot_controls.stroke || controls.stroke_width < 0.5 {
                     sb = sb.no_stroke();
                 } else {
                     sb = sb.stroke_weight(controls.stroke_width).stroke_color(sc)
