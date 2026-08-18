@@ -159,6 +159,16 @@ pub struct Controls {
     pub color_mode_controls: ColorControls,
     #[serde(default)]
     pub image_noise: ImageNoiseControls,
+    /// Column: rotation of the seed line in degrees; 0 is vertical.
+    #[serde(default)]
+    pub column_angle: f32,
+    /// Strips: fraction of the channel between neighboring curves left as a gap.
+    #[serde(default = "default_strip_gap")]
+    pub strip_gap: f32,
+}
+
+fn default_strip_gap() -> f32 {
+    0.08
 }
 
 impl Controls {
@@ -192,6 +202,8 @@ impl Default for Controls {
             extrude_controls: ExtrudeControls::default(),
             color_mode_controls: ColorControls::default(),
             image_noise: ImageNoiseControls::default(),
+            column_angle: 0.0,
+            strip_gap: 0.08,
         }
     }
 }
@@ -201,6 +213,7 @@ pub enum CurveStyle {
     Line,
     Dots,
     Extrusion,
+    Strips,
 }
 
 impl std::fmt::Display for CurveStyle {
@@ -212,6 +225,7 @@ impl std::fmt::Display for CurveStyle {
                 CurveStyle::Line => "Line",
                 CurveStyle::Dots => "Dots",
                 CurveStyle::Extrusion => "Extrusion",
+                CurveStyle::Strips => "Strips",
             }
         )
     }

@@ -12,10 +12,19 @@ pub enum Location {
     Circle,
     Lissajous,
     Box,
+    Column,
+    Even,
 }
 
 impl Location {
-    pub fn starts<R: RngCore>(&self, w: f32, h: f32, sep: f32, rng: &mut R) -> Vec<Point> {
+    pub fn starts<R: RngCore>(
+        &self,
+        w: f32,
+        h: f32,
+        sep: f32,
+        angle: f32,
+        rng: &mut R,
+    ) -> Vec<Point> {
         let mut pts = Vec::new();
         match &self {
             Location::Grid => {
@@ -74,6 +83,27 @@ impl Location {
                     t += sep;
                 }
             }
+            // A single centered column of seeds, spaced `sep` apart and
+            // extending past the canvas; made for the Strips style, whose
+            // two-sided curves sweep out full-width bands.
+            Location::Column => {
+                // A line of seeds through the center, rotated by `angle`:
+                // 0 degrees is a vertical column, 90 a horizontal row, and
+                // anything between a diagonal. Long enough to cover the
+                // canvas at any rotation.
+                let (cx, cy) = (w / 2.0, h / 2.0);
+                let a = angle.to_radians();
+                let (dx, dy) = (a.sin(), a.cos());
+                let half = 0.5 * (w * w + h * h).sqrt() + 0.05 * w.max(h);
+                let mut t = -half;
+                while t <= half {
+                    pts.push(pt(cx + t * dx, cy + t * dy));
+                    t += sep;
+                }
+            }
+            // Evenly spaced curves couple seeding with curve growth and
+            // are generated in draw() instead.
+            Location::Even => {}
             Location::Lissajous => {
                 let n = (w * h) / (sep * sep);
                 let cx = w / 2.0;
@@ -103,6 +133,8 @@ impl std::fmt::Display for Location {
                 Location::Circle => "Circle",
                 Location::Lissajous => "Lissajous",
                 Location::Box => "Box",
+                Location::Column => "Column",
+                Location::Even => "Even",
             }
         )
     }

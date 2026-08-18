@@ -179,7 +179,7 @@ impl K2 {
                 pick_list(
                     ui,
                     "Curve Style",
-                    &[Line, Dots, Extrusion],
+                    &[Line, Dots, Extrusion, Strips],
                     &mut self.controls.curve_style,
                 );
                 ui.label("Direction");
@@ -197,20 +197,55 @@ impl K2 {
                     ],
                     &mut self.controls.noise_controls.noise_function,
                 );
-                pick_list(
-                    ui,
-                    "Locations",
-                    &[
-                        Location::Grid,
-                        Location::Rand,
-                        Location::Halton,
-                        Location::Poisson,
-                        Location::Circle,
-                        Location::Lissajous,
-                        Location::Box,
-                    ],
-                    &mut self.controls.location,
-                );
+                if self.controls.curve_style == Some(CurveStyle::Strips) {
+                    // Strips pair neighboring curves, which only makes sense
+                    // from an ordered column of seeds.
+                    self.controls.location = Some(Location::Column);
+                    ui.label("Locations");
+                    ui.add_enabled(
+                        false,
+                        egui::Button::new("Column").min_size(egui::vec2(150.0, 0.0)),
+                    )
+                    .on_disabled_hover_ui(|ui| {
+                        ui.colored_label(
+                            egui::Color32::ORANGE,
+                            "Locked to Column while the",
+                        );
+                        ui.colored_label(egui::Color32::ORANGE, "Strips style is selected.");
+                    });
+                    ui.end_row();
+                } else {
+                    pick_list(
+                        ui,
+                        "Locations",
+                        &[
+                            Location::Grid,
+                            Location::Rand,
+                            Location::Halton,
+                            Location::Poisson,
+                            Location::Circle,
+                            Location::Lissajous,
+                            Location::Box,
+                            Location::Column,
+                            Location::Even,
+                        ],
+                        &mut self.controls.location,
+                    );
+                }
+                if self.controls.location == Some(Location::Column) {
+                    SliderRow::new(
+                        "Angle",
+                        &mut self.controls.column_angle,
+                        0.0,
+                        0.0..=180.0,
+                    )
+                    .hover(&[
+                        "Rotation of the seed column:",
+                        "0 is vertical, 90 horizontal.",
+                    ])
+                    .steps(5.0, 15.0)
+                    .show(ui);
+                }
                 pick_list(
                     ui,
                     "Background",
@@ -282,7 +317,7 @@ impl K2 {
                     "Noise Scale",
                     &mut self.controls.noise_controls.noise_scale,
                     d.noise_controls.noise_scale,
-                    0.5..=20.0,
+                    0.1..=20.0,
                     0.1,
                     1,
                 );
@@ -291,7 +326,7 @@ impl K2 {
                     "Noise Factor",
                     &mut self.controls.noise_controls.noise_factor,
                     d.noise_controls.noise_factor,
-                    0.5..=10.0,
+                    0.1..=10.0,
                     0.1,
                     1,
                 );
@@ -392,6 +427,22 @@ impl K2 {
     }
 
     fn right_panel(&mut self, ui: &mut egui::Ui) {
+        if self.controls.curve_style == Some(CurveStyle::Strips) {
+            section(ui, "Strips");
+            egui::Grid::new("strips")
+                .spacing((15.0, 10.0))
+                .min_col_width(90.0)
+                .show(ui, |ui| {
+                    SliderRow::new("Gap", &mut self.controls.strip_gap, 0.08, 0.0..=0.6)
+                        .hover(&[
+                            "Fraction of the channel between",
+                            "neighboring curves left open.",
+                        ])
+                        .steps(0.02, 0.1)
+                        .decimals(2)
+                        .show(ui);
+                });
+        }
         if self.controls.curve_style == Some(CurveStyle::Extrusion) {
             self.controls.extrude_controls.ui(ui);
         } else if self.controls.curve_style == Some(CurveStyle::Dots) {
@@ -524,6 +575,12 @@ fn bench() {
         );
     }
 }
+
+
+
+
+
+
 
 
 

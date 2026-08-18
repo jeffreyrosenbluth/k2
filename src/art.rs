@@ -111,29 +111,80 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
         curve_length: controls.curve_length,
         speed: controls.speed,
         hide_ends: controls.hide_ends,
+        // Rotate the whole flow with a rotated seed column, so the curves
+        // stay perpendicular to the seed line.
+        angle_offset: if controls.location == Some(crate::location::Location::Column) {
+            -controls.column_angle.to_radians()
+        } else {
+            0.0
+        },
+    }
+}
+
+fn gen_curve(flow: &Field, controls: &Controls, start: Point) -> Vec<Point> {
+    match controls
+        .curve_direction
+        .expect("controls.curve_direction cannot be None")
+    {
+        CurveDirection::OneSided => flow.curve1(start.x, start.y),
+        CurveDirection::TwoSided => flow.curve2(start.x, start.y),
+    }
+}
+
+/// Fill the channel between two neighboring curves, leaving `strip_gap` of
+/// it open; with AlongCurve coloring the fill glides along the strip.
+fn paint_strip(
+    controls: &Controls,
+    a: &[Point],
+    b: &[Point],
+    c: Color,
+    color_by: ColorBy,
+    colors: &[Color],
+    canvas: &mut Canvas,
+) {
+    let n = a.len().min(b.len());
+    if n < 2 {
+        return;
+    }
+    let gap = controls.strip_gap.clamp(0.0, 0.9);
+    let (lo, hi) = (gap / 2.0, 1.0 - gap / 2.0);
+    let lp = |i: usize, t: f32| {
+        pt(
+            a[i].x + t * (b[i].x - a[i].x),
+            a[i].y + t * (b[i].y - a[i].y),
+        )
+    };
+    // The strip is painted as a run of slightly overlapping quads rather
+    // than one big polygon: diverging or crossing curve pairs would make a
+    // single polygon self-intersect and cancel its own fill.
+    for i in 0..n - 1 {
+        let j = (i + 2).min(n - 1);
+        let color = if color_by == ColorBy::AlongCurve {
+            let t = i as f32 / (n - 2).max(1) as f32;
+            sample_colors(colors, t)
+        } else {
+            c
+        };
+        let quad = [lp(i, lo), lp(j, lo), lp(j, hi), lp(i, hi)];
+        Shape::new()
+            .points(&quad)
+            .fill_color(color)
+            .no_stroke()
+            .draw(canvas);
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-fn render_curve(
+fn paint_curve(
     controls: &Controls,
-    flow: &Field,
     len_fn: &(dyn Fn(Point) -> f32 + Send + Sync),
-    start: Point,
+    pts: &[Point],
     c: Color,
     color_by: ColorBy,
     colors: &[Color],
     rng: &mut SmallRng,
     canvas: &mut Canvas,
 ) {
-    let pts = match controls
-        .curve_direction
-        .expect("controls.curve_direction cannot be None")
-    {
-        CurveDirection::OneSided => flow.curve1(start.x, start.y),
-        CurveDirection::TwoSided => flow.curve2(start.x, start.y),
-    };
-
     // For AlongCurve, the color glides through the palette along the curve:
     // `cycles` sweeps per curve, optionally mirrored at the turnaround, with
     // an optional per-curve random phase; otherwise every point uses the
@@ -241,6 +292,8 @@ fn render_curve(
                 }
             }
         }
+        // Strips are painted per neighbor pair in paint_strip.
+        CurveStyle::Strips => {}
         CurveStyle::Extrusion => {
             let extrude_dir = controls
                 .extrude_controls
@@ -337,15 +390,45 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     // The Field is rebuilt per render chunk below: noise 0.9's Worley holds an
     // Rc internally, so a single Field cannot be shared across threads.
 
+    let sep = 105.0 - controls.density;
+    let even = controls.location == Some(crate::location::Location::Even);
+    let strips = controls.curve_style == Some(CurveStyle::Strips);
+    let two_sided = controls.curve_direction == Some(CurveDirection::TwoSided);
     let starts = controls
         .location
         .expect("controls.location cannot be None")
         .starts(
             canvas.w_f32(),
             canvas.h_f32(),
-            105.0 - controls.density,
+            sep,
+            controls.column_angle,
             &mut rng,
         );
+
+    // Curves are pre-generated when seeding and growth are coupled (evenly
+    // spaced streamlines) or when strips need the whole ordered set to pair
+    // neighbors. Otherwise they are generated inside the render chunks.
+    let pregen: Option<Vec<(Point, Vec<Point>)>> = if even {
+        let flow = choose_flow(controls, canvas.width(), canvas.height());
+        Some(flow.evenly_spaced(sep, two_sided))
+    } else if strips {
+        // End extension would misalign the point indices of neighboring
+        // curves, so strips always use plain curves.
+        let mut flow = choose_flow(controls, canvas.width(), canvas.height());
+        flow.hide_ends = false;
+        Some(
+            starts
+                .iter()
+                .map(|p| (*p, gen_curve(&flow, controls, *p)))
+                .collect(),
+        )
+    } else {
+        None
+    };
+    let seeds: Vec<Point> = match &pregen {
+        Some(v) => v.iter().map(|x| x.0).collect(),
+        None => starts,
+    };
 
     let colors: Vec<Color> = match controls
         .color_mode_controls
@@ -416,7 +499,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     // Assign per-curve colors and rng seeds sequentially so the result is
     // deterministic, then rasterize chunks of curves on separate threads into
     // transparent layers, composited in order to preserve overlap semantics.
-    let n_curves = starts.len();
+    let n_curves = seeds.len();
     let direction = |t: f32| {
         if controls.color_mode_controls.reverse {
             1.0 - t
@@ -429,7 +512,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     // an equal share of curves; a plain distance ratio would crowd nearly
     // everything into the outer colors, since area grows with radius.
     let radial_sorted: Vec<f32> = if color_by == ColorBy::Radial {
-        let mut ds: Vec<f32> = starts
+        let mut ds: Vec<f32> = seeds
             .iter()
             .map(|p| ((p.x - cx).powi(2) + (p.y - cy).powi(2)).sqrt())
             .collect();
@@ -438,8 +521,9 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     } else {
         Vec::new()
     };
-    let jobs: Vec<(Point, Color, u64)> = starts
-        .into_iter()
+    let jobs: Vec<(usize, Point, Color, u64)> = seeds
+        .iter()
+        .copied()
         .enumerate()
         .map(|(i, p)| {
             let c = match color_by {
@@ -481,9 +565,24 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
                 // Per-point colors are sampled in render_curve.
                 ColorBy::AlongCurve => colors[0],
             };
-            (p, c, rng.next_u64())
+            (i, p, c, rng.next_u64())
         })
         .collect();
+    // Strips pair each curve with the next one from the ordered start list;
+    // pairs whose seeds are far apart (grid column wraps, scattered
+    // generators) are skipped.
+    let pregen_curves: Option<Vec<Vec<Point>>> =
+        pregen.map(|v| v.into_iter().map(|x| x.1).collect());
+    let jobs: Vec<(usize, Point, Color, u64)> = if strips {
+        let max_pair = (3.0 * sep.max(5.0)).powi(2);
+        jobs.into_iter()
+            .filter(|(i, p, _, _)| {
+                *i + 1 < seeds.len() && p.dist2(seeds[*i + 1]) < max_pair
+            })
+            .collect()
+    } else {
+        jobs
+    };
     let chunk_size = jobs
         .len()
         .div_ceil(rayon::current_num_threads())
@@ -492,20 +591,42 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
         .par_chunks(chunk_size)
         .map(|chunk| {
             let mut layer = Canvas::with_scale(canvas.width(), canvas.height(), canvas.scale);
-            let flow = choose_flow(controls, canvas.width(), canvas.height());
-            for (p, c, seed) in chunk {
+            let flow = pregen_curves
+                .is_none()
+                .then(|| choose_flow(controls, canvas.width(), canvas.height()));
+            for (i, p, c, seed) in chunk {
                 let mut rng = SmallRng::seed_from_u64(*seed);
-                render_curve(
-                    controls,
-                    &flow,
-                    len_fn.as_ref(),
-                    *p,
-                    *c,
-                    color_by,
-                    &colors,
-                    &mut rng,
-                    &mut layer,
-                );
+                if strips {
+                    let curves = pregen_curves.as_ref().unwrap();
+                    paint_strip(
+                        controls,
+                        &curves[*i],
+                        &curves[*i + 1],
+                        *c,
+                        color_by,
+                        &colors,
+                        &mut layer,
+                    );
+                } else {
+                    let generated;
+                    let pts: &[Point] = match &pregen_curves {
+                        Some(v) => &v[*i],
+                        None => {
+                            generated = gen_curve(flow.as_ref().unwrap(), controls, *p);
+                            &generated
+                        }
+                    };
+                    paint_curve(
+                        controls,
+                        len_fn.as_ref(),
+                        pts,
+                        *c,
+                        color_by,
+                        &colors,
+                        &mut rng,
+                        &mut layer,
+                    );
+                }
             }
             layer.pixmap
         })
