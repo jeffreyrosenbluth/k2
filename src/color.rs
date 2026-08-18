@@ -64,14 +64,13 @@ impl Palettes {
             Royalty => &[0x1C4572, 0x84561B, 0x6D3E32, 0x0A0E20],
             DeltaBlues => &[0x003566, 0x000000, 0x008080],
             PinotNoir => &[0x701C1C, 0x1A1717, 0x77806E],
-            Algae => &[0xA3B18A, 0x588157, 0x3A5A40, 0x344E41],
-            Scepter => &[0xB7A635, 0x4E1406],
+            Algae => &[0xD9E5C1, 0xA3B18A, 0xBFB35A, 0x588157, 0x2F5D50, 0x1E3F20],
+            Scepter => &[0xE8D9A0, 0xB7A635, 0x74641F, 0x6B1F2E, 0x3E2A56, 0x4E1406],
             Fire => &[0x621708, 0x941B0C, 0xBC3908, 0xF6AA1C],
             Perfume => &[0xD9798B, 0x8C4962, 0x59364A, 0x594832],
-            Rose => &[0xBF2642, 0x731F2E, 0x400C16],
+            Rose => &[0xF2D5D0, 0xE08E9B, 0xBF2642, 0x731F2E, 0x7A8B6F, 0x400C16],
             PorcoRosso => &[0x002B75, 0x862A23, 0xBD8878],
             SpiritedAway => &[0xD9A404, 0xF2B988, 0xBF3030, 0x0D0D0D],
-            Totoro => &[0x6A7AB2, 0xF27E9D, 0x454259, 0x9B8660],
             GrayScale | MonoRed | MonoGreen | MonoBlue => &[],
         }
     }
@@ -95,7 +94,6 @@ pub fn swatches() -> Vec<egui::Color32> {
         Rose,
         PorcoRosso,
         SpiritedAway,
-        Totoro,
     ] {
         for h in pal.base_hex().iter().take(2) {
             let c = egui::Color32::from_rgb((h >> 16) as u8, (h >> 8) as u8, *h as u8);
@@ -113,7 +111,7 @@ pub fn palette_colors(pal: Palettes) -> Vec<Color> {
     match pal {
         GrayScale => gray_values(),
         Royalty | DeltaBlues | PinotNoir | Algae | Scepter | Fire | Perfume | Rose | PorcoRosso
-        | SpiritedAway | Totoro => expand_palette(hex_to_color(pal.base_hex().to_vec())),
+        | SpiritedAway => expand_palette(hex_to_color(pal.base_hex().to_vec())),
         MonoBlue => {
             let mut cs = gray_values();
             cs.push(*ROYALBLUE);
@@ -162,7 +160,6 @@ pub enum Palettes {
     GrayScale,
     PorcoRosso,
     SpiritedAway,
-    Totoro,
     MonoRed,
     MonoGreen,
     MonoBlue,
@@ -182,7 +179,6 @@ impl std::fmt::Display for Palettes {
             Palettes::GrayScale => write!(f, "Gray Scale"),
             Palettes::PorcoRosso => write!(f, "Porco Rosso"),
             Palettes::SpiritedAway => write!(f, "Spirited Away"),
-            Palettes::Totoro => write!(f, "Totoro"),
             Palettes::MonoBlue => write!(f, "Mono Blue"),
             Palettes::MonoRed => write!(f, "Mono Red"),
             Palettes::MonoGreen => write!(f, "Mono Green"),
@@ -417,8 +413,7 @@ impl ColorControls {
                             GrayScale,
                             PorcoRosso,
                             SpiritedAway,
-                            Totoro,
-                            MonoRed,
+                                                MonoRed,
                             MonoGreen,
                             MonoBlue,
                         ],

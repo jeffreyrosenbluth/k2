@@ -159,7 +159,13 @@ pub struct Controls {
     pub color_mode_controls: ColorControls,
     #[serde(default)]
     pub image_noise: ImageNoiseControls,
-    /// Column: rotation of the seed line in degrees; 0 is vertical.
+    /// Grain backgrounds: strength multiplier for the film grain.
+    #[serde(default = "default_grain_amount")]
+    pub grain_amount: f32,
+    /// Grain backgrounds: size multiplier for the film grain.
+    #[serde(default = "default_grain_size")]
+    pub grain_size: f32,
+    /// Line location: rotation of the seed line in degrees; 0 is vertical.
     #[serde(default)]
     pub column_angle: f32,
     /// Strips: fraction of the channel between neighboring curves left as a gap.
@@ -169,6 +175,14 @@ pub struct Controls {
 
 fn default_strip_gap() -> f32 {
     0.08
+}
+
+fn default_grain_amount() -> f32 {
+    0.3
+}
+
+fn default_grain_size() -> f32 {
+    2.0
 }
 
 impl Controls {
@@ -202,6 +216,8 @@ impl Default for Controls {
             extrude_controls: ExtrudeControls::default(),
             color_mode_controls: ColorControls::default(),
             image_noise: ImageNoiseControls::default(),
+            grain_amount: 0.3,
+            grain_size: 2.0,
             column_angle: 0.0,
             strip_gap: 0.08,
         }

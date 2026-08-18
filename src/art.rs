@@ -113,7 +113,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
         hide_ends: controls.hide_ends,
         // Rotate the whole flow with a rotated seed column, so the curves
         // stay perpendicular to the seed line.
-        angle_offset: if controls.location == Some(crate::location::Location::Column) {
+        angle_offset: if controls.location == Some(crate::location::Location::Line) {
             -controls.column_angle.to_radians()
         } else {
             0.0
@@ -361,14 +361,24 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
 
     let mut rng = SmallRng::seed_from_u64(SEED);
 
+    // Backgrounds render at physical resolution with scale-aware texture,
+    // so grain and fiber keep the same relative size at any output size.
+    let (pw, ph, ps) = (canvas.pixmap.width(), canvas.pixmap.height(), canvas.scale);
     let bg = match controls.background.unwrap() {
-        Background::LightFiber => BG::light_fiber(canvas.width(), canvas.height()),
-        Background::LightGrain => BG::light_grain(canvas.width(), canvas.height(), &mut rng),
-        Background::DarkGrain => BG::dark_grain(canvas.width(), canvas.height(), &mut rng),
-        Background::DarkFiber => BG::dark_fiber(canvas.width(), canvas.height()),
+        Background::LightFiber => BG::light_fiber(pw, ph, ps),
+        Background::LightGrain => {
+            BG::light_grain(pw, ph, ps, controls.grain_amount, controls.grain_size, &mut rng)
+        }
+        Background::DarkGrain => {
+            BG::dark_grain(pw, ph, ps, controls.grain_amount, controls.grain_size, &mut rng)
+        }
+        Background::DarkFiber => BG::dark_fiber(pw, ph, ps),
         Background::ColorGrain => BG::color_grain(
-            canvas.width(),
-            canvas.height(),
+            pw,
+            ph,
+            ps,
+            controls.grain_amount,
+            controls.grain_size,
             &mut rng,
             controls.grain_color,
         ),

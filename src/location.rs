@@ -12,7 +12,8 @@ pub enum Location {
     Circle,
     Lissajous,
     Box,
-    Column,
+    #[serde(alias = "Column")]
+    Line,
     Even,
 }
 
@@ -86,7 +87,7 @@ impl Location {
             // A single centered column of seeds, spaced `sep` apart and
             // extending past the canvas; made for the Strips style, whose
             // two-sided curves sweep out full-width bands.
-            Location::Column => {
+            Location::Line => {
                 // A line of seeds through the center, rotated by `angle`:
                 // 0 degrees is a vertical column, 90 a horizontal row, and
                 // anything between a diagonal. Long enough to cover the
@@ -133,7 +134,7 @@ impl std::fmt::Display for Location {
                 Location::Circle => "Circle",
                 Location::Lissajous => "Lissajous",
                 Location::Box => "Box",
-                Location::Column => "Column",
+                Location::Line => "Line",
                 Location::Even => "Even",
             }
         )

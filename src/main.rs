@@ -48,7 +48,15 @@ pub fn main() -> eframe::Result {
         options,
         Box::new(|cc| {
             cc.egui_ctx.set_theme(egui::Theme::Dark);
-            Ok(Box::new(K2::new()))
+            let mut app = K2::new();
+            // Restore the controls from the previous session.
+            if let Some(storage) = cc.storage {
+                if let Some(controls) = eframe::get_value::<Controls>(storage, eframe::APP_KEY) {
+                    app.last_drawn = controls.clone();
+                    app.controls = controls;
+                }
+            }
+            Ok(Box::new(app))
         }),
     )
 }
@@ -200,16 +208,16 @@ impl K2 {
                 if self.controls.curve_style == Some(CurveStyle::Strips) {
                     // Strips pair neighboring curves, which only makes sense
                     // from an ordered column of seeds.
-                    self.controls.location = Some(Location::Column);
+                    self.controls.location = Some(Location::Line);
                     ui.label("Locations");
                     ui.add_enabled(
                         false,
-                        egui::Button::new("Column").min_size(egui::vec2(150.0, 0.0)),
+                        egui::Button::new("Line").min_size(egui::vec2(150.0, 0.0)),
                     )
                     .on_disabled_hover_ui(|ui| {
                         ui.colored_label(
                             egui::Color32::ORANGE,
-                            "Locked to Column while the",
+                            "Locked to Line while the",
                         );
                         ui.colored_label(egui::Color32::ORANGE, "Strips style is selected.");
                     });
@@ -226,13 +234,13 @@ impl K2 {
                             Location::Circle,
                             Location::Lissajous,
                             Location::Box,
-                            Location::Column,
+                            Location::Line,
                             Location::Even,
                         ],
                         &mut self.controls.location,
                     );
                 }
-                if self.controls.location == Some(Location::Column) {
+                if self.controls.location == Some(Location::Line) {
                     SliderRow::new(
                         "Angle",
                         &mut self.controls.column_angle,
@@ -240,7 +248,7 @@ impl K2 {
                         0.0..=180.0,
                     )
                     .hover(&[
-                        "Rotation of the seed column:",
+                        "Rotation of the seed line:",
                         "0 is vertical, 90 horizontal.",
                     ])
                     .steps(5.0, 15.0)
@@ -405,6 +413,28 @@ impl K2 {
     fn menu_bar(&mut self, ui: &mut egui::Ui) {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
+                if ui.button("Open...").clicked() {
+                    let mut dialog = rfd::FileDialog::new().add_filter("K2 params", &["json"]);
+                    if let Some(download_dir) =
+                        UserDirs::new().and_then(|d| d.download_dir().map(PathBuf::from))
+                    {
+                        dialog = dialog.set_directory(download_dir);
+                    }
+                    if let Some(path) = dialog.pick_file() {
+                        match std::fs::read_to_string(&path)
+                            .map_err(|e| e.to_string())
+                            .and_then(|s| {
+                                serde_json::from_str::<Controls>(&s).map_err(|e| e.to_string())
+                            }) {
+                            Ok(controls) => {
+                                self.last_drawn = controls.clone();
+                                self.controls = controls;
+                                self.pending_draw = true;
+                            }
+                            Err(e) => eprintln!("could not load {}: {e}", path.display()),
+                        }
+                    }
+                }
                 let exporting = self.exporting.load(Ordering::Relaxed);
                 if ui
                     .add_enabled(!exporting, egui::Button::new("Save PNG"))
@@ -465,13 +495,36 @@ impl K2 {
         if self.controls.noise_controls.noise_function == Some(NoiseFunction::Image) {
             self.controls.image_noise.ui(ui, &mut self.image_thumb);
         }
-        if self.controls.background == Some(Background::ColorGrain) {
+        if matches!(
+            self.controls.background,
+            Some(Background::LightGrain) | Some(Background::DarkGrain) | Some(Background::ColorGrain)
+        ) {
             section(ui, "Grain");
             egui::Grid::new("grain")
                 .spacing((15.0, 10.0))
                 .min_col_width(90.0)
                 .show(ui, |ui| {
-                    color_picker(ui, "Grain Color", &mut self.controls.grain_color);
+                    if self.controls.background == Some(Background::ColorGrain) {
+                        color_picker(ui, "Grain Color", &mut self.controls.grain_color);
+                    }
+                    numeric(
+                        ui,
+                        "Amount",
+                        &mut self.controls.grain_amount,
+                        0.3,
+                        0.0..=3.0,
+                        0.1,
+                        1,
+                    );
+                    numeric(
+                        ui,
+                        "Size",
+                        &mut self.controls.grain_size,
+                        2.0,
+                        0.1..=6.0,
+                        0.1,
+                        1,
+                    );
                 });
         }
         if self.controls.background == Some(Background::Solid) {
@@ -487,6 +540,10 @@ impl K2 {
 }
 
 impl eframe::App for K2 {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, &self.controls);
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         egui::Panel::top("menu_bar").show(ui, |ui| {
@@ -575,6 +632,15 @@ fn bench() {
         );
     }
 }
+
+
+
+
+
+
+
+
+
 
 
 
