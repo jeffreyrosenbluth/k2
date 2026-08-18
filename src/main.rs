@@ -34,10 +34,13 @@ pub fn main() -> eframe::Result {
         bench();
         return Ok(());
     }
+    let icon = eframe::icon_data::from_png_bytes(include_bytes!("../assets/icons/icon_256.png"))
+        .expect("embedded icon is a valid png");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1500.0, 950.0])
-            .with_title("K2"),
+            .with_title("K2")
+            .with_icon(icon),
         ..Default::default()
     };
     eframe::run_native(
@@ -521,6 +524,9 @@ fn bench() {
         );
     }
 }
+
+
+
 
 
 

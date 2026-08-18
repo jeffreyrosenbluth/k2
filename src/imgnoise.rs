@@ -273,19 +273,27 @@ impl NoiseFn<f64, 2> for SharedImgNoise {
     }
 }
 
-static ORIGINAL: Mutex<Option<(String, Arc<RgbaImage>)>> = Mutex::new(None);
+static ORIGINAL: Mutex<Option<(String, Option<Arc<RgbaImage>>)>> = Mutex::new(None);
 
-/// The decoded source image, cached until the path changes.
+/// The decoded source image, cached until the path changes. Failures are
+/// cached too, so a missing or broken file is not re-read every frame, and
+/// decoding is shielded against panics in the image decoder.
 fn original(path: &str) -> Option<Arc<RgbaImage>> {
-    let mut cache = ORIGINAL.lock().unwrap();
+    let mut cache = ORIGINAL.lock().unwrap_or_else(|e| e.into_inner());
     if let Some((p, img)) = cache.as_ref() {
         if p == path {
-            return Some(img.clone());
+            return img.clone();
         }
     }
-    let img = Arc::new(image::open(path).ok()?.to_rgba8());
-    *cache = Some((path.to_string(), img.clone()));
-    Some(img)
+    let decoded = std::panic::catch_unwind(|| image::open(path).ok().map(|i| i.to_rgba8()))
+        .ok()
+        .flatten()
+        .map(Arc::new);
+    if decoded.is_none() {
+        eprintln!("could not read noise image {path}");
+    }
+    *cache = Some((path.to_string(), decoded.clone()));
+    decoded
 }
 
 type NoiseKey = (String, ColorMap, u32, Rotation);
@@ -300,13 +308,16 @@ pub fn cached_noise(
     rotation: Rotation,
 ) -> Option<Arc<ImgNoise>> {
     let key: NoiseKey = (path.to_string(), colormap, blur.to_bits(), rotation);
-    let mut cache = CACHE.lock().unwrap();
+    let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
     if let Some((k, n)) = cache.as_ref() {
         if *k == key {
             return Some(n.clone());
         }
     }
     let orig = original(path)?;
+    if orig.width() == 0 || orig.height() == 0 {
+        return None;
+    }
     let rotated = apply_rotation(&orig, rotation);
     let processed = if blur > 0.0 {
         image::imageops::fast_blur(&rotated, blur)
