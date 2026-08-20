@@ -3,6 +3,53 @@
 use wassily::prelude::*;
 use serde::{Deserialize, Serialize};
 
+/// Optional turbulence wrapper distorting any flow field's input
+/// coordinates with Perlin noise.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct TurbulenceControls {
+    pub enabled: bool,
+    pub frequency: f32,
+    pub power: f32,
+    pub roughness: u8,
+}
+
+impl Default for TurbulenceControls {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            frequency: 1.0,
+            power: 1.0,
+            roughness: 3,
+        }
+    }
+}
+
+impl TurbulenceControls {
+    pub fn ui(&mut self, ui: &mut eframe::egui::Ui) {
+        use crate::gui::{numeric, section};
+        section(ui, "Turbulence");
+        eframe::egui::Grid::new("turbulence")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                ui.label("Enabled").on_hover_ui(|ui| {
+                    ui.colored_label(
+                        eframe::egui::Color32::ORANGE,
+                        "Distorts the flow field with",
+                    );
+                    ui.colored_label(eframe::egui::Color32::ORANGE, "Perlin turbulence.");
+                });
+                ui.checkbox(&mut self.enabled, "");
+                ui.end_row();
+                if self.enabled {
+                    numeric(ui, "Frequency", &mut self.frequency, 1.0, 0.1..=8.0, 0.1, 1);
+                    numeric(ui, "Power", &mut self.power, 1.0, 0.0..=10.0, 0.1, 1);
+                    numeric(ui, "Roughness", &mut self.roughness, 3, 1..=8, 1.0, 0);
+                }
+            });
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct NoiseControls {
     pub noise_function: Option<NoiseFunction>,

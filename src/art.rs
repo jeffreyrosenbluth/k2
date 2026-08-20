@@ -15,12 +15,11 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     let opts = NoiseOpts::with_wh(w, h)
         .scales(controls.noise_controls.noise_scale)
         .factor(controls.noise_controls.noise_factor);
-    Field {
-        noise_function: match controls
-            .noise_controls
-            .noise_function
-            .expect("controls.noise_function cannot be None")
-        {
+    let noise_function: Box<dyn NoiseFn<f64, 2>> = match controls
+        .noise_controls
+        .noise_function
+        .expect("controls.noise_function cannot be None")
+    {
             NoiseFunction::Fbm => Box::new(
                 Fbm::<Perlin>::default()
                     .set_octaves(controls.fractal_controls.octaves as usize)
@@ -103,7 +102,20 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                 controls.sin_controls.xexp as f64,
                 controls.sin_controls.yexp as f64,
             )),
-        },
+    };
+    // Optionally distort the field's input coordinates with Perlin turbulence.
+    let noise_function: Box<dyn NoiseFn<f64, 2>> = if controls.turbulence.enabled {
+        Box::new(
+            Turbulence::<_, Perlin>::new(noise_function)
+                .set_frequency(controls.turbulence.frequency as f64)
+                .set_power(controls.turbulence.power as f64)
+                .set_roughness(controls.turbulence.roughness as usize),
+        )
+    } else {
+        noise_function
+    };
+    Field {
+        noise_function,
         noise_opts: opts,
         step_size: controls.spacing,
         width: w,

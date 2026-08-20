@@ -10,7 +10,7 @@ use crate::dot::DotControls;
 use crate::extrude::ExtrudeControls;
 use crate::fractal::FractalControls;
 use crate::imgnoise::{ImageNoiseControls, ThumbCache};
-use crate::noise::NoiseControls;
+use crate::noise::{NoiseControls, TurbulenceControls};
 use crate::presets::Preset;
 use crate::sine::SineControls;
 
@@ -147,6 +147,8 @@ pub struct Controls {
     pub location: Option<Location>,
     pub density: f32,
     pub noise_controls: NoiseControls,
+    #[serde(default)]
+    pub turbulence: TurbulenceControls,
     pub fractal_controls: FractalControls,
     pub speed: f32,
     pub stroke_width: f32,
@@ -215,6 +217,7 @@ impl Default for Controls {
             solid_color: egui::Color32::from_rgb(245, 242, 235),
             location: Some(Location::Halton),
             noise_controls: NoiseControls::default(),
+            turbulence: TurbulenceControls::default(),
             density: 50.0,
             fractal_controls: FractalControls::default(),
             speed: 1.0,
