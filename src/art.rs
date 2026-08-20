@@ -121,6 +121,11 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     }
 }
 
+/// A color with its alpha scaled by the curve opacity.
+fn fade(c: Color, alpha: f32) -> Color {
+    Color::from_rgba(c.red(), c.green(), c.blue(), c.alpha() * alpha).unwrap()
+}
+
 fn gen_curve(flow: &Field, controls: &Controls, start: Point) -> Vec<Point> {
     match controls
         .curve_direction
@@ -168,7 +173,7 @@ fn paint_strip(
         let quad = [lp(i, lo), lp(j, lo), lp(j, hi), lp(i, hi)];
         Shape::new()
             .points(&quad)
-            .fill_color(color)
+            .fill_color(fade(color, controls.opacity))
             .no_stroke()
             .draw(canvas);
     }
@@ -252,9 +257,11 @@ fn paint_curve(
                 if !controls.dot_controls.stroke || controls.stroke_width < 0.5 {
                     sb = sb.no_stroke();
                 } else {
-                    sb = sb.stroke_weight(controls.stroke_width).stroke_color(sc)
+                    sb = sb
+                        .stroke_weight(controls.stroke_width)
+                        .stroke_color(fade(sc, controls.opacity))
                 }
-                sb.fill_color(point_color(i)).draw(canvas);
+                sb.fill_color(fade(point_color(i), controls.opacity)).draw(canvas);
             }
         }
         CurveStyle::Line => {
@@ -267,7 +274,7 @@ fn paint_curve(
                     }
                     Shape::new()
                         .line(pts[i], pts[i + 1])
-                        .stroke_color(point_color(i))
+                        .stroke_color(fade(point_color(i), controls.opacity))
                         .stroke_weight(controls.stroke_width)
                         .draw(canvas);
                 }
@@ -283,7 +290,7 @@ fn paint_curve(
                             Shape::new()
                                 .points(&pts[seg_start..=i])
                                 .no_fill()
-                                .stroke_color(c)
+                                .stroke_color(fade(c, controls.opacity))
                                 .stroke_weight(controls.stroke_width)
                                 .draw(canvas);
                         }
@@ -332,6 +339,7 @@ fn paint_curve(
                         .extrude_controls
                         .grad_style
                         .expect("controls.extrude_controls.grad_style cannot be None"),
+                    controls.opacity,
                     rng,
                 );
                 Shape::new()
@@ -412,6 +420,7 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
             canvas.h_f32(),
             sep,
             controls.column_angle,
+            controls.line_shift,
             &mut rng,
         );
 

@@ -229,9 +229,11 @@ impl ImgNoise {
     fn new(img: &image::RgbaImage, colormap: ColorMap) -> Self {
         let width = img.width() as usize;
         let height = img.height() as usize;
+        use rayon::prelude::*;
         let cache = img
-            .pixels()
-            .map(|p| apply_colormap(p.0, colormap))
+            .as_raw()
+            .par_chunks_exact(4)
+            .map(|p| apply_colormap([p[0], p[1], p[2], p[3]], colormap))
             .collect();
         Self {
             cache,
@@ -285,10 +287,28 @@ fn original(path: &str) -> Option<Arc<RgbaImage>> {
             return img.clone();
         }
     }
-    let decoded = std::panic::catch_unwind(|| image::open(path).ok().map(|i| i.to_rgba8()))
-        .ok()
-        .flatten()
-        .map(Arc::new);
+    let decoded = std::panic::catch_unwind(|| {
+        image::open(path).ok().map(|i| {
+            // The flow field samples at canvas resolution, so anything
+            // beyond ~1600px only slows the color map down.
+            let img = i.to_rgba8();
+            let side = img.width().max(img.height());
+            if side > 1600 {
+                let s = 1600.0 / side as f32;
+                image::imageops::resize(
+                    &img,
+                    ((img.width() as f32 * s) as u32).max(1),
+                    ((img.height() as f32 * s) as u32).max(1),
+                    image::imageops::FilterType::Triangle,
+                )
+            } else {
+                img
+            }
+        })
+    })
+    .ok()
+    .flatten()
+    .map(Arc::new);
     if decoded.is_none() {
         eprintln!("could not read noise image {path}");
     }

@@ -253,6 +253,19 @@ impl K2 {
                     ])
                     .steps(5.0, 15.0)
                     .show(ui);
+                    SliderRow::new(
+                        "Shift",
+                        &mut self.controls.line_shift,
+                        0.0,
+                        -50.0..=50.0,
+                    )
+                    .hover(&[
+                        "Moves the seed line parallel to",
+                        "itself; percent of the canvas,",
+                        "0 is centered.",
+                    ])
+                    .steps(1.0, 5.0)
+                    .show(ui);
                 }
                 pick_list(
                     ui,
@@ -370,6 +383,14 @@ impl K2 {
                     0.5,
                     1,
                 );
+                SliderRow::new("Opacity", &mut self.controls.opacity, 1.0, 0.02..=1.0)
+                    .hover(&[
+                        "Curve opacity; low values let",
+                        "overlapping curves build up color.",
+                    ])
+                    .steps(0.02, 0.1)
+                    .decimals(2)
+                    .show(ui);
             });
 
         ui.add_space(SPACE);
@@ -632,6 +653,10 @@ fn bench() {
         );
     }
 }
+
+
+
+
 
 
 

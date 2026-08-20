@@ -36,41 +36,48 @@ pub fn paint_lg<'a, R: RngCore>(
     y1: f32,
     color1: Color,
     grad_style: GradStyle,
+    alpha: f32,
     rng: &mut R,
 ) -> Paint<'a> {
     use GradStyle::*;
+    let stop = |p: f32, c: Color| {
+        GradientStop::new(
+            p,
+            Color::from_rgba(c.red(), c.green(), c.blue(), c.alpha() * alpha).unwrap(),
+        )
+    };
     let color0 = Color::from_rgba8(230, 230, 230, 255);
     let stops = match grad_style {
         LightFiber => vec![
-            GradientStop::new(0.0, *WHITE),
-            GradientStop::new(rng.random_range(0.7..1.0), color1),
-            GradientStop::new(1.0, *WHITE),
+            stop(0.0, *WHITE),
+            stop(rng.random_range(0.7..1.0), color1),
+            stop(1.0, *WHITE),
         ],
         DarkFiber => vec![
-            GradientStop::new(0.0, Color::from_rgba8(30, 30, 30, 255)),
-            GradientStop::new(rng.random_range(0.05..0.25), *WHITE),
-            GradientStop::new(rng.random_range(0.7..1.0), color1),
-            GradientStop::new(1.0, Color::from_rgba8(30, 30, 30, 255)),
+            stop(0.0, Color::from_rgba8(30, 30, 30, 255)),
+            stop(rng.random_range(0.05..0.25), *WHITE),
+            stop(rng.random_range(0.7..1.0), color1),
+            stop(1.0, Color::from_rgba8(30, 30, 30, 255)),
         ],
         Fiber => vec![
-            GradientStop::new(0.0, *WHITE),
-            GradientStop::new(rng.random_range(0.7..0.9), color1),
+            stop(0.0, *WHITE),
+            stop(rng.random_range(0.7..0.9), color1),
         ],
         Dark => vec![
-            GradientStop::new(0.0, Color::from_rgba8(30, 30, 30, 255)),
-            GradientStop::new(0.125, color0),
-            GradientStop::new(0.875, color1),
-            GradientStop::new(1.0, Color::from_rgba8(30, 30, 30, 255)),
+            stop(0.0, Color::from_rgba8(30, 30, 30, 255)),
+            stop(0.125, color0),
+            stop(0.875, color1),
+            stop(1.0, Color::from_rgba8(30, 30, 30, 255)),
         ],
         Light => vec![
-            GradientStop::new(0.0, *WHITE),
-            GradientStop::new(0.125, color0),
-            GradientStop::new(0.875, color1),
-            GradientStop::new(1.0, *WHITE),
+            stop(0.0, *WHITE),
+            stop(0.125, color0),
+            stop(0.875, color1),
+            stop(1.0, *WHITE),
         ],
         Plain => vec![
-            GradientStop::new(0.0, color0),
-            GradientStop::new(0.8, color1),
+            stop(0.0, color0),
+            stop(0.8, color1),
         ],
     };
     let lg = LinearGradient::new(

@@ -24,6 +24,7 @@ impl Location {
         h: f32,
         sep: f32,
         angle: f32,
+        shift: f32,
         rng: &mut R,
     ) -> Vec<Point> {
         let mut pts = Vec::new();
@@ -92,9 +93,14 @@ impl Location {
                 // 0 degrees is a vertical column, 90 a horizontal row, and
                 // anything between a diagonal. Long enough to cover the
                 // canvas at any rotation.
-                let (cx, cy) = (w / 2.0, h / 2.0);
                 let a = angle.to_radians();
                 let (dx, dy) = (a.sin(), a.cos());
+                // Shift the line parallel to itself: along its normal, by a
+                // percentage of the canvas extent in that direction.
+                let (nx, ny) = (a.cos(), -a.sin());
+                let extent = w * nx.abs() + h * ny.abs();
+                let off = shift / 100.0 * extent;
+                let (cx, cy) = (w / 2.0 + off * nx, h / 2.0 + off * ny);
                 let half = 0.5 * (w * w + h * h).sqrt() + 0.05 * w.max(h);
                 let mut t = -half;
                 while t <= half {

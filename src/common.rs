@@ -150,6 +150,9 @@ pub struct Controls {
     pub fractal_controls: FractalControls,
     pub speed: f32,
     pub stroke_width: f32,
+    /// Curve opacity; below 1.0 overlapping curves build up color.
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
     pub background: Option<Background>,
     pub width: u32,
     pub height: u32,
@@ -165,6 +168,10 @@ pub struct Controls {
     /// Grain backgrounds: size multiplier for the film grain.
     #[serde(default = "default_grain_size")]
     pub grain_size: f32,
+    /// Line location: parallel shift of the seed line, as a percentage of
+    /// the canvas extent perpendicular to the line; 0 is centered.
+    #[serde(default)]
+    pub line_shift: f32,
     /// Line location: rotation of the seed line in degrees; 0 is vertical.
     #[serde(default)]
     pub column_angle: f32,
@@ -175,6 +182,10 @@ pub struct Controls {
 
 fn default_strip_gap() -> f32 {
     0.08
+}
+
+fn default_opacity() -> f32 {
+    1.0
 }
 
 fn default_grain_amount() -> f32 {
@@ -208,6 +219,7 @@ impl Default for Controls {
             fractal_controls: FractalControls::default(),
             speed: 1.0,
             stroke_width: 1.0,
+            opacity: 1.0,
             background: Some(Background::LightFiber),
             width: 1080,
             height: 1080,
@@ -218,6 +230,7 @@ impl Default for Controls {
             image_noise: ImageNoiseControls::default(),
             grain_amount: 0.3,
             grain_size: 2.0,
+            line_shift: 0.0,
             column_angle: 0.0,
             strip_gap: 0.08,
         }
