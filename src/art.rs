@@ -57,7 +57,35 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
             ),
             NoiseFunction::Value => Box::<Value>::default(),
             NoiseFunction::Worley => {
-                Box::new(Worley::default().set_return_type(ReturnType::Distance))
+                use noise::core::worley::distance_functions;
+                let distance_fn = match controls
+                    .worley
+                    .distance
+                    .unwrap_or(crate::noise::WorleyDistance::Euclidean)
+                {
+                    crate::noise::WorleyDistance::Euclidean => {
+                        distance_functions::euclidean as fn(&[f64], &[f64]) -> f64
+                    }
+                    crate::noise::WorleyDistance::EuclideanSquared => {
+                        distance_functions::euclidean_squared
+                    }
+                    crate::noise::WorleyDistance::Manhattan => distance_functions::manhattan,
+                    crate::noise::WorleyDistance::Chebyshev => distance_functions::chebyshev,
+                };
+                let return_type = match controls
+                    .worley
+                    .return_type
+                    .unwrap_or(crate::noise::WorleyReturn::Distance)
+                {
+                    crate::noise::WorleyReturn::Distance => ReturnType::Distance,
+                    crate::noise::WorleyReturn::Value => ReturnType::Value,
+                };
+                Box::new(
+                    Worley::default()
+                        .set_frequency(controls.worley.frequency as f64)
+                        .set_distance_function(distance_fn)
+                        .set_return_type(return_type),
+                )
             }
             NoiseFunction::Cylinders => Box::new(
                 TranslatePoint::new(

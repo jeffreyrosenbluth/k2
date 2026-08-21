@@ -516,6 +516,9 @@ impl K2 {
         if self.controls.noise_controls.noise_function == Some(NoiseFunction::Image) {
             self.controls.image_noise.ui(ui, &mut self.image_thumb);
         }
+        if self.controls.noise_controls.noise_function == Some(NoiseFunction::Worley) {
+            self.controls.worley.ui(ui);
+        }
         self.controls.turbulence.ui(ui);
         if matches!(
             self.controls.background,
@@ -654,6 +657,7 @@ fn bench() {
         );
     }
 }
+
 
 
 

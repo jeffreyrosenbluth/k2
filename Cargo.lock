@@ -2088,6 +2088,7 @@ dependencies = [
  "egui",
  "env_logger",
  "image",
+ "noise",
  "rand 0.9.5",
  "rayon",
  "rfd",

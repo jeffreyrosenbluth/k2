@@ -3,6 +3,95 @@
 use wassily::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WorleyDistance {
+    Euclidean,
+    EuclideanSquared,
+    Manhattan,
+    Chebyshev,
+}
+
+impl std::fmt::Display for WorleyDistance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                WorleyDistance::Euclidean => "Euclidean",
+                WorleyDistance::EuclideanSquared => "Euclidean Sq",
+                WorleyDistance::Manhattan => "Manhattan",
+                WorleyDistance::Chebyshev => "Chebyshev",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WorleyReturn {
+    Distance,
+    Value,
+}
+
+impl std::fmt::Display for WorleyReturn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                WorleyReturn::Distance => "Distance",
+                WorleyReturn::Value => "Value",
+            }
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WorleyControls {
+    pub frequency: f32,
+    pub distance: Option<WorleyDistance>,
+    pub return_type: Option<WorleyReturn>,
+}
+
+impl Default for WorleyControls {
+    fn default() -> Self {
+        Self {
+            frequency: 1.0,
+            distance: Some(WorleyDistance::Euclidean),
+            return_type: Some(WorleyReturn::Distance),
+        }
+    }
+}
+
+impl WorleyControls {
+    pub fn ui(&mut self, ui: &mut eframe::egui::Ui) {
+        use crate::gui::{numeric, pick_list, section};
+        section(ui, "Worley");
+        eframe::egui::Grid::new("worley")
+            .spacing((15.0, 10.0))
+            .min_col_width(90.0)
+            .show(ui, |ui| {
+                numeric(ui, "Frequency", &mut self.frequency, 1.0, 0.1..=8.0, 0.1, 1);
+                pick_list(
+                    ui,
+                    "Distance Fn",
+                    &[
+                        WorleyDistance::Euclidean,
+                        WorleyDistance::EuclideanSquared,
+                        WorleyDistance::Manhattan,
+                        WorleyDistance::Chebyshev,
+                    ],
+                    &mut self.distance,
+                );
+                pick_list(
+                    ui,
+                    "Return",
+                    &[WorleyReturn::Distance, WorleyReturn::Value],
+                    &mut self.return_type,
+                );
+            });
+    }
+}
+
 /// Optional turbulence wrapper distorting any flow field's input
 /// coordinates with Perlin noise.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
