@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GradStyle {
     Plain,
+    Double,
     Light,
     Dark,
     Fiber,
@@ -19,6 +20,7 @@ impl std::fmt::Display for GradStyle {
             "{}",
             match self {
                 GradStyle::Plain => "Plain",
+                GradStyle::Double => "Double",
                 GradStyle::Light => "Light",
                 GradStyle::Dark => "Dark",
                 GradStyle::Fiber => "Fiber",
@@ -35,6 +37,7 @@ pub fn paint_lg<'a, R: RngCore>(
     x1: f32,
     y1: f32,
     color1: Color,
+    color2: Color,
     grad_style: GradStyle,
     alpha: f32,
     rng: &mut R,
@@ -78,6 +81,10 @@ pub fn paint_lg<'a, R: RngCore>(
         Plain => vec![
             stop(0.0, color0),
             stop(0.8, color1),
+        ],
+        Double => vec![
+            stop(0.0, color2),
+            stop(0.85, color1),
         ],
     };
     let lg = LinearGradient::new(

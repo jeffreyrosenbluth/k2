@@ -77,6 +77,7 @@ impl K2 {
     pub fn start_render(&mut self, ctx: &egui::Context) {
         let epoch = self.epoch.fetch_add(1, Ordering::Relaxed) + 1;
         self.rendering = true;
+        self.controls.normalize();
         self.last_drawn = self.controls.clone();
         let controls = self.controls.clone();
         let latest = self.epoch.clone();
@@ -203,6 +204,23 @@ fn default_grain_size() -> f32 {
 impl Controls {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Apply the invariants the panels enforce, so a render never sees a
+    /// state the UI would immediately rewrite (which would make the next
+    /// Draw produce a different image).
+    pub fn normalize(&mut self) {
+        // Small sizes are inches at 300 DPI.
+        if self.width < 180 {
+            self.width *= 300;
+        }
+        if self.height < 180 {
+            self.height *= 300;
+        }
+        // Strips pair neighboring curves, so they need an ordered seed line.
+        if self.curve_style == Some(CurveStyle::Strips) {
+            self.location = Some(Location::Line);
+        }
     }
 }
 

@@ -107,6 +107,214 @@ fn load_preset(p: Preset) -> Controls {
     controls
 }
 
+/// Fresh controls with every creative parameter randomized; size stays
+/// 1080 x 1080, no preset is selected, and the noise image is kept.
+fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls {
+    use crate::color::{ColorBy, ColorMode, Palettes};
+    use crate::dot::DotStyle;
+    use crate::extrude::ExtrudeDirection;
+    use crate::gradient::GradStyle;
+    use crate::noise::{WorleyDistance, WorleyReturn};
+    use crate::size::{Dir, SizeFn};
+    use rand::Rng;
+
+    let mut rng = rand::rng();
+    let color =
+        |rng: &mut rand::rngs::ThreadRng| egui::Color32::from_rgb(rng.random(), rng.random(), rng.random());
+
+    let styles = [
+        CurveStyle::Line,
+        CurveStyle::Dots,
+        CurveStyle::Extrusion,
+        CurveStyle::Strips,
+    ];
+    let locations = [
+        Location::Grid,
+        Location::Rand,
+        Location::Halton,
+        Location::Poisson,
+        Location::Circle,
+        Location::Lissajous,
+        Location::Box,
+        Location::Line,
+        Location::Even,
+    ];
+    let mut noises = vec![
+        NoiseFunction::Fbm,
+        NoiseFunction::BasicMulti,
+        NoiseFunction::HybridMulti,
+        NoiseFunction::Billow,
+        NoiseFunction::Ridged,
+        NoiseFunction::Value,
+        NoiseFunction::Cylinders,
+        NoiseFunction::Worley,
+        NoiseFunction::Curl,
+        NoiseFunction::Sinusoidal,
+    ];
+    if image_noise.path.is_some() {
+        noises.push(NoiseFunction::Image);
+    }
+    let palettes = [
+        Palettes::Royalty,
+        Palettes::DeltaBlues,
+        Palettes::PinotNoir,
+        Palettes::Emerald,
+        Palettes::Scepter,
+        Palettes::Fire,
+        Palettes::Perfume,
+        Palettes::Rose,
+        Palettes::GrayScale,
+        Palettes::PorcoRosso,
+        Palettes::SpiritedAway,
+        Palettes::MonoRed,
+        Palettes::MonoGreen,
+        Palettes::MonoBlue,
+    ];
+    let color_bys = [
+        ColorBy::Random,
+        ColorBy::AlongCurve,
+        ColorBy::Cycle,
+        ColorBy::Region,
+        ColorBy::Order,
+        ColorBy::PositionX,
+        ColorBy::PositionY,
+        ColorBy::Radial,
+        ColorBy::FlowAngle,
+        ColorBy::NoiseValue,
+    ];
+    let grads = [
+        GradStyle::Plain,
+        GradStyle::Double,
+        GradStyle::Light,
+        GradStyle::Dark,
+        GradStyle::Fiber,
+        GradStyle::LightFiber,
+        GradStyle::DarkFiber,
+    ];
+    let size_fns = [
+        SizeFn::Constant,
+        SizeFn::Expanding,
+        SizeFn::Contracting,
+        SizeFn::Periodic,
+    ];
+    let dirs = [Dir::Both, Dir::Horizontal, Dir::Vertical];
+
+    let mut c = Controls {
+        preset: None,
+        width: 1080,
+        height: 1080,
+        image_noise,
+        ..Default::default()
+    };
+    c.curve_style = Some(styles[rng.random_range(0..styles.len())]);
+    c.curve_direction = Some(if rng.random_bool(0.5) {
+        CurveDirection::OneSided
+    } else {
+        CurveDirection::TwoSided
+    });
+    c.location = Some(locations[rng.random_range(0..locations.len())]);
+    c.spacing = rng.random_range(1.0..=10.0f32).round();
+    c.curve_length = rng.random_range(30..=500);
+    c.hide_ends = rng.random_bool(0.3);
+    c.density = rng.random_range(20.0..=100.0f32).round();
+    c.noise_controls.noise_function = Some(noises[rng.random_range(0..noises.len())]);
+    c.noise_controls.noise_scale = rng.random_range(0.5..=8.0);
+    c.noise_controls.noise_factor = rng.random_range(0.3..=4.0);
+    c.speed = 10.0f32.powf(rng.random_range(-1.3..=0.0f32));
+    c.fractal_controls.octaves = rng.random_range(1..=6);
+    c.fractal_controls.persistence = rng.random_range(0.2..=0.8);
+    c.fractal_controls.lacunarity = rng.random_range(1.5..=3.0);
+    c.fractal_controls.frequency = rng.random_range(0.5..=2.0);
+    c.sin_controls.xfreq = rng.random_range(0.5..=5.0);
+    c.sin_controls.yfreq = rng.random_range(0.5..=5.0);
+    c.sin_controls.xexp = rng.random_range(1.0..=4.0f32).round();
+    c.sin_controls.yexp = rng.random_range(1.0..=4.0f32).round();
+    c.worley.frequency = rng.random_range(0.5..=4.0);
+    c.worley.distance = Some(
+        [
+            WorleyDistance::Euclidean,
+            WorleyDistance::EuclideanSquared,
+            WorleyDistance::Manhattan,
+            WorleyDistance::Chebyshev,
+        ][rng.random_range(0..4)],
+    );
+    c.worley.return_type = Some(if rng.random_bool(0.5) {
+        WorleyReturn::Distance
+    } else {
+        WorleyReturn::Value
+    });
+    c.turbulence.enabled = rng.random_bool(0.3);
+    c.turbulence.frequency = rng.random_range(0.5..=4.0);
+    c.turbulence.power = rng.random_range(0.2..=3.0);
+    c.turbulence.roughness = rng.random_range(1..=6);
+    c.stroke_width = rng.random_range(0.0..=8.0f32);
+    c.opacity = if rng.random_bool(0.3) {
+        rng.random_range(0.1..=0.6)
+    } else {
+        1.0
+    };
+    let backgrounds = [
+        Background::LightGrain,
+        Background::LightFiber,
+        Background::DarkGrain,
+        Background::DarkFiber,
+        Background::ColorGrain,
+        Background::White,
+        Background::Black,
+        Background::Solid,
+    ];
+    c.background = Some(backgrounds[rng.random_range(0..backgrounds.len())]);
+    c.grain_color = color(&mut rng);
+    c.solid_color = color(&mut rng);
+    c.grain_amount = rng.random_range(0.1..=1.0);
+    c.grain_size = rng.random_range(0.5..=4.0);
+    c.dot_controls.dot_style = Some(
+        [DotStyle::Circle, DotStyle::Square, DotStyle::Pearl][rng.random_range(0..3)],
+    );
+    c.dot_controls.pearl_sides = rng.random_range(3..=8);
+    c.dot_controls.pearl_smoothness = rng.random_range(0..=5);
+    c.dot_controls.stroke = rng.random_bool(0.6);
+    c.dot_controls.dot_stroke_color = color(&mut rng);
+    for sc in [
+        &mut c.dot_controls.size_controls,
+        &mut c.extrude_controls.size_controls,
+    ] {
+        sc.size_fn = Some(size_fns[rng.random_range(0..size_fns.len())]);
+        sc.size = rng.random_range(20.0..=250.0f32).round();
+        sc.direction = Some(dirs[rng.random_range(0..dirs.len())]);
+        sc.size_scale = rng.random_range(1.0..=20.0f32).round();
+        sc.min_size = rng.random_range(1.0..=30.0f32).round();
+    }
+    c.extrude_controls.grad_style = Some(grads[rng.random_range(0..grads.len())]);
+    c.extrude_controls.direction = Some(
+        [
+            ExtrudeDirection::Vertical,
+            ExtrudeDirection::Horizontal,
+            ExtrudeDirection::Normal,
+        ][rng.random_range(0..3)],
+    );
+    c.color_mode_controls.mode = Some(if rng.random_bool(0.5) {
+        ColorMode::Palette
+    } else {
+        ColorMode::Scale
+    });
+    c.color_mode_controls.anchor1 = color(&mut rng);
+    c.color_mode_controls.anchor2 = color(&mut rng);
+    c.color_mode_controls.palette_choice = Some(palettes[rng.random_range(0..palettes.len())]);
+    c.color_mode_controls.color_by = Some(color_bys[rng.random_range(0..color_bys.len())]);
+    c.color_mode_controls.along_cycles = rng.random_range(1.0..=5.0f32).round();
+    c.color_mode_controls.along_mirror = rng.random_bool(0.5);
+    c.color_mode_controls.along_phase = rng.random_bool(0.5);
+    c.color_mode_controls.region_scale = rng.random_range(0.5..=5.0);
+    c.color_mode_controls.region_colors = rng.random_range(2..=8);
+    c.color_mode_controls.reverse = rng.random_bool(0.5);
+    c.strip_gap = rng.random_range(0.0..=0.3);
+    c.column_angle = rng.random_range(0.0..=180.0f32).round();
+    c.line_shift = rng.random_range(-35.0..=35.0f32).round();
+    c.normalize();
+    c
+}
+
 impl K2 {
     fn left_panel(&mut self, ui: &mut egui::Ui) {
         use crate::common::CurveDirection::*;
@@ -478,6 +686,18 @@ impl K2 {
     }
 
     fn right_panel(&mut self, ui: &mut egui::Ui) {
+        if action_button(
+            ui,
+            "Random",
+            true,
+            &["Randomize every control except", "the size and preset."],
+        ) {
+            self.controls = random_controls(self.controls.image_noise.clone());
+            self.pending_draw = true;
+        }
+        ui.add_space(SPACE);
+        ui.separator();
+
         if self.controls.curve_style == Some(CurveStyle::Strips) {
             section(ui, "Strips");
             egui::Grid::new("strips")
@@ -561,6 +781,7 @@ impl K2 {
                     color_picker(ui, "Color", &mut self.controls.solid_color);
                 });
         }
+
     }
 }
 
@@ -657,6 +878,18 @@ fn bench() {
         );
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

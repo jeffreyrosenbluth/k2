@@ -74,7 +74,7 @@ impl ExtrudeControls {
                 pick_list(
                     ui,
                     "Gradient Style",
-                    &[Plain, Light, Dark, Fiber, LightFiber, DarkFiber],
+                    &[Plain, Double, Light, Dark, Fiber, LightFiber, DarkFiber],
                     &mut self.grad_style,
                 );
             });

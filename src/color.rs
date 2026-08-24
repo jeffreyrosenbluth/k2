@@ -61,16 +61,16 @@ impl Palettes {
     pub fn base_hex(self) -> &'static [u32] {
         use Palettes::*;
         match self {
-            Royalty => &[0x1C4572, 0x84561B, 0x6D3E32, 0x0A0E20],
-            DeltaBlues => &[0x003566, 0x000000, 0x008080],
-            PinotNoir => &[0x701C1C, 0x1A1717, 0x77806E],
-            Algae => &[0xD9E5C1, 0xA3B18A, 0xBFB35A, 0x588157, 0x2F5D50, 0x1E3F20],
+            Royalty => &[0xE9E0CC, 0xC49A3C, 0x1C4572, 0x6D3E32, 0x3F2A5A, 0x0A0E20],
+            DeltaBlues => &[0xD7E1E8, 0x5B87A6, 0x003566, 0x008080, 0xB07C3F, 0x0D1321],
+            PinotNoir => &[0xEBDDC9, 0xB0413E, 0x701C1C, 0x77806E, 0x9C7A4A, 0x1A1717],
+            Emerald => &[0xE4F0E4, 0x50C878, 0x14735A, 0xD4AF37, 0x1F4E5F, 0x0B241C],
             Scepter => &[0xE8D9A0, 0xB7A635, 0x74641F, 0x6B1F2E, 0x3E2A56, 0x4E1406],
-            Fire => &[0x621708, 0x941B0C, 0xBC3908, 0xF6AA1C],
-            Perfume => &[0xD9798B, 0x8C4962, 0x59364A, 0x594832],
+            Fire => &[0xFBE8A6, 0xF6AA1C, 0xBC3908, 0x941B0C, 0x621708, 0x1E1210],
+            Perfume => &[0xF5E3DC, 0xD9798B, 0xB48EAD, 0xC9963F, 0x8C4962, 0x462736],
             Rose => &[0xF2D5D0, 0xE08E9B, 0xBF2642, 0x731F2E, 0x7A8B6F, 0x400C16],
-            PorcoRosso => &[0x002B75, 0x862A23, 0xBD8878],
-            SpiritedAway => &[0xD9A404, 0xF2B988, 0xBF3030, 0x0D0D0D],
+            PorcoRosso => &[0xF2E7CE, 0x6FA8CE, 0x002B75, 0x862A23, 0xBD8878, 0xD8A24A],
+            SpiritedAway => &[0xF7E7C3, 0xF2B988, 0xD9A404, 0xBF3030, 0x3A7D6C, 0x141420],
             GrayScale | MonoRed | MonoGreen | MonoBlue => &[],
         }
     }
@@ -87,7 +87,7 @@ pub fn swatches() -> Vec<egui::Color32> {
         Royalty,
         DeltaBlues,
         PinotNoir,
-        Algae,
+        Emerald,
         Scepter,
         Fire,
         Perfume,
@@ -110,7 +110,7 @@ pub fn palette_colors(pal: Palettes) -> Vec<Color> {
     use Palettes::*;
     match pal {
         GrayScale => gray_values(),
-        Royalty | DeltaBlues | PinotNoir | Algae | Scepter | Fire | Perfume | Rose | PorcoRosso
+        Royalty | DeltaBlues | PinotNoir | Emerald | Scepter | Fire | Perfume | Rose | PorcoRosso
         | SpiritedAway => expand_palette(hex_to_color(pal.base_hex().to_vec())),
         MonoBlue => {
             let mut cs = gray_values();
@@ -152,7 +152,8 @@ pub enum Palettes {
     Royalty,
     DeltaBlues,
     PinotNoir,
-    Algae,
+    #[serde(alias = "Algae")]
+    Emerald,
     Scepter,
     Fire,
     Perfume,
@@ -171,7 +172,7 @@ impl std::fmt::Display for Palettes {
             Palettes::Royalty => write!(f, "Royalty"),
             Palettes::DeltaBlues => write!(f, "Delta Blues"),
             Palettes::PinotNoir => write!(f, "Pinot Noir"),
-            Palettes::Algae => write!(f, "Algae"),
+            Palettes::Emerald => write!(f, "Emerald"),
             Palettes::Scepter => write!(f, "Scepter"),
             Palettes::Fire => write!(f, "Fire"),
             Palettes::Perfume => write!(f, "Perfume"),
@@ -405,7 +406,7 @@ impl ColorControls {
                             Royalty,
                             DeltaBlues,
                             PinotNoir,
-                            Algae,
+                            Emerald,
                             Scepter,
                             Fire,
                             Perfume,

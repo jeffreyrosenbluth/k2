@@ -346,6 +346,17 @@ fn paint_curve(
                 .extrude_controls
                 .direction
                 .unwrap_or(ExtrudeDirection::Vertical);
+            let grad_style = controls
+                .extrude_controls
+                .grad_style
+                .expect("controls.extrude_controls.grad_style cannot be None");
+            // Double blends toward a second palette color, drawn once per
+            // curve so the ribbon shades consistently along its length.
+            let color2 = if grad_style == crate::gradient::GradStyle::Double {
+                colors[rng.random_range(0..colors.len())]
+            } else {
+                c
+            };
             for (i, p) in pts.iter().enumerate() {
                 let r = len_fn(*p);
                 // Half-extent of the extruded line: along the y-axis, the
@@ -375,10 +386,8 @@ fn paint_curve(
                     x1,
                     y1,
                     point_color(i),
-                    controls
-                        .extrude_controls
-                        .grad_style
-                        .expect("controls.extrude_controls.grad_style cannot be None"),
+                    color2,
+                    grad_style,
                     controls.opacity,
                     rng,
                 );
