@@ -194,7 +194,7 @@ fn default_opacity() -> f32 {
 }
 
 fn default_grain_amount() -> f32 {
-    0.3
+    0.2
 }
 
 fn default_grain_size() -> f32 {
@@ -221,6 +221,10 @@ impl Controls {
         if self.curve_style == Some(CurveStyle::Strips) {
             self.location = Some(Location::Line);
         }
+        // Out-of-range values from hand-edited params would break seeding
+        // (density) or hang end extension (spacing); keep them sane.
+        self.density = self.density.clamp(5.0, 100.0);
+        self.spacing = self.spacing.max(0.1);
     }
 }
 

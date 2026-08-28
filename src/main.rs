@@ -253,16 +253,7 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
     } else {
         1.0
     };
-    let backgrounds = [
-        Background::LightGrain,
-        Background::LightFiber,
-        Background::DarkGrain,
-        Background::DarkFiber,
-        Background::ColorGrain,
-        Background::White,
-        Background::Black,
-        Background::Solid,
-    ];
+    let backgrounds = [Background::White, Background::Black, Background::Solid];
     c.background = Some(backgrounds[rng.random_range(0..backgrounds.len())]);
     c.grain_color = color(&mut rng);
     c.solid_color = color(&mut rng);
@@ -845,11 +836,18 @@ impl eframe::App for K2 {
             self.start_render(&ctx);
         } else if self.pending_draw {
             self.pending_draw = false;
-            // Manual edits clear the preset selection; a preset load keeps it.
-            if self.controls.preset == self.last_drawn.preset && self.controls != self.last_drawn {
-                self.controls.preset = None;
+            // Drawing with unchanged controls is a no-op: the render is
+            // fully deterministic, so redrawing would only flash the
+            // lower-resolution preview before landing on the same image.
+            if self.controls != self.last_drawn || self.rendering {
+                // Manual edits clear the preset selection; a preset load keeps it.
+                if self.controls.preset == self.last_drawn.preset
+                    && self.controls != self.last_drawn
+                {
+                    self.controls.preset = None;
+                }
+                self.start_render(&ctx);
             }
-            self.start_render(&ctx);
         }
 
         if self.exporting.load(Ordering::Relaxed) {
@@ -942,4 +940,33 @@ fn bench() {
 
 
 
+
+
+
+#[test]
+fn find_ui_mutation() {
+    let ctx = egui::Context::default();
+    let mut app = K2::new();
+    for roll in 0..30 {
+        app.controls = random_controls(Default::default());
+        let before = app.controls.clone();
+        for _ in 0..3 {
+            let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+                app.left_panel(ui);
+                app.right_panel(ui);
+            });
+        }
+        if app.controls != before {
+            let a = serde_json::to_value(&before).unwrap();
+            let b = serde_json::to_value(&app.controls).unwrap();
+            for (k, va) in a.as_object().unwrap() {
+                let vb = &b[k];
+                if va != vb {
+                    println!("roll {roll}: field '{k}' changed: {va} -> {vb}");
+                }
+            }
+        }
+    }
+    println!("scan done");
+}
 

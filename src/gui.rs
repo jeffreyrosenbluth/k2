@@ -101,9 +101,14 @@ impl<'a, T: egui::emath::Numeric> SliderRow<'a, T> {
             if step > 0.0 {
                 slider = slider.step_by(step);
             }
-            if !clamp {
-                slider = slider.clamping(egui::SliderClamping::Never);
-            }
+            // Edits (not Always): user input clamps and snaps to steps, but
+            // programmatic values (Random, loaded params) are left intact —
+            // Always would silently rewrite them on the next frame.
+            slider = slider.clamping(if clamp {
+                egui::SliderClamping::Edits
+            } else {
+                egui::SliderClamping::Never
+            });
             ui.add(slider);
             if ui.small_button("\u{21ba}").clicked() {
                 *value = default;
