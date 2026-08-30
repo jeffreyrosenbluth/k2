@@ -1,20 +1,29 @@
 #![allow(dead_code)]
 
-use crate::gui::{numeric, section};
+use crate::gui::{numeric, pick_list, section};
+use crate::noise::NoiseSource;
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FractalControls {
+    /// Base noise the fractal is built from.
+    #[serde(default = "default_source")]
+    pub source: Option<NoiseSource>,
     pub octaves: u8,
     pub persistence: f32,
     pub lacunarity: f32,
     pub frequency: f32,
 }
 
+fn default_source() -> Option<NoiseSource> {
+    Some(NoiseSource::Perlin)
+}
+
 impl Default for FractalControls {
     fn default() -> Self {
         Self {
+            source: Some(NoiseSource::Perlin),
             octaves: 4,
             persistence: 0.5,
             // The noise crate's DEFAULT_LACUNARITY: pi * 2/3
@@ -27,6 +36,7 @@ impl Default for FractalControls {
 impl FractalControls {
     pub fn new(octaves: u8, persistence: f32, lacunarity: f32, frequency: f32) -> Self {
         Self {
+            source: Some(NoiseSource::Perlin),
             octaves,
             persistence,
             lacunarity,
@@ -61,6 +71,12 @@ impl FractalControls {
             .spacing((15.0, 10.0))
             .min_col_width(90.0)
             .show(ui, |ui| {
+                pick_list(
+                    ui,
+                    "Source",
+                    &[NoiseSource::Perlin, NoiseSource::Worley],
+                    &mut self.source,
+                );
                 numeric(ui, "Octaves", &mut self.octaves, d.octaves, 1..=8, 1.0, 0);
                 if self.octaves > 1 {
                     numeric(

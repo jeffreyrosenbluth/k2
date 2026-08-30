@@ -15,78 +15,44 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     let opts = NoiseOpts::with_wh(w, h)
         .scales(controls.noise_controls.noise_scale)
         .factor(controls.noise_controls.noise_factor);
+    let fc = &controls.fractal_controls;
+    let source = fc.source.unwrap_or(crate::noise::NoiseSource::Perlin);
+    if source == crate::noise::NoiseSource::Worley {
+        crate::noise::set_source_worley_config(controls.worley);
+    }
+    // A fractal generator over the chosen base noise, boxed.
+    macro_rules! fractal {
+        ($gen:ident) => {
+            match source {
+                crate::noise::NoiseSource::Perlin => Box::new(
+                    $gen::<Perlin>::default()
+                        .set_octaves(fc.octaves as usize)
+                        .set_persistence(fc.persistence as f64)
+                        .set_lacunarity(fc.lacunarity as f64)
+                        .set_frequency(fc.frequency as f64),
+                ) as Box<dyn NoiseFn<f64, 2>>,
+                crate::noise::NoiseSource::Worley => Box::new(
+                    $gen::<crate::noise::SourceWorley>::default()
+                        .set_octaves(fc.octaves as usize)
+                        .set_persistence(fc.persistence as f64)
+                        .set_lacunarity(fc.lacunarity as f64)
+                        .set_frequency(fc.frequency as f64),
+                ) as Box<dyn NoiseFn<f64, 2>>,
+            }
+        };
+    }
     let noise_function: Box<dyn NoiseFn<f64, 2>> = match controls
         .noise_controls
         .noise_function
         .expect("controls.noise_function cannot be None")
     {
-            NoiseFunction::Fbm => Box::new(
-                Fbm::<Perlin>::default()
-                    .set_octaves(controls.fractal_controls.octaves as usize)
-                    .set_persistence(controls.fractal_controls.persistence as f64)
-                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
-                    .set_frequency(controls.fractal_controls.frequency as f64),
-            ),
-            NoiseFunction::BasicMulti => Box::new(
-                BasicMulti::<Perlin>::default()
-                    .set_octaves(controls.fractal_controls.octaves as usize)
-                    .set_persistence(controls.fractal_controls.persistence as f64)
-                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
-                    .set_frequency(controls.fractal_controls.frequency as f64),
-            ),
-            NoiseFunction::HybridMulti => Box::new(
-                HybridMulti::<Perlin>::default()
-                    .set_octaves(controls.fractal_controls.octaves as usize)
-                    .set_persistence(controls.fractal_controls.persistence as f64)
-                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
-                    .set_frequency(controls.fractal_controls.frequency as f64),
-            ),
-            NoiseFunction::Billow => Box::new(
-                Billow::<Perlin>::default()
-                    .set_octaves(controls.fractal_controls.octaves as usize)
-                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
-                    .set_frequency(controls.fractal_controls.frequency as f64)
-                    .set_persistence(controls.fractal_controls.persistence as f64),
-            ),
-            NoiseFunction::Ridged => Box::new(
-                RidgedMulti::<Perlin>::default()
-                    .set_octaves(controls.fractal_controls.octaves as usize)
-                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
-                    .set_frequency(controls.fractal_controls.frequency as f64)
-                    .set_persistence(controls.fractal_controls.persistence as f64),
-            ),
+            NoiseFunction::Fbm => fractal!(Fbm),
+            NoiseFunction::BasicMulti => fractal!(BasicMulti),
+            NoiseFunction::HybridMulti => fractal!(HybridMulti),
+            NoiseFunction::Billow => fractal!(Billow),
+            NoiseFunction::Ridged => fractal!(RidgedMulti),
             NoiseFunction::Value => Box::<Value>::default(),
-            NoiseFunction::Worley => {
-                use noise::core::worley::distance_functions;
-                let distance_fn = match controls
-                    .worley
-                    .distance
-                    .unwrap_or(crate::noise::WorleyDistance::Euclidean)
-                {
-                    crate::noise::WorleyDistance::Euclidean => {
-                        distance_functions::euclidean as fn(&[f64], &[f64]) -> f64
-                    }
-                    crate::noise::WorleyDistance::EuclideanSquared => {
-                        distance_functions::euclidean_squared
-                    }
-                    crate::noise::WorleyDistance::Manhattan => distance_functions::manhattan,
-                    crate::noise::WorleyDistance::Chebyshev => distance_functions::chebyshev,
-                };
-                let return_type = match controls
-                    .worley
-                    .return_type
-                    .unwrap_or(crate::noise::WorleyReturn::Distance)
-                {
-                    crate::noise::WorleyReturn::Distance => ReturnType::Distance,
-                    crate::noise::WorleyReturn::Value => ReturnType::Value,
-                };
-                Box::new(
-                    Worley::default()
-                        .set_frequency(controls.worley.frequency as f64)
-                        .set_distance_function(distance_fn)
-                        .set_return_type(return_type),
-                )
-            }
+            NoiseFunction::Worley => Box::new(crate::noise::build_worley(&controls.worley)),
             NoiseFunction::Cylinders => Box::new(
                 TranslatePoint::new(
                     Cylinders::default()
@@ -95,14 +61,7 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
                 .set_x_translation(w as f64 / 2.0)
                 .set_y_translation(h as f64 / 2.0),
             ),
-            NoiseFunction::Curl => {
-                let nf = Fbm::<Perlin>::default()
-                    .set_octaves(controls.fractal_controls.octaves as usize)
-                    .set_lacunarity(controls.fractal_controls.lacunarity as f64)
-                    .set_frequency(controls.fractal_controls.frequency as f64)
-                    .set_persistence(controls.fractal_controls.persistence as f64);
-                Box::new(Curl::new(nf))
-            }
+            NoiseFunction::Curl => Box::new(Curl::new(fractal!(Fbm))),
             NoiseFunction::Image => {
                 let noise = controls.image_noise.path.as_deref().and_then(|p| {
                     crate::imgnoise::cached_noise(
@@ -353,7 +312,15 @@ fn paint_curve(
             // Double blends toward a second palette color, drawn once per
             // curve so the ribbon shades consistently along its length.
             let color2 = if grad_style == crate::gradient::GradStyle::Double {
-                colors[rng.random_range(0..colors.len())]
+                // Scan forward from a random start for a color different from
+                // the curve color, so the gradient never degenerates to a
+                // single color. One rng draw either way, so pieces whose
+                // draw already differed render exactly as before.
+                let start = rng.random_range(0..colors.len());
+                (0..colors.len())
+                    .map(|k| colors[(start + k) % colors.len()])
+                    .find(|&cand| cand != c)
+                    .unwrap_or(c)
             } else {
                 c
             };

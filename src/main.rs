@@ -28,7 +28,13 @@ use crate::location::Location;
 use crate::noise::NoiseFunction;
 use crate::presets::*;
 
-pub fn main() -> eframe::Result {
+pub const UNDO_LIMIT: usize = 100;
+const UNDO: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::Z);
+const REDO: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(egui::Modifiers::COMMAND.plus(egui::Modifiers::SHIFT), egui::Key::Z);
+
+fn main() -> eframe::Result {
     env_logger::init();
     if std::env::var("K2_BENCH").is_ok() {
         bench();
@@ -96,7 +102,6 @@ fn load_preset(p: Preset) -> Controls {
         Ribbons => ribbons(),
         Worms => worms(),
         Solar => solar(),
-        Vortex => vortex(),
         Canyon => canyon(),
         Splat => splat(),
         Tubes => tubes(),
@@ -133,7 +138,10 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
         Location::Rand,
         Location::Halton,
         Location::Poisson,
+        Location::Phyllotaxis,
+        Location::Clusters,
         Location::Circle,
+        Location::Rings,
         Location::Lissajous,
         Location::Box,
         Location::Line,
@@ -186,10 +194,8 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
         GradStyle::Plain,
         GradStyle::Double,
         GradStyle::Light,
-        GradStyle::Dark,
         GradStyle::Fiber,
         GradStyle::LightFiber,
-        GradStyle::DarkFiber,
     ];
     let size_fns = [
         SizeFn::Constant,
@@ -221,6 +227,11 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
     c.noise_controls.noise_scale = rng.random_range(0.5..=8.0);
     c.noise_controls.noise_factor = rng.random_range(0.3..=4.0);
     c.speed = 10.0f32.powf(rng.random_range(-1.3..=0.0f32));
+    c.fractal_controls.source = Some(if rng.random_bool(0.25) {
+        crate::noise::NoiseSource::Worley
+    } else {
+        crate::noise::NoiseSource::Perlin
+    });
     c.fractal_controls.octaves = rng.random_range(1..=6);
     c.fractal_controls.persistence = rng.random_range(0.2..=0.8);
     c.fractal_controls.lacunarity = rng.random_range(1.5..=3.0);
@@ -361,7 +372,7 @@ impl K2 {
                     ui,
                     "Preset",
                     &[
-                        Ribbons, Worms, Solar, Vortex, Canyon, Splat, Tubes, Ducts, RedDwarf,
+                        Ribbons, Worms, Solar, Canyon, Splat, Tubes, Ducts, RedDwarf,
                     ],
                     &mut preset,
                 ) {
@@ -430,7 +441,10 @@ impl K2 {
                             Location::Rand,
                             Location::Halton,
                             Location::Poisson,
+                            Location::Phyllotaxis,
+                            Location::Clusters,
                             Location::Circle,
+                            Location::Rings,
                             Location::Lissajous,
                             Location::Box,
                             Location::Line,
@@ -647,7 +661,6 @@ impl K2 {
                                 serde_json::from_str::<Controls>(&s).map_err(|e| e.to_string())
                             }) {
                             Ok(controls) => {
-                                self.last_drawn = controls.clone();
                                 self.controls = controls;
                                 self.pending_draw = true;
                             }
@@ -671,6 +684,18 @@ impl K2 {
                 ui.separator();
                 if ui.button("Quit").clicked() {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            });
+            ui.menu_button("Edit", |ui| {
+                let undo = egui::Button::new("Undo").shortcut_text(ui.ctx().format_shortcut(&UNDO));
+                if ui.add_enabled(!self.undo_stack.is_empty(), undo).clicked() {
+                    self.undo();
+                    ui.close();
+                }
+                let redo = egui::Button::new("Redo").shortcut_text(ui.ctx().format_shortcut(&REDO));
+                if ui.add_enabled(!self.redo_stack.is_empty(), redo).clicked() {
+                    self.redo();
+                    ui.close();
                 }
             });
         });
@@ -727,7 +752,19 @@ impl K2 {
         if self.controls.noise_controls.noise_function == Some(NoiseFunction::Image) {
             self.controls.image_noise.ui(ui, &mut self.image_thumb);
         }
-        if self.controls.noise_controls.noise_function == Some(NoiseFunction::Worley) {
+        let fractal_family = matches!(
+            self.controls.noise_controls.noise_function,
+            Some(NoiseFunction::Fbm)
+                | Some(NoiseFunction::BasicMulti)
+                | Some(NoiseFunction::HybridMulti)
+                | Some(NoiseFunction::Billow)
+                | Some(NoiseFunction::Ridged)
+                | Some(NoiseFunction::Curl)
+        );
+        if self.controls.noise_controls.noise_function == Some(NoiseFunction::Worley)
+            || (fractal_family
+                && self.controls.fractal_controls.source == Some(crate::noise::NoiseSource::Worley))
+        {
             self.controls.worley.ui(ui);
         }
         self.controls.turbulence.ui(ui);
@@ -783,6 +820,12 @@ impl eframe::App for K2 {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        // Redo is checked first: its chord is a superset of Undo's.
+        if ctx.input_mut(|i| i.consume_shortcut(&REDO)) {
+            self.redo();
+        } else if ctx.input_mut(|i| i.consume_shortcut(&UNDO)) {
+            self.undo();
+        }
         egui::Panel::top("menu_bar").show(ui, |ui| {
             self.menu_bar(ui);
         });
@@ -839,12 +882,25 @@ impl eframe::App for K2 {
             // Drawing with unchanged controls is a no-op: the render is
             // fully deterministic, so redrawing would only flash the
             // lower-resolution preview before landing on the same image.
+            let restoring = std::mem::take(&mut self.restoring);
             if self.controls != self.last_drawn || self.rendering {
-                // Manual edits clear the preset selection; a preset load keeps it.
-                if self.controls.preset == self.last_drawn.preset
-                    && self.controls != self.last_drawn
-                {
-                    self.controls.preset = None;
+                if restoring {
+                    // Undo/redo replays a drawn state verbatim.
+                } else {
+                    // Manual edits clear the preset selection; a preset load keeps it.
+                    if self.controls.preset == self.last_drawn.preset
+                        && self.controls != self.last_drawn
+                    {
+                        self.controls.preset = None;
+                    }
+                    // A new state makes history and invalidates the redo branch.
+                    if self.controls != self.last_drawn {
+                        self.undo_stack.push(self.last_drawn.clone());
+                        if self.undo_stack.len() > UNDO_LIMIT {
+                            self.undo_stack.remove(0);
+                        }
+                        self.redo_stack.clear();
+                    }
                 }
                 self.start_render(&ctx);
             }
@@ -969,4 +1025,29 @@ fn find_ui_mutation() {
     }
     println!("scan done");
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

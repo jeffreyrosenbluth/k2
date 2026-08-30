@@ -9,7 +9,10 @@ pub enum Location {
     Rand,
     Halton,
     Poisson,
+    Phyllotaxis,
+    Clusters,
     Circle,
+    Rings,
     Lissajous,
     Box,
     #[serde(alias = "Column")]
@@ -62,6 +65,61 @@ impl Location {
                     while theta <= TAU {
                         pts.push(pt(cx + d * w * theta.cos(), cy + d * h * theta.sin()));
                         theta += delta;
+                    }
+                }
+            }
+            Location::Rings => {
+                // Concentric rings every two separations out to the edges,
+                // with points spaced half a separation along each ring.
+                let cx = w / 2.0;
+                let cy = h / 2.0;
+                let dr = (2.0 * sep) / w.min(h);
+                let mut f = dr;
+                while f <= 0.55 {
+                    let delta = 0.5 * sep / (f * w.max(h));
+                    let mut theta = 0.0;
+                    while theta <= TAU {
+                        pts.push(pt(cx + f * w * theta.cos(), cy + f * h * theta.sin()));
+                        theta += delta;
+                    }
+                    f += dr;
+                }
+            }
+            Location::Phyllotaxis => {
+                // Vogel spiral: golden-angle steps with radius growing as
+                // sqrt(n) — as even as blue noise, but with a hidden spiral
+                // order that Draw Order coloring can reveal.
+                const GOLDEN_ANGLE: f32 = 2.399_963;
+                let cx = w / 2.0;
+                let cy = h / 2.0;
+                let c = 0.564 * sep;
+                let r_max = (cx * cx + cy * cy).sqrt() + 0.05 * w.max(h);
+                let mut n = 0.0f32;
+                loop {
+                    let r = c * n.sqrt();
+                    if r > r_max {
+                        break;
+                    }
+                    let a = n * GOLDEN_ANGLE;
+                    pts.push(pt(cx + r * a.cos(), cy + r * a.sin()));
+                    n += 1.0;
+                }
+            }
+            Location::Clusters => {
+                // A few random cluster centers with gaussian scatter around
+                // each: clumpy constellations instead of even coverage.
+                let total = ((w * h) / (sep * sep)) as usize;
+                let k = (total / 40).clamp(3, 40);
+                let per = (total / k).max(1);
+                let std = 2.5 * sep;
+                for _ in 0..k {
+                    let ccx = rng.random_range(0.0..w);
+                    let ccy = rng.random_range(0.0..h);
+                    for _ in 0..per {
+                        let a = rng.random_range(0.0..TAU);
+                        let u: f32 = rng.random_range(f32::EPSILON..1.0);
+                        let r = std * (-2.0 * u.ln()).sqrt();
+                        pts.push(pt(ccx + r * a.cos(), ccy + r * a.sin()));
                     }
                 }
             }
@@ -137,6 +195,9 @@ impl std::fmt::Display for Location {
                 Location::Rand => "Rand",
                 Location::Halton => "Halton",
                 Location::Poisson => "Poisson",
+                Location::Phyllotaxis => "Phyllotaxis",
+                Location::Clusters => "Clusters",
+                Location::Rings => "Rings",
                 Location::Circle => "Circle",
                 Location::Lissajous => "Lissajous",
                 Location::Box => "Box",

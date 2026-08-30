@@ -45,6 +45,12 @@ pub struct K2 {
     pub rendering: bool,
     /// Set by the Draw button (and preset loads); consumed by the frame loop.
     pub pending_draw: bool,
+    /// Previously drawn states, oldest first, for Edit > Undo.
+    pub undo_stack: Vec<Controls>,
+    /// States undone from, most recently undone last, for Edit > Redo.
+    pub redo_stack: Vec<Controls>,
+    /// The pending draw restores history rather than making new history.
+    pub restoring: bool,
     /// Thumbnail of the image noise source shown in the right panel.
     pub image_thumb: ThumbCache,
     epoch: Arc<AtomicU64>,
@@ -64,11 +70,36 @@ impl K2 {
             exporting: Arc::new(AtomicBool::new(false)),
             rendering: false,
             pending_draw: false,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            restoring: false,
             image_thumb: ThumbCache::default(),
             epoch: Arc::new(AtomicU64::new(0)),
             tx,
             rx,
         }
+    }
+
+    /// Step back to the previously drawn state, if any.
+    pub fn undo(&mut self) {
+        if let Some(prev) = self.undo_stack.pop() {
+            self.redo_stack.push(self.last_drawn.clone());
+            self.restore(prev);
+        }
+    }
+
+    /// Step forward to the most recently undone state, if any.
+    pub fn redo(&mut self) {
+        if let Some(next) = self.redo_stack.pop() {
+            self.undo_stack.push(self.last_drawn.clone());
+            self.restore(next);
+        }
+    }
+
+    fn restore(&mut self, controls: Controls) {
+        self.controls = controls;
+        self.restoring = true;
+        self.pending_draw = true;
     }
 
     /// Kick off an asynchronous render of the current controls: a fast
@@ -256,7 +287,7 @@ impl Default for Controls {
             extrude_controls: ExtrudeControls::default(),
             color_mode_controls: ColorControls::default(),
             image_noise: ImageNoiseControls::default(),
-            grain_amount: 0.3,
+            grain_amount: 0.2,
             grain_size: 2.0,
             line_shift: 0.0,
             column_angle: 0.0,

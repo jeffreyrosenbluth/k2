@@ -3,6 +3,86 @@
 use wassily::prelude::*;
 use serde::{Deserialize, Serialize};
 
+/// A Worley generator configured from the Worley controls.
+pub fn build_worley(c: &WorleyControls) -> wassily::prelude::Worley {
+    use noise::core::worley::distance_functions;
+    use wassily::prelude::Worley;
+    let distance_fn = match c.distance.unwrap_or(WorleyDistance::Euclidean) {
+        WorleyDistance::Euclidean => distance_functions::euclidean as fn(&[f64], &[f64]) -> f64,
+        WorleyDistance::EuclideanSquared => distance_functions::euclidean_squared,
+        WorleyDistance::Manhattan => distance_functions::manhattan,
+        WorleyDistance::Chebyshev => distance_functions::chebyshev,
+    };
+    let return_type = match c.return_type.unwrap_or(WorleyReturn::Distance) {
+        WorleyReturn::Distance => noise::core::worley::ReturnType::Distance,
+        WorleyReturn::Value => noise::core::worley::ReturnType::Value,
+    };
+    Worley::default()
+        .set_frequency(c.frequency as f64)
+        .set_distance_function(distance_fn)
+        .set_return_type(return_type)
+}
+
+thread_local! {
+    static SOURCE_WORLEY_CONFIG: std::cell::Cell<WorleyControls> =
+        std::cell::Cell::new(WorleyControls {
+            frequency: 1.0,
+            distance: Some(WorleyDistance::Euclidean),
+            return_type: Some(WorleyReturn::Distance),
+        });
+}
+
+/// Set the configuration the next `SourceWorley::default()` calls pick up.
+/// The fractal generators build their sources through `Default`, which is
+/// the only hook available for configuring them.
+pub fn set_source_worley_config(c: WorleyControls) {
+    SOURCE_WORLEY_CONFIG.with(|cell| cell.set(c));
+}
+
+/// Worley as a fractal source noise, configured via the thread local above.
+pub struct SourceWorley(wassily::prelude::Worley);
+
+impl Default for SourceWorley {
+    fn default() -> Self {
+        SourceWorley(SOURCE_WORLEY_CONFIG.with(|cell| build_worley(&cell.get())))
+    }
+}
+
+impl wassily::prelude::Seedable for SourceWorley {
+    fn set_seed(self, seed: u32) -> Self {
+        SourceWorley(self.0.set_seed(seed))
+    }
+    fn seed(&self) -> u32 {
+        self.0.seed()
+    }
+}
+
+impl NoiseFn<f64, 2> for SourceWorley {
+    fn get(&self, point: [f64; 2]) -> f64 {
+        self.0.get(point)
+    }
+}
+
+/// The base noise the fractal generators (Fbm, Billow, ...) are built on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum NoiseSource {
+    Perlin,
+    Worley,
+}
+
+impl std::fmt::Display for NoiseSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                NoiseSource::Perlin => "Perlin",
+                NoiseSource::Worley => "Worley",
+            }
+        )
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum WorleyDistance {
     Euclidean,
@@ -238,9 +318,10 @@ impl Sinusoidal {
 
 impl NoiseFn<f64, 2> for Sinusoidal {
     fn get(&self, point: [f64; 2]) -> f64 {
-        std::f64::consts::PI
-            * (2.0
-                + (self.x_freq * point[0]).sin().powf(self.x_exp)
-                + (self.y_freq * point[1]).sin().powf(self.y_exp))
+        // Normalized to [-1, 1] like every other noise, so Noise Factor and
+        // the value-based color modes behave consistently. powi keeps
+        // negative sine bases well-defined for the integer exponents.
+        0.5 * ((self.x_freq * point[0]).sin().powi(self.x_exp.round() as i32)
+            + (self.y_freq * point[1]).sin().powi(self.y_exp.round() as i32))
     }
 }

@@ -11,11 +11,20 @@ pub fn color_scale(color1: Color, color2: Color, n: u8) -> Vec<Color> {
     let c2 = Okhsl::from_color(&color2);
     let hsl1 = c1.desaturate(0.5).lighten(0.5);
     let hsl2 = c2.saturate(0.5).darken(0.5);
+    // Interpolate hue along the shortest arc of the color wheel, so anchors
+    // straddling the 0/360 seam (e.g. pink to orange) pass through red
+    // rather than sweeping the long way around.
+    let h1 = hsl1.hue.into_positive_radians();
+    let mut h2 = hsl2.hue.into_positive_radians();
+    if h2 - h1 > PI {
+        h2 -= TAU;
+    } else if h1 - h2 > PI {
+        h2 += TAU;
+    }
     (0..n)
         .map(|p| {
-            let t = p as f32 * 1.0 / (n - 1) as f32;
-            let h =
-                (1.0 - t) * hsl1.hue.into_positive_radians() + t * hsl2.hue.into_positive_radians();
+            let t = p as f32 / (n - 1).max(1) as f32;
+            let h = (1.0 - t) * h1 + t * h2;
             let s = (1.0 - t) * hsl1.saturation + t * hsl2.saturation;
             let l = (1.0 - t) * hsl1.lightness + t * hsl2.lightness;
             Okhsl::new(OklabHue::from_radians(h), s, l).to_color()
@@ -309,6 +318,29 @@ impl ColorControls {
 
     pub fn set_palette_choice(mut self, pal: Palettes) -> Self {
         self.palette_choice = Some(pal);
+        self
+    }
+
+    pub fn set_color_by(mut self, color_by: ColorBy) -> Self {
+        self.color_by = Some(color_by);
+        self
+    }
+
+    pub fn set_reverse(mut self, reverse: bool) -> Self {
+        self.reverse = reverse;
+        self
+    }
+
+    pub fn set_region(mut self, scale: f32, colors: u32) -> Self {
+        self.region_scale = scale;
+        self.region_colors = colors;
+        self
+    }
+
+    pub fn set_along(mut self, cycles: f32, mirror: bool, phase: bool) -> Self {
+        self.along_cycles = cycles;
+        self.along_mirror = mirror;
+        self.along_phase = phase;
         self
     }
 
