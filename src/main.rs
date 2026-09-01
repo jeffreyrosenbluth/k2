@@ -191,6 +191,7 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
         ColorBy::NoiseValue,
     ];
     let grads = [
+        GradStyle::None,
         GradStyle::Plain,
         GradStyle::Double,
         GradStyle::Light,
@@ -998,6 +999,20 @@ fn bench() {
 
 
 
+
+// A render smoke test for noisy-edged extrusion, which also exercises the
+// degenerate case of the two edge curves crossing (a zero-length gradient).
+#[test]
+fn noisy_extrusion_renders() {
+    let mut controls = ribbons();
+    controls.curve_style = Some(CurveStyle::Extrusion);
+    controls.extrude_controls.noisy = true;
+    controls.extrude_controls.noise_strength = 100.0;
+    controls.extrude_controls.size_controls.size = 1.0;
+    controls.extrude_controls.size_controls.min_size = 0.0;
+    let canvas = draw(&controls, 0.25);
+    assert!(canvas.width() > 0 && canvas.height() > 0);
+}
 
 #[test]
 fn find_ui_mutation() {

@@ -324,14 +324,27 @@ fn paint_curve(
             } else {
                 c
             };
+            // With noisy edges the stroke spans two edge curves, each the
+            // flow curve displaced along the extrude direction by an
+            // independent Perlin field. Fixed seeds make the fields global,
+            // so neighboring curves ripple coherently across the canvas.
+            let edge_noise = controls.extrude_controls.noisy.then(|| {
+                let opts = NoiseOpts::with_wh(canvas.width(), canvas.height())
+                    .scales(controls.extrude_controls.noise_scale);
+                (
+                    Perlin::new(SEED as u32),
+                    Perlin::new(SEED as u32 + 1),
+                    opts,
+                )
+            });
             for (i, p) in pts.iter().enumerate() {
                 let r = len_fn(*p);
-                // Half-extent of the extruded line: along the y-axis, the
+                // Unit direction of the extruded line: the y-axis, the
                 // x-axis, or the normal to the curve at this point (estimated
                 // from the neighboring points).
-                let (dx, dy) = match extrude_dir {
-                    ExtrudeDirection::Vertical => (0.0, r),
-                    ExtrudeDirection::Horizontal => (r, 0.0),
+                let (ux, uy) = match extrude_dir {
+                    ExtrudeDirection::Vertical => (0.0, 1.0),
+                    ExtrudeDirection::Horizontal => (1.0, 0.0),
                     ExtrudeDirection::Normal => {
                         let prev = pts[i.saturating_sub(1)];
                         let next = pts[(i + 1).min(pts.len() - 1)];
@@ -339,14 +352,32 @@ fn paint_curve(
                         let ty = next.y - prev.y;
                         let len = (tx * tx + ty * ty).sqrt();
                         if len < f32::EPSILON {
-                            (0.0, r)
+                            (0.0, 1.0)
                         } else {
-                            (-ty / len * r, tx / len * r)
+                            (-ty / len, tx / len)
                         }
                     }
                 };
-                let (x0, y0) = (p.x - dx, p.y - dy);
-                let (x1, y1) = (p.x + dx, p.y + dy);
+                // Signed offsets of the two endpoints along the direction:
+                // plain extrusion is symmetric at ±r; noisy edges shift each
+                // endpoint by its own noise field.
+                let (o0, o1) = match &edge_noise {
+                    Some((na, nb, opts)) => {
+                        let s = controls.extrude_controls.noise_strength;
+                        (
+                            -r + s * noise2d(na, opts, p.x, p.y),
+                            r + s * noise2d(nb, opts, p.x, p.y),
+                        )
+                    }
+                    None => (-r, r),
+                };
+                // Where the edges cross, the segment (and its gradient)
+                // degenerates to a point; nothing to draw.
+                if (o1 - o0).abs() < 1e-3 {
+                    continue;
+                }
+                let (x0, y0) = (p.x + ux * o0, p.y + uy * o0);
+                let (x1, y1) = (p.x + ux * o1, p.y + uy * o1);
                 let lg = paint_lg(
                     x0,
                     y0,
