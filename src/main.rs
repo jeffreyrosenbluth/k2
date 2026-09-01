@@ -191,6 +191,7 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
         ColorBy::NoiseValue,
     ];
     let grads = [
+        GradStyle::None,
         GradStyle::Plain,
         GradStyle::Double,
         GradStyle::Light,
@@ -295,6 +296,10 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
             ExtrudeDirection::Normal,
         ][rng.random_range(0..3)],
     );
+    c.extrude_controls.noisy_edges = rng.random_bool(0.25);
+    c.extrude_controls.independent_edges = rng.random_bool(0.5);
+    c.extrude_controls.edge_noise_scale = rng.random_range(1.0..=12.0f32).round();
+    c.extrude_controls.edge_noise_amount = (rng.random_range(0.1..=1.0f32) * 20.0).round() / 20.0;
     c.color_mode_controls.mode = Some(if rng.random_bool(0.5) {
         ColorMode::Palette
     } else {
@@ -1025,6 +1030,7 @@ fn find_ui_mutation() {
     }
     println!("scan done");
 }
+
 
 
 

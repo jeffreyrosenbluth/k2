@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GradStyle {
+    /// No gradient: the solid curve color across the whole extrusion.
+    None,
     Plain,
     Double,
     Light,
@@ -19,6 +21,7 @@ impl std::fmt::Display for GradStyle {
             f,
             "{}",
             match self {
+                GradStyle::None => "None",
                 GradStyle::Plain => "Plain",
                 GradStyle::Double => "Double",
                 GradStyle::Light => "Light",
@@ -42,7 +45,7 @@ pub fn paint_lg<'a, R: RngCore>(
     alpha: f32,
     rng: &mut R,
 ) -> Paint<'a> {
-    use GradStyle::*;
+    use GradStyle::{Dark, DarkFiber, Double, Fiber, Light, LightFiber, Plain};
     let stop = |p: f32, c: Color| {
         GradientStop::new(
             p,
@@ -86,6 +89,7 @@ pub fn paint_lg<'a, R: RngCore>(
             stop(0.0, color2),
             stop(0.85, color1),
         ],
+        GradStyle::None => vec![stop(0.0, color1), stop(1.0, color1)],
     };
     let lg = LinearGradient::new(
         pt(x0, y0),

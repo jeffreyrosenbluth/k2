@@ -324,6 +324,22 @@ fn paint_curve(
             } else {
                 c
             };
+            // Noisy edges: the extrusion spans two copies of the curve, each
+            // displaced along the extrusion direction by its own Perlin field,
+            // so the ribbon's edges wander independently but coherently.
+            let edge_noise = controls.extrude_controls.noisy_edges.then(|| {
+                let opts = NoiseOpts::with_wh(canvas.width(), canvas.height())
+                    .scales(controls.extrude_controls.edge_noise_scale);
+                // Independent: seed the fields from the curve's own rng so
+                // neighboring ribbons undulate on their own; otherwise all
+                // curves share one field pair and undulate together.
+                let (s0, s1) = if controls.extrude_controls.independent_edges {
+                    (rng.next_u32(), rng.next_u32())
+                } else {
+                    (SEED as u32, SEED as u32 + 1)
+                };
+                (Perlin::new(s0), Perlin::new(s1), opts)
+            });
             for (i, p) in pts.iter().enumerate() {
                 let r = len_fn(*p);
                 // Half-extent of the extruded line: along the y-axis, the
@@ -345,8 +361,20 @@ fn paint_curve(
                         }
                     }
                 };
-                let (x0, y0) = (p.x - dx, p.y - dy);
-                let (x1, y1) = (p.x + dx, p.y + dy);
+                // Scale each side's half-extent by its noise field, clamped so
+                // an edge never crosses to the other side of the curve.
+                let (fa, fb) = match &edge_noise {
+                    Some((na, nb, opts)) => {
+                        let amt = controls.extrude_controls.edge_noise_amount;
+                        (
+                            (1.0 + amt * noise2d(na, opts, p.x, p.y)).max(0.0),
+                            (1.0 + amt * noise2d(nb, opts, p.x, p.y)).max(0.0),
+                        )
+                    }
+                    None => (1.0, 1.0),
+                };
+                let (x0, y0) = (p.x - fa * dx, p.y - fa * dy);
+                let (x1, y1) = (p.x + fb * dx, p.y + fb * dy);
                 let lg = paint_lg(
                     x0,
                     y0,
