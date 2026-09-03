@@ -81,9 +81,15 @@ impl Field {
     /// Jobard-Lefer evenly spaced streamlines: no two curves come closer
     /// than half of `sep`, and new curves are seeded `sep` away from the
     /// existing ones until the canvas is saturated. Returns each curve with
-    /// its seed point. `curve_length` caps the steps per direction and the
-    /// usual momentum smoothing (`speed`) applies.
-    pub fn evenly_spaced(&self, sep: f32, two_sided: bool) -> Vec<(Point, Vec<Point>)> {
+    /// its seed point and the index of the curve its seed was pushed off of
+    /// (None for the root curve); strips pair each curve with that parent.
+    /// `curve_length` caps the steps per direction and the usual momentum
+    /// smoothing (`speed`) applies.
+    pub fn evenly_spaced(
+        &self,
+        sep: f32,
+        two_sided: bool,
+    ) -> Vec<(Point, Vec<Point>, Option<usize>)> {
         let sep = sep.max(2.0);
         let d_test = 0.5 * sep;
         let w = self.width as f32;
@@ -110,9 +116,10 @@ impl Field {
         let cap = self.curve_length.max(1) as usize;
         let angle_at =
             |p: Point| self.field_angle(p.x, p.y);
-        let mut out: Vec<(Point, Vec<Point>)> = Vec::new();
-        let mut queue: VecDeque<Point> = VecDeque::from([pt(w / 2.0, h / 2.0)]);
-        while let Some(seed) = queue.pop_front() {
+        let mut out: Vec<(Point, Vec<Point>, Option<usize>)> = Vec::new();
+        let mut queue: VecDeque<(Point, Option<usize>)> =
+            VecDeque::from([(pt(w / 2.0, h / 2.0), None)]);
+        while let Some((seed, parent)) = queue.pop_front() {
             if !in_bounds(seed) || near(&grid, seed, sep) {
                 continue;
             }
@@ -155,10 +162,10 @@ impl Field {
             for p in pts.iter().step_by(every) {
                 let a = angle_at(*p);
                 let (nx, ny) = (-a.sin(), a.cos());
-                queue.push_back(pt(p.x + sep * nx, p.y + sep * ny));
-                queue.push_back(pt(p.x - sep * nx, p.y - sep * ny));
+                queue.push_back((pt(p.x + sep * nx, p.y + sep * ny), Some(out.len())));
+                queue.push_back((pt(p.x - sep * nx, p.y - sep * ny), Some(out.len())));
             }
-            out.push((seed, pts));
+            out.push((seed, pts, parent));
         }
         out
     }

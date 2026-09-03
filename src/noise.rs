@@ -224,6 +224,10 @@ pub struct NoiseControls {
     pub noise_function: Option<NoiseFunction>,
     pub noise_factor: f32,
     pub noise_scale: f32,
+    /// Flow along the level contours of the field (its curl) instead of
+    /// using its value as the flow angle directly.
+    #[serde(default)]
+    pub curl: bool,
 }
 
 impl NoiseControls {
@@ -232,7 +236,13 @@ impl NoiseControls {
             noise_function: Some(noise_function),
             noise_factor,
             noise_scale,
+            curl: false,
         }
+    }
+
+    pub fn set_curl(mut self, curl: bool) -> Self {
+        self.curl = curl;
+        self
     }
 
     pub fn set_noise_function(mut self, noise_function: NoiseFunction) -> Self {
@@ -257,6 +267,7 @@ impl Default for NoiseControls {
             noise_function: Some(NoiseFunction::Fbm),
             noise_factor: 1.0,
             noise_scale: 4.0,
+            curl: false,
         }
     }
 }

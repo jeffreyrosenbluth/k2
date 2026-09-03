@@ -101,6 +101,14 @@ fn choose_flow(controls: &Controls, w: u32, h: u32) -> Field {
     } else {
         noise_function
     };
+    // Curl: treat the (possibly turbulence-distorted) field as a scalar
+    // potential and flow along its level contours. Applied outside
+    // turbulence so the resulting flow stays divergence-free.
+    let noise_function: Box<dyn NoiseFn<f64, 2>> = if controls.noise_controls.curl {
+        Box::new(Curl::new(noise_function))
+    } else {
+        noise_function
+    };
     Field {
         noise_function,
         noise_opts: opts,
@@ -137,26 +145,58 @@ fn gen_curve(flow: &Field, controls: &Controls, start: Point) -> Vec<Point> {
 
 /// Fill the channel between two neighboring curves, leaving `strip_gap` of
 /// it open; with AlongCurve coloring the fill glides along the strip.
+/// `aligned` says the two curves share a parameterization (an ordered seed
+/// line), so points pair index to index; unaligned pairs (evenly spaced
+/// streamlines) pair each point of `a` with a nearest point of `b`.
+#[allow(clippy::too_many_arguments)]
 fn paint_strip(
     controls: &Controls,
     a: &[Point],
     b: &[Point],
+    aligned: bool,
     c: Color,
     color_by: ColorBy,
     colors: &[Color],
     canvas: &mut Canvas,
 ) {
-    let n = a.len().min(b.len());
-    if n < 2 {
+    let n = if aligned { a.len().min(b.len()) } else { a.len() };
+    if n < 2 || b.len() < 2 {
         return;
     }
+    // Unaligned curves may run in opposite directions and start at
+    // unrelated arc positions: orient `b` to run the same way as `a`, then
+    // walk a monotonically advancing nearest b-point along it, so the
+    // spanning quads never fold back across each other.
+    let reversed: Vec<Point>;
+    let b: &[Point] = if !aligned
+        && a[0].dist2(b[0]) + a[n - 1].dist2(b[b.len() - 1])
+            > a[0].dist2(b[b.len() - 1]) + a[n - 1].dist2(b[0])
+    {
+        reversed = b.iter().rev().copied().collect();
+        &reversed
+    } else {
+        b
+    };
+    let bmap: Vec<usize> = if aligned {
+        (0..n).collect()
+    } else {
+        let mut j = (0..b.len())
+            .min_by(|&p, &q| a[0].dist2(b[p]).total_cmp(&a[0].dist2(b[q])))
+            .unwrap();
+        (0..n)
+            .map(|i| {
+                while j + 1 < b.len() && a[i].dist2(b[j + 1]) < a[i].dist2(b[j]) {
+                    j += 1;
+                }
+                j
+            })
+            .collect()
+    };
     let gap = controls.strip_gap.clamp(0.0, 0.9);
     let (lo, hi) = (gap / 2.0, 1.0 - gap / 2.0);
     let lp = |i: usize, t: f32| {
-        pt(
-            a[i].x + t * (b[i].x - a[i].x),
-            a[i].y + t * (b[i].y - a[i].y),
-        )
+        let q = b[bmap[i]];
+        pt(a[i].x + t * (q.x - a[i].x), a[i].y + t * (q.y - a[i].y))
     };
     // The strip is painted as a run of slightly overlapping quads rather
     // than one big polygon: diverging or crossing curve pairs would make a
@@ -399,6 +439,16 @@ fn paint_curve(
 /// Render the artwork. `scale` multiplies the logical canvas size: 1.0 for
 /// the display image, below 1.0 for fast previews, above 1.0 for print.
 pub fn draw(controls: &Controls, scale: f32) -> Canvas {
+    draw_cancellable(controls, scale, &std::sync::atomic::AtomicBool::new(false))
+}
+
+/// Like `draw`, but checks `cancel` between curves and returns early (with a
+/// partial canvas the caller should discard) once it is set.
+pub fn draw_cancellable(
+    controls: &Controls,
+    scale: f32,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Canvas {
     let w = controls.width.max(1);
     let h = controls.height.max(1);
     let aspect_ratio = w as f32 / h as f32;
@@ -471,9 +521,16 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     // Curves are pre-generated when seeding and growth are coupled (evenly
     // spaced streamlines) or when strips need the whole ordered set to pair
     // neighbors. Otherwise they are generated inside the render chunks.
+    // For Even strips, each curve pairs with the curve its seed was pushed
+    // off of (its parent); the root curve has none and paints no strip.
+    let mut strip_parent: Vec<Option<usize>> = Vec::new();
     let pregen: Option<Vec<(Point, Vec<Point>)>> = if even {
         let flow = choose_flow(controls, canvas.width(), canvas.height());
-        Some(flow.evenly_spaced(sep, two_sided))
+        let curves = flow.evenly_spaced(sep, two_sided);
+        if strips {
+            strip_parent = curves.iter().map(|x| x.2).collect();
+        }
+        Some(curves.into_iter().map(|(s, pts, _)| (s, pts)).collect())
     } else if strips {
         // End extension would misalign the point indices of neighboring
         // curves, so strips always use plain curves.
@@ -637,12 +694,18 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     let pregen_curves: Option<Vec<Vec<Point>>> =
         pregen.map(|v| v.into_iter().map(|x| x.1).collect());
     let jobs: Vec<(usize, Point, Color, u64)> = if strips {
-        let max_pair = (3.0 * sep.max(5.0)).powi(2);
-        jobs.into_iter()
-            .filter(|(i, p, _, _)| {
-                *i + 1 < seeds.len() && p.dist2(seeds[*i + 1]) < max_pair
-            })
-            .collect()
+        if even {
+            jobs.into_iter()
+                .filter(|(i, _, _, _)| strip_parent[*i].is_some())
+                .collect()
+        } else {
+            let max_pair = (3.0 * sep.max(5.0)).powi(2);
+            jobs.into_iter()
+                .filter(|(i, p, _, _)| {
+                    *i + 1 < seeds.len() && p.dist2(seeds[*i + 1]) < max_pair
+                })
+                .collect()
+        }
     } else {
         jobs
     };
@@ -658,13 +721,22 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
                 .is_none()
                 .then(|| choose_flow(controls, canvas.width(), canvas.height()));
             for (i, p, c, seed) in chunk {
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    break;
+                }
                 let mut rng = SmallRng::seed_from_u64(*seed);
                 if strips {
                     let curves = pregen_curves.as_ref().unwrap();
+                    let (partner, aligned) = if even {
+                        (strip_parent[*i].unwrap(), false)
+                    } else {
+                        (*i + 1, true)
+                    };
                     paint_strip(
                         controls,
                         &curves[*i],
-                        &curves[*i + 1],
+                        &curves[partner],
+                        aligned,
                         *c,
                         color_by,
                         &colors,
@@ -706,3 +778,4 @@ pub fn draw(controls: &Controls, scale: f32) -> Canvas {
     }
     canvas
 }
+

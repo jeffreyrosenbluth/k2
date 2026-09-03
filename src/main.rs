@@ -156,7 +156,6 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
         NoiseFunction::Value,
         NoiseFunction::Cylinders,
         NoiseFunction::Worley,
-        NoiseFunction::Curl,
         NoiseFunction::Sinusoidal,
     ];
     if image_noise.path.is_some() {
@@ -225,6 +224,7 @@ fn random_controls(image_noise: crate::imgnoise::ImageNoiseControls) -> Controls
     c.hide_ends = rng.random_bool(0.3);
     c.density = rng.random_range(20.0..=100.0f32).round();
     c.noise_controls.noise_function = Some(noises[rng.random_range(0..noises.len())]);
+    c.noise_controls.curl = rng.random_bool(0.2);
     c.noise_controls.noise_scale = rng.random_range(0.5..=8.0);
     c.noise_controls.noise_factor = rng.random_range(0.3..=4.0);
     c.speed = 10.0f32.powf(rng.random_range(-1.3..=0.0f32));
@@ -416,27 +416,34 @@ impl K2 {
                     "Flow Field",
                     &[
                         Fbm, BasicMulti, HybridMulti, Billow, Ridged, Value, Cylinders,
-                        Worley, Curl, Sinusoidal, Image,
+                        Worley, Sinusoidal, Image,
                     ],
                     &mut self.controls.noise_controls.noise_function,
                 );
+                ui.label("Curl").on_hover_ui(|ui| {
+                    ui.colored_label(
+                        egui::Color32::ORANGE,
+                        "Flow along the field's level contours",
+                    );
+                    ui.colored_label(egui::Color32::ORANGE, "(the curl of the field).");
+                });
+                ui.checkbox(&mut self.controls.noise_controls.curl, "");
+                ui.end_row();
                 if self.controls.curve_style == Some(CurveStyle::Strips) {
-                    // Strips pair neighboring curves, which only makes sense
-                    // from an ordered column of seeds.
-                    self.controls.location = Some(Location::Line);
-                    ui.label("Locations");
-                    ui.add_enabled(
-                        false,
-                        egui::Button::new("Line").min_size(egui::vec2(150.0, 0.0)),
-                    )
-                    .on_disabled_hover_ui(|ui| {
-                        ui.colored_label(
-                            egui::Color32::ORANGE,
-                            "Locked to Line while the",
-                        );
-                        ui.colored_label(egui::Color32::ORANGE, "Strips style is selected.");
-                    });
-                    ui.end_row();
+                    // Strips pair neighboring curves, which needs an ordered
+                    // column of seeds or evenly spaced streamlines.
+                    if !matches!(
+                        self.controls.location,
+                        Some(Location::Line) | Some(Location::Even)
+                    ) {
+                        self.controls.location = Some(Location::Line);
+                    }
+                    pick_list(
+                        ui,
+                        "Locations",
+                        &[Location::Line, Location::Even],
+                        &mut self.controls.location,
+                    );
                 } else {
                     pick_list(
                         ui,
@@ -621,6 +628,15 @@ impl K2 {
             &["Render the artwork with the", "current settings."],
         ) {
             self.pending_draw = true;
+        }
+        ui.add_space(SPACE);
+        if action_button(
+            ui,
+            "Stop",
+            self.rendering,
+            &["Interrupt the render in progress."],
+        ) {
+            self.stop_render();
         }
         if self.exporting.load(Ordering::Relaxed) || self.rendering {
             ui.add_space(SPACE);
@@ -880,15 +896,16 @@ impl eframe::App for K2 {
         // or Reset set `pending_draw`, so any number of controls can be
         // changed before committing. Work runs on a worker thread; a fast
         // preview lands first and the full image follows.
-        if self.texture.is_none() && !self.rendering {
+        if self.texture.is_none() && !self.rendering && !self.stopped {
             self.start_render(&ctx);
         } else if self.pending_draw {
             self.pending_draw = false;
             // Drawing with unchanged controls is a no-op: the render is
             // fully deterministic, so redrawing would only flash the
             // lower-resolution preview before landing on the same image.
+            // After a Stop, though, Draw reruns even unchanged controls.
             let restoring = std::mem::take(&mut self.restoring);
-            if self.controls != self.last_drawn || self.rendering {
+            if self.controls != self.last_drawn || self.rendering || self.stopped {
                 if restoring {
                     // Undo/redo replays a drawn state verbatim.
                 } else {

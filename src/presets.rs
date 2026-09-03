@@ -110,7 +110,7 @@ pub fn worms() -> Controls {
 pub fn solar() -> Controls {
     Controls {
         curve_style: Some(CurveStyle::Line),
-        noise_controls: NoiseControls::new(NoiseFunction::Curl, 2.0, 1.5),
+        noise_controls: NoiseControls::new(NoiseFunction::Fbm, 2.0, 1.5).set_curl(true),
         location: Some(Location::Circle),
         spacing: 5.0,
         stroke_width: 3.5,

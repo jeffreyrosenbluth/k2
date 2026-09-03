@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc};
 
-use crate::art::draw;
+use crate::art::draw_cancellable;
 use crate::background::Background;
 use crate::color::ColorControls;
 use crate::dot::DotControls;
@@ -51,6 +51,11 @@ pub struct K2 {
     pub redo_stack: Vec<Controls>,
     /// The pending draw restores history rather than making new history.
     pub restoring: bool,
+    /// The user stopped the render: suppress auto-redraws until the next
+    /// kick-off, and let the Draw button rerun unchanged controls.
+    pub stopped: bool,
+    /// Cancellation flag for the in-flight render; replaced per kick-off.
+    cancel: Arc<AtomicBool>,
     /// Thumbnail of the image noise source shown in the right panel.
     pub image_thumb: ThumbCache,
     epoch: Arc<AtomicU64>,
@@ -73,6 +78,8 @@ impl K2 {
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             restoring: false,
+            stopped: false,
+            cancel: Arc::new(AtomicBool::new(false)),
             image_thumb: ThumbCache::default(),
             epoch: Arc::new(AtomicU64::new(0)),
             tx,
@@ -108,10 +115,16 @@ impl K2 {
     pub fn start_render(&mut self, ctx: &egui::Context) {
         let epoch = self.epoch.fetch_add(1, Ordering::Relaxed) + 1;
         self.rendering = true;
+        self.stopped = false;
+        // Interrupt any render still in flight; the epoch bump above already
+        // discards whatever it might send before it notices.
+        self.cancel.store(true, Ordering::Relaxed);
+        self.cancel = Arc::new(AtomicBool::new(false));
         self.controls.normalize();
         self.last_drawn = self.controls.clone();
         let controls = self.controls.clone();
         let latest = self.epoch.clone();
+        let cancel = self.cancel.clone();
         let tx = self.tx.clone();
         let ctx = ctx.clone();
         std::thread::spawn(move || {
@@ -119,7 +132,7 @@ impl K2 {
                 if latest.load(Ordering::Relaxed) != epoch {
                     return;
                 }
-                let canvas = draw(&controls, scale);
+                let canvas = draw_cancellable(&controls, scale, &cancel);
                 let image = egui::ColorImage::from_rgba_premultiplied(
                     [
                         canvas.pixmap.width() as usize,
@@ -143,6 +156,16 @@ impl K2 {
                 ctx.request_repaint();
             }
         });
+    }
+
+    /// Interrupt the in-flight render. The worker's draw returns early at
+    /// its next between-curve check, and bumping the epoch discards any
+    /// canvas it manages to finish anyway.
+    pub fn stop_render(&mut self) {
+        self.cancel.store(true, Ordering::Relaxed);
+        self.epoch.fetch_add(1, Ordering::Relaxed);
+        self.rendering = false;
+        self.stopped = true;
     }
 
     /// Apply any renders that have arrived, discarding superseded ones.
@@ -241,6 +264,13 @@ impl Controls {
     /// state the UI would immediately rewrite (which would make the next
     /// Draw produce a different image).
     pub fn normalize(&mut self) {
+        // Curl used to be a flow-field choice hardcoded over Fbm; it is now
+        // a modifier on any field. Old saved params migrate to the same
+        // render: Fbm with curl applied.
+        if self.noise_controls.noise_function == Some(crate::noise::NoiseFunction::Curl) {
+            self.noise_controls.noise_function = Some(crate::noise::NoiseFunction::Fbm);
+            self.noise_controls.curl = true;
+        }
         // Small sizes are inches at 300 DPI.
         if self.width < 180 {
             self.width *= 300;
@@ -248,8 +278,11 @@ impl Controls {
         if self.height < 180 {
             self.height *= 300;
         }
-        // Strips pair neighboring curves, so they need an ordered seed line.
-        if self.curve_style == Some(CurveStyle::Strips) {
+        // Strips pair neighboring curves, so they need an ordered seed line
+        // or evenly spaced streamlines (which know their neighbors).
+        if self.curve_style == Some(CurveStyle::Strips)
+            && self.location != Some(Location::Even)
+        {
             self.location = Some(Location::Line);
         }
         // Out-of-range values from hand-edited params would break seeding
